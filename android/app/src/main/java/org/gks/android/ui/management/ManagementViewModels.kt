@@ -16,7 +16,7 @@ import org.gks.android.data.remote.OperationView
 import org.gks.android.data.remote.RoleAssignment
 import org.gks.android.ui.account.fieldErrors
 import org.gks.android.ui.common.ActionState
-import org.gks.android.ui.common.DateInput
+import org.gks.android.ui.common.DateTimes
 import org.gks.android.ui.common.Load
 import org.gks.android.ui.common.LoadViewModel
 import org.gks.android.ui.common.UiText
@@ -131,7 +131,8 @@ data class OperationFormState(
 	val original: OperationView? = null,
 	val name: String = "",
 	val description: String = "",
-	val plannedEnd: String = "",
+	/** UTC ISO-8601 veya `null` (seçici: `DateTimeField`); düzenlemede sunucunun özgün değeri aynen tutulur. */
+	val plannedEnd: String? = null,
 	/** Yalnızca oluşturmada: seçilen koordinatörler (varsayılan: oluşturan ADM). */
 	val coordinatorIds: Set<String> = emptySet(),
 	val candidates: List<Candidate> = emptyList(),
@@ -147,6 +148,7 @@ class OperationFormViewModel(
 	private val operationId: String?,
 	private val selfUserId: String,
 	private val selfDisplayName: String,
+	private val clock: () -> java.time.Instant = java.time.Instant::now,
 ) : ViewModel() {
 
 	private val _state = MutableStateFlow(OperationFormState(loading = true))
@@ -167,7 +169,7 @@ class OperationFormViewModel(
 						original = result.value,
 						name = result.value.name,
 						description = result.value.description.orEmpty(),
-						plannedEnd = DateInput.formatIso(result.value.plannedEndAt),
+						plannedEnd = result.value.plannedEndAt,
 					)
 					is ApiResult.Failure -> OperationFormState(error = result.error.toUiText(OPERATION_ERRORS))
 				}
@@ -185,24 +187,21 @@ class OperationFormViewModel(
 	fun save(onSaved: (String) -> Unit) {
 		val s = _state.value
 		if (s.busy) return
-		val plannedEnd = s.plannedEnd.trim()
-		val instant = if (plannedEnd.isEmpty()) null else DateInput.parse(plannedEnd)
+		val plannedEndIso = s.plannedEnd
+		// Yalnızca yeni seçilen değer denetlenir: değişmeyen geçmiş bir bitiş düzenlemeyi engellemesin (backend de
+		// gönderilmeyen alanı doğrulamaz). Kural backend OR-01/OR-02 ile aynı: gelecekte olmalı.
+		val changed = s.original == null || plannedEndIso != s.original.plannedEndAt
+		val instant = DateTimes.parse(plannedEndIso)
 		val local = buildMap<String, UiText> {
 			if (s.name.trim().length !in NAME_MIN..NAME_MAX) put("name", text(R.string.operation_name_invalid))
 			if (s.description.trim().length > DESCRIPTION_MAX) put("description", text(R.string.operation_description_too_long))
-			if (plannedEnd.isNotEmpty() && instant == null) put("plannedEndAt", text(R.string.meeting_point_time_invalid))
+			if (changed && instant != null && !instant.isAfter(clock())) put("plannedEndAt", text(R.string.operation_planned_end_past))
 			if (operationId == null && s.coordinatorIds.isEmpty()) put("coordinatorIds", text(R.string.operation_coordinator_required))
 			if (operationId == null && s.coordinatorIds.size > COORDINATOR_MAX) put("coordinatorIds", text(R.string.operation_coordinator_max))
 		}
 		if (local.isNotEmpty()) {
 			_state.update { it.copy(fieldErrors = local) }
 			return
-		}
-		// Düzenlemede bitiş değişmediyse sunucudaki özgün değer korunur (dakika yuvarlaması fark üretmesin).
-		val plannedEndIso = when {
-			instant == null -> null
-			s.original != null && plannedEnd == DateInput.formatIso(s.original.plannedEndAt) -> s.original.plannedEndAt
-			else -> instant.toString()
 		}
 		val draft = OperationDraft(s.name, s.description, plannedEndIso)
 		_state.update { it.copy(busy = true, error = null, fieldErrors = emptyMap()) }

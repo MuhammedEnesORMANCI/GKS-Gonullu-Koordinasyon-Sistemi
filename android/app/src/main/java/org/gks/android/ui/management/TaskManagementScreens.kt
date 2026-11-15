@@ -62,7 +62,8 @@ import org.gks.android.data.remote.TaskView
 import org.gks.android.ui.account.fieldErrors
 import org.gks.android.ui.common.ActionState
 import org.gks.android.ui.common.Badge
-import org.gks.android.ui.common.DateInput
+import org.gks.android.ui.common.DateTimeField
+import org.gks.android.ui.common.DateTimes
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.FormField
@@ -96,6 +97,9 @@ private val TASK_ERRORS = mapOf(
 )
 
 private val PRIORITIES = listOf("LOW", "NORMAL", "HIGH", "URGENT")
+
+/** Sunucunun zaman aralığı alan adları (§9.3): nesne düzeyi, başlangıç ve bitiş. */
+private val TIME_FIELDS = setOf("timeWindow", "timeWindow.start", "timeWindow.end")
 private val ACTIVE_ASSIGNMENT = setOf("PENDING", "ACCEPTED")
 
 // ---------------------------------------------------------------- liste (TK-07)
@@ -151,8 +155,9 @@ data class TaskFormState(
 	val description: String = "",
 	val priority: String = "NORMAL",
 	val meetingPoint: String = "",
-	val start: String = "",
-	val end: String = "",
+	/** UTC ISO-8601 veya `null` (seçici: [DateTimeField]). Düzenlemede sunucunun özgün değeri aynen tutulur. */
+	val start: String? = null,
+	val end: String? = null,
 	val capacity: String = "",
 	val window: String = "",
 	val userIds: Set<String> = emptySet(),
@@ -198,8 +203,8 @@ class TaskFormViewModel(
 				description = original?.description.orEmpty(),
 				priority = original?.priority ?: "NORMAL",
 				meetingPoint = original?.meetingPoint.orEmpty(),
-				start = DateInput.formatIso(original?.timeWindow?.start),
-				end = DateInput.formatIso(original?.timeWindow?.end),
+				start = original?.timeWindow?.start,
+				end = original?.timeWindow?.end,
 				capacity = original?.capacity?.toString().orEmpty(),
 				window = original?.responseWindowMinutes?.toString().orEmpty(),
 				userIds = original?.targets?.userIds.orEmpty().toSet(),
@@ -213,6 +218,10 @@ class TaskFormViewModel(
 	fun edit(field: String, transform: TaskFormState.() -> TaskFormState) =
 		_state.update { it.transform().copy(fieldErrors = it.fieldErrors - field, error = null) }
 
+	/** Zaman aralığı alanları birlikte doğrulandığı için ikisinin hataları birlikte temizlenir. */
+	fun editTime(transform: TaskFormState.() -> TaskFormState) =
+		_state.update { it.transform().copy(fieldErrors = it.fieldErrors - TIME_FIELDS, error = null) }
+
 	fun toggleUser(id: String) = edit("targets") { copy(userIds = if (id in userIds) userIds - id else userIds + id) }
 
 	fun toggleGroup(id: String) = edit("targets") { copy(groupIds = if (id in groupIds) groupIds - id else groupIds + id) }
@@ -223,10 +232,13 @@ class TaskFormViewModel(
 		val errors = linkedMapOf<String, UiText>()
 		if (s.title.trim().length !in 3..120) errors["title"] = text(R.string.task_title_invalid)
 		if (s.description.trim().length > 2000) errors["description"] = text(R.string.task_description_too_long)
-		val start = time(s.start, s.original?.timeWindow?.start) { errors["timeWindow"] = text(R.string.meeting_point_time_invalid) }
-		val end = time(s.end, s.original?.timeWindow?.end) { errors["timeWindow"] = text(R.string.meeting_point_time_invalid) }
-		if (end != null && start == null) errors["timeWindow"] = text(R.string.task_end_requires_start)
-		if (start != null && end != null && end <= start) errors["timeWindow"] = text(R.string.task_end_before_start)
+		val start = s.start
+		val end = s.end
+		// backend §9.3 ile aynı: bitiş başlangıçsız olamaz, başlangıçtan sonra olmalı (geçmiş tarih backend'de serbest).
+		if (end != null && start == null) errors["timeWindow.start"] = text(R.string.task_end_requires_start)
+		val startAt = DateTimes.parse(start)
+		val endAt = DateTimes.parse(end)
+		if (startAt != null && endAt != null && !endAt.isAfter(startAt)) errors["timeWindow.end"] = text(R.string.task_end_before_start)
 		val capacity = number(s.capacity, 1..500) { errors["capacity"] = text(R.string.task_capacity_invalid) }
 		val window = number(s.window, 5..1440) { errors["responseWindowMinutes"] = text(R.string.task_window_invalid) }
 		if (s.targetsEditable && s.userIds.isEmpty() && s.groupIds.isEmpty()) errors["targets"] = text(R.string.task_targets_required)
@@ -242,20 +254,12 @@ class TaskFormViewModel(
 			when (result) {
 				is ApiResult.Success -> onSaved(result.value.id)
 				is ApiResult.Failure -> {
-					val fields = result.error.fieldErrors(setOf("title", "description", "meetingPoint", "timeWindow", "capacity",
-						"responseWindowMinutes", "targets", "priority"))
+					val fields = result.error.fieldErrors(setOf("title", "description", "meetingPoint", "capacity",
+						"responseWindowMinutes", "targets", "priority") + TIME_FIELDS)
 					_state.update { it.copy(busy = false, fieldErrors = fields, error = if (fields.isEmpty()) result.error.toUiText(TASK_ERRORS) else null) }
 				}
 			}
 		}
-	}
-
-	/** Metin değişmediyse sunucudaki özgün ISO değeri korunur (dakika yuvarlaması sahte değişiklik üretmesin). */
-	private fun time(input: String, originalIso: String?, invalid: () -> Unit): String? {
-		val trimmed = input.trim()
-		if (trimmed.isEmpty()) return null
-		if (originalIso != null && trimmed == DateInput.formatIso(originalIso)) return originalIso
-		return DateInput.parse(trimmed)?.toString() ?: run { invalid(); null }
 	}
 
 	private fun number(input: String, range: IntRange, invalid: () -> Unit): Int? {
@@ -303,11 +307,12 @@ fun TaskFormScreen(viewModel: TaskFormViewModel, onSaved: (String) -> Unit) {
 			}
 			FormField(state.meetingPoint, R.string.task_meeting_point, state.fieldErrors["meetingPoint"]?.resolve(), enabled, sentence,
 				supporting = R.string.task_meeting_point_help) { viewModel.edit("meetingPoint") { copy(meetingPoint = it) } }
-			FormField(state.start, R.string.task_start, state.fieldErrors["timeWindow"]?.resolve(), enabled, number,
-				supporting = R.string.task_time_help) { viewModel.edit("timeWindow") { copy(start = it) } }
-			FormField(state.end, R.string.task_end, null, enabled, number, supporting = R.string.task_time_help) {
-				viewModel.edit("timeWindow") { copy(end = it) }
-			}
+			DateTimeField(state.start, R.string.task_start,
+				(state.fieldErrors["timeWindow.start"] ?: state.fieldErrors["timeWindow"])?.resolve(), enabled,
+				onChange = { viewModel.editTime { copy(start = it) } }, supporting = R.string.task_time_help)
+			DateTimeField(state.end, R.string.task_end, state.fieldErrors["timeWindow.end"]?.resolve(), enabled,
+				onChange = { viewModel.editTime { copy(end = it) } }, supporting = R.string.task_time_help,
+				minDate = DateTimes.localDate(state.start, java.time.ZoneId.systemDefault()))
 			FormField(state.capacity, R.string.task_capacity_field, state.fieldErrors["capacity"]?.resolve(), enabled, number,
 				supporting = R.string.task_capacity_help) { viewModel.edit("capacity") { copy(capacity = it) } }
 			FormField(state.window, R.string.task_window_field, state.fieldErrors["responseWindowMinutes"]?.resolve(), enabled, number,

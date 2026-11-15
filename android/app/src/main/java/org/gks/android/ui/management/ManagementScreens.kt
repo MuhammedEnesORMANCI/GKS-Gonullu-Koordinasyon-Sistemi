@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.gks.android.R
@@ -47,6 +46,7 @@ import org.gks.android.data.remote.OperationView
 import org.gks.android.domain.ManagementAccess
 import org.gks.android.domain.nextOperationStates
 import org.gks.android.ui.common.Badge
+import org.gks.android.ui.common.DateTimeField
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.FormField
@@ -384,9 +384,10 @@ fun OperationFormScreen(viewModel: OperationFormViewModel, editing: Boolean, onS
 				minLines = 3,
 				modifier = Modifier.fillMaxWidth(),
 			)
-			FormField(state.plannedEnd, R.string.operation_planned_end, state.fieldErrors["plannedEndAt"]?.resolve(), enabled,
-				KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-				supporting = R.string.operation_planned_end_help) { viewModel.edit("plannedEndAt") { copy(plannedEnd = it) } }
+			DateTimeField(state.plannedEnd, R.string.operation_planned_end, state.fieldErrors["plannedEndAt"]?.resolve(), enabled,
+				onChange = { viewModel.edit("plannedEndAt") { copy(plannedEnd = it) } },
+				supporting = R.string.operation_planned_end_help,
+				minDate = java.time.LocalDate.now(java.time.ZoneId.systemDefault()))
 
 			if (creating) {
 				SectionTitle(R.string.operation_coordinators)

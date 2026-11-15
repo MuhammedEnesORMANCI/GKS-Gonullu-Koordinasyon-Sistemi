@@ -313,7 +313,7 @@
 	<string name="operation_name_invalid">Operasyon adı 3–120 karakter olmalıdır.</string>
 	<string name="operation_description_help">İsteğe bağlı, en fazla 2000 karakter. Boş bırakılırsa silinir.</string>
 	<string name="operation_description_too_long">Açıklama en fazla 2000 karakter olabilir.</string>
-	<string name="operation_planned_end_help">İsteğe bağlı; gg.aa.yyyy ss:dd, gelecekte olmalı. Boş bırakılırsa silinir.</string>
+	<string name="operation_planned_end_help">İsteğe bağlı; gelecekte olmalı. Temizlemek için ✕ simgesine dokunun.</string>
 	<string name="operation_coordinators_help">En az bir, en fazla 10 koordinatör. Kullanıcı arama henüz olmadığından liste sizden ve başka operasyonlarda koordinatör olan kişilerden oluşur.</string>
 	<string name="operation_coordinator_required">En az bir koordinatör seçin.</string>
 	<string name="operation_coordinator_max">En fazla 10 koordinatör seçilebilir.</string>
@@ -394,7 +394,7 @@
 	<string name="task_priority">Öncelik</string>
 	<string name="task_start">Başlangıç (isteğe bağlı)</string>
 	<string name="task_end">Bitiş (isteğe bağlı)</string>
-	<string name="task_time_help">gg.aa.yyyy ss:dd</string>
+	<string name="task_time_help">İsteğe bağlı; dokunarak tarih ve saat seçin.</string>
 	<string name="task_end_requires_start">Bitiş için başlangıç da girilmelidir.</string>
 	<string name="task_end_before_start">Bitiş, başlangıçtan sonra olmalıdır.</string>
 	<string name="task_capacity_field">Kapasite (isteğe bağlı)</string>
@@ -435,6 +435,13 @@
 	<string name="task_error_version">Görev bu arada değiştirilmiş; güncel hâli yüklendi. Değişikliğinizi yeniden yapın.</string>
 	<string name="task_error_capacity_below">Kapasite, görevi kabul etmiş kişi sayısının altına indirilemez.</string>
 	<string name="task_error_assignment_active">Bu kişinin bu görevde zaten etkin bir ataması var.</string>
+
+	<!-- Tarih-saat seçici -->
+	<string name="datetime_pick">Tarih ve saat seçin</string>
+	<string name="datetime_pick_time">Saat seçin</string>
+	<string name="datetime_next">İleri</string>
+	<string name="datetime_clear">Temizle</string>
+	<string name="operation_planned_end_past">Planlanan bitiş gelecekte olmalıdır.</string>
 
 	<!-- Duyuru yönetimi (NT-01 – NT-03, NT-06) -->
 	<string name="announcements_title">Duyurular</string>
