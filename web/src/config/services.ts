@@ -16,6 +16,7 @@
  *   - invitations   ID-12 – ID-14
  *   - notifications NT-04, NT-05, NT-07, NT-08 (gelen kutusu, LD-60)
  *   - announcements NT-01, NT-02, NT-03, NT-06
+ *   - roleAssignments AC-01 – AC-03 (rol atama ekranı, yalnızca ADM)
  *
  * `npm run dev:mock` (Vite `--mode mock`) veya `VITE_SERVICE_PRESET=mock` ile tüm kaynaklar örnek veriye geçer
  * (backend olmadan tutarlı tanıtım).
@@ -33,7 +34,8 @@ export type ServiceResource =
   | 'tasks'
   | 'invitations'
   | 'notifications'
-  | 'announcements';
+  | 'announcements'
+  | 'roleAssignments';
 
 export type ServiceConfig = Record<ServiceResource, ServiceMode>;
 
@@ -48,6 +50,7 @@ export const CONTRACT_PRESET: ServiceConfig = {
   invitations: 'http',
   notifications: 'http',
   announcements: 'http',
+  roleAssignments: 'http',
 };
 
 export const MOCK_PRESET: ServiceConfig = {
@@ -61,6 +64,7 @@ export const MOCK_PRESET: ServiceConfig = {
   invitations: 'mock',
   notifications: 'mock',
   announcements: 'mock',
+  roleAssignments: 'mock',
 };
 
 function selectPreset(): ServiceConfig {

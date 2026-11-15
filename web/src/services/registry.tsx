@@ -13,6 +13,7 @@ import {
   httpOperationListService,
   httpOperationService,
   httpParticipantService,
+  httpRoleAssignmentService,
   httpTaskService,
 } from './http';
 import {
@@ -26,6 +27,7 @@ import {
   mockOperationListService,
   mockOperationService,
   mockParticipantService,
+  mockRoleAssignmentService,
   mockTaskService,
 } from './mock/services';
 
@@ -45,6 +47,7 @@ export function createServices(config: ServiceConfig, api: ApiClient = apiClient
     invitations: pick('invitations', () => httpInvitationService(api), mockInvitationService),
     notifications: pick('notifications', () => httpNotificationService(api), mockNotificationService),
     announcements: pick('announcements', () => httpAnnouncementService(api), mockAnnouncementService),
+    roleAssignments: pick('roleAssignments', () => httpRoleAssignmentService(api), mockRoleAssignmentService),
   };
 }
 

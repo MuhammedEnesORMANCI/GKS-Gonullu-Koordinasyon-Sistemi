@@ -47,7 +47,7 @@ describe('uygulama kabuğu ve rol tabanlı menü', () => {
 
   it('contract ön ayarı: kaynak seçimi tek yapılandırmadan', () => {
     const s = createServices(CONTRACT_PRESET);
-    expect(Object.keys(s).sort()).toEqual(['account', 'announcements', 'auth', 'groups', 'invitations', 'meContext', 'notifications', 'operationList', 'operations', 'participants', 'tasks']);
+    expect(Object.keys(s).sort()).toEqual(['account', 'announcements', 'auth', 'groups', 'invitations', 'meContext', 'notifications', 'operationList', 'operations', 'participants', 'roleAssignments', 'tasks']);
     // Tüm kaynakların backend karşılığı var: varsayılan ön ayarda örnek veri kalmaz.
     expect(Object.values(CONTRACT_PRESET).every((mode) => mode === 'http')).toBe(true);
   });

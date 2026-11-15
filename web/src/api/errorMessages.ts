@@ -51,7 +51,7 @@ const CONFLICT_MESSAGES: Record<string, string> = {
 };
 
 /** Ekrana özel bağlam; genel katalogdan farklı mesaj gerektiren yerler (mapping §2). */
-export type ErrorContext = 'default' | 'login' | 'mfa' | 'operationState' | 'invitation';
+export type ErrorContext = 'default' | 'login' | 'mfa' | 'operationState' | 'invitation' | 'roleRevoke';
 
 /** Kodu bilinmeyen veya 5xx hatası için iz numaralı mesaj. */
 function unexpected(traceId: string | undefined): string {
@@ -80,6 +80,12 @@ export function messageFor(error: unknown, context: ErrorContext = 'default'): s
   }
   if (context === 'mfa' && code === 'AUTH_INVALID_CREDENTIALS') {
     return 'Doğrulama kodu hatalı veya süresi geçmiş.';
+  }
+  if (context === 'roleRevoke' && code === 'FORBIDDEN') {
+    return 'Kendi kurum yöneticisi rolünüzü veya kurumun son kurum yöneticisi rolünü kaldıramazsınız.';
+  }
+  if (context === 'roleRevoke' && code === 'INVALID_STATE_TRANSITION') {
+    return 'Bu rol zaten kaldırılmış.';
   }
   if (context === 'invitation' && code === 'INVALID_STATE_TRANSITION') {
     return 'Davet artık bekleme durumunda değil.';

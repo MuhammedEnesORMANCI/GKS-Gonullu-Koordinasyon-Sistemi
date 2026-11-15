@@ -17,6 +17,9 @@ import type {
   LoginRequest,
   MfaEnrollResponse,
   PasswordChangeRequest,
+  Role,
+  RoleAssignmentCreateRequest,
+  RoleAssignmentView,
   ScopeType,
   LoginResponse,
   MeContext,
@@ -104,6 +107,21 @@ export interface AnnouncementService {
   create(request: AnnouncementCreateRequest, idempotencyKey: string): Promise<AnnouncementView>;
   list(filter?: AnnouncementFilter): Promise<Page<AnnouncementView>>;
   get(id: Uuid): Promise<AnnouncementView>;
+}
+
+export interface RoleAssignmentFilter extends PageRequest {
+  userId?: Uuid;
+  scopeId?: Uuid;
+  role?: Role;
+  active?: boolean;
+}
+
+/** AC-01 – AC-03 (yalnızca ADM, `role.assign`; web veya MFA'lı Android yönetim oturumu). */
+export interface RoleAssignmentService {
+  list(filter?: RoleAssignmentFilter): Promise<Page<RoleAssignmentView>>;
+  grant(request: RoleAssignmentCreateRequest): Promise<RoleAssignmentView>;
+  /** AC-02: ADM kendi ADM atamasını ve kurumun son ADM atamasını kaldıramaz (`403`). */
+  revoke(id: Uuid): Promise<void>;
 }
 
 /** ID-11 `GET /me/context`. */
@@ -206,4 +224,5 @@ export interface Services {
   invitations: InvitationService;
   notifications: NotificationService;
   announcements: AnnouncementService;
+  roleAssignments: RoleAssignmentService;
 }

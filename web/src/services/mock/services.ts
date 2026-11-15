@@ -9,6 +9,7 @@ import type {
   OperationListService,
   OperationService,
   ParticipantService,
+  RoleAssignmentService,
   TaskService,
 } from '../contracts';
 import type {
@@ -898,6 +899,99 @@ export function mockInvitationService(): InvitationService {
       }
       invitation.status = 'REVOKED';
       return respond(invitation);
+    },
+  };
+}
+
+// ------------------------------------------------------------- role assignments (AC-01 – AC-03)
+
+function allMockAssignments(): RoleAssignmentView[] {
+  const ref = (userId: Uuid): UserRef => ({ id: userId, displayName: mockStore.users.get(userId)?.displayName ?? userId });
+  const grantedBy = { id: MOCK_IDS.adm, displayName: 'Yönetici (örnek)' };
+  const items: RoleAssignmentView[] = mockStore.orgRoles.map((r) => ({
+    id: `rol-${r.role}-${r.userId}`,
+    user: ref(r.userId),
+    role: r.role,
+    scopeType: 'ORGANIZATION',
+    scopeId: MOCK_IDS.org,
+    scopeName: 'Örnek Kurum',
+    grantedBy,
+    grantedAt: '2026-01-01T00:00:00Z',
+    ...(r.revokedAt ? { revokedAt: r.revokedAt } : {}),
+  }));
+  for (const op of mockStore.operations.values()) {
+    for (const c of op.coordinators) {
+      items.push({ id: `rol-KOR-${op.id}-${c.id}`, user: ref(c.id!), role: 'KOR', scopeType: 'OPERATION', scopeId: op.id,
+        scopeName: op.name, grantedBy, grantedAt: op.createdAt ?? '2026-01-01T00:00:00Z' });
+    }
+    for (const p of mockStore.participants.get(op.id) ?? []) {
+      items.push({ id: `rol-GON-${op.id}-${p.userId}`, user: ref(p.userId), role: 'GON', scopeType: 'OPERATION', scopeId: op.id,
+        scopeName: op.name, grantedBy, grantedAt: p.joinedAt });
+    }
+  }
+  return items;
+}
+
+/** AC-01 – AC-03 taklidi: yalnızca ADM; kendi ADM'sini ve son ADM'yi kaldırma 403 (S-09); kapanmış operasyon 409. */
+export function mockRoleAssignmentService(): RoleAssignmentService {
+  const requireAdm = () => (mockStore.persona === 'ADM' ? undefined : fail(403, 'FORBIDDEN'));
+  return {
+    list: async (filter = {}) => {
+      await requireAdm();
+      const items = allMockAssignments().filter(
+        (a) =>
+          (!filter.userId || a.user.id === filter.userId) &&
+          (!filter.scopeId || a.scopeId === filter.scopeId) &&
+          (!filter.role || a.role === filter.role) &&
+          (filter.active === undefined || filter.active === !a.revokedAt),
+      );
+      return respond({ items });
+    },
+    grant: async (request) => {
+      await requireAdm();
+      const user = mockStore.users.get(request.userId);
+      const ref = { id: request.userId, displayName: user?.displayName ?? request.userId };
+      if (request.scopeType === 'ORGANIZATION') {
+        if (!['ADM', 'TEK', 'UYM'].includes(request.role)) {
+          return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'role', code: 'NOT_ALLOWED_VALUE' }]);
+        }
+        if (mockStore.orgRoles.some((r) => r.userId === request.userId && r.role === request.role && !r.revokedAt)) {
+          return fail(409, 'ALREADY_EXISTS', { conflict: 'ROLE_ACTIVE' });
+        }
+        mockStore.orgRoles.push({ userId: request.userId, role: request.role as 'ADM' | 'TEK' | 'UYM' });
+      } else {
+        const op = mockStore.operations.get(request.scopeId);
+        if (!op) return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'scopeId', code: 'NOT_ALLOWED_VALUE' }]);
+        if (isClosed(op.state)) return fail(409, 'OPERATION_CLOSED');
+        if (request.role !== 'KOR') {
+          return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'role', code: 'NOT_ALLOWED_VALUE' }]);
+        }
+        if (op.coordinators.some((c) => c.id === request.userId)) return fail(409, 'ALREADY_EXISTS', { conflict: 'ROLE_ACTIVE' });
+        op.coordinators = [...op.coordinators, ref];
+      }
+      return respond(allMockAssignments().find((a) => a.user.id === request.userId && a.role === request.role && a.scopeId === request.scopeId
+        && !a.revokedAt)!);
+    },
+    revoke: async (id) => {
+      await requireAdm();
+      const found = allMockAssignments().find((a) => a.id === id);
+      if (!found) return fail(404, 'NOT_FOUND');
+      if (found.revokedAt) return fail(409, 'INVALID_STATE_TRANSITION');
+      if (found.role === 'ADM') {
+        const activeAdmins = mockStore.orgRoles.filter((r) => r.role === 'ADM' && !r.revokedAt).length;
+        if (found.user.id === PERSONA_USER.ADM || activeAdmins <= 1) return fail(403, 'FORBIDDEN');
+      }
+      if (found.scopeType === 'ORGANIZATION') {
+        const row = mockStore.orgRoles.find((r) => r.userId === found.user.id && r.role === found.role && !r.revokedAt)!;
+        row.revokedAt = nowIso();
+      } else if (found.role === 'KOR') {
+        const op = mockStore.operations.get(found.scopeId)!;
+        op.coordinators = op.coordinators.filter((c) => c.id !== found.user.id);
+      } else {
+        const list = mockStore.participants.get(found.scopeId) ?? [];
+        mockStore.participants.set(found.scopeId, list.filter((p) => p.userId !== found.user.id));
+      }
+      return respond(undefined);
     },
   };
 }

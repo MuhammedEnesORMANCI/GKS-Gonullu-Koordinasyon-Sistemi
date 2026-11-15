@@ -1,4 +1,10 @@
-import type { AssignmentFilter, InvitationFilter, OperationListFilter, TaskListFilter } from '../services/contracts';
+import type {
+  AssignmentFilter,
+  InvitationFilter,
+  OperationListFilter,
+  RoleAssignmentFilter,
+  TaskListFilter,
+} from '../services/contracts';
 
 /** Sorgu anahtarları (web-screen-api-mapping.md §6.1); hiyerarşik, ön ekle toplu geçersiz kılma. */
 export const Q = {
@@ -22,4 +28,6 @@ export const Q = {
   announcementsRoot: () => ['announcements'] as const,
   announcements: (operationId?: string) => ['announcements', { operationId }] as const,
   invitations: (f: InvitationFilter = {}) => ['invitations', f] as const,
+  roleAssignmentsRoot: () => ['role-assignments'] as const,
+  roleAssignments: (f: RoleAssignmentFilter = {}) => ['role-assignments', f] as const,
 };

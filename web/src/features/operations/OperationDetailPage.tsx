@@ -138,6 +138,11 @@ export function OperationDetailPage() {
                 </Typography>
                 <Typography>
                   <strong>Koordinatörler:</strong> {op!.coordinators.map((c) => c.displayName).join(', ') || '—'}
+                  {perms.can('role.assign') && !closed && (
+                    <Button size="small" component={RouterLink} to={`/roller?rol=KOR&operasyon=${opId}`} sx={{ ml: 1 }}>
+                      Koordinatörleri yönet
+                    </Button>
+                  )}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Oluşturma: {formatDateTime(op!.createdAt)}

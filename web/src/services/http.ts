@@ -10,6 +10,7 @@ import type {
   OperationListService,
   OperationService,
   ParticipantService,
+  RoleAssignmentService,
   TaskService,
 } from './contracts';
 import type {
@@ -29,6 +30,7 @@ import type {
   OperationView,
   Page,
   ParticipantView,
+  RoleAssignmentView,
   TaskSummary,
   TaskView,
 } from './types';
@@ -91,6 +93,32 @@ export function httpAnnouncementService(api: ApiClient): AnnouncementService {
         query: { operationId: filter.operationId, limit: filter.limit, cursor: filter.cursor },
       }),
     get: (id) => api.get<AnnouncementView>(`/announcements/${p(id)}`),
+  };
+}
+
+export function httpRoleAssignmentService(api: ApiClient): RoleAssignmentService {
+  return {
+    list: (filter = {}) =>
+      api.get<Page<RoleAssignmentView>>('/role-assignments', {
+        query: {
+          userId: filter.userId,
+          scopeId: filter.scopeId,
+          role: filter.role,
+          active: filter.active === undefined ? undefined : filter.active,
+          limit: filter.limit,
+          cursor: filter.cursor,
+        },
+      }),
+    grant: (request) =>
+      api.post<RoleAssignmentView>('/role-assignments', {
+        userId: request.userId,
+        role: request.role,
+        scopeType: request.scopeType,
+        scopeId: request.scopeId,
+      }),
+    revoke: async (id) => {
+      await api.delete<void>(`/role-assignments/${p(id)}`);
+    },
   };
 }
 

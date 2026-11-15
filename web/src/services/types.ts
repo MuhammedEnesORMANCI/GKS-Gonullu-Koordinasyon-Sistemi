@@ -83,6 +83,14 @@ export interface RoleAssignmentView {
   revokedAt?: DateTime;
 }
 
+/** AC-01 `RoleAssignmentCreateRequest` (rol ve kapsam türü eşleşmeli: ADM/TEK/UYM kurum, KOR/GON operasyon). */
+export interface RoleAssignmentCreateRequest {
+  userId: Uuid;
+  role: Role;
+  scopeType: ScopeType;
+  scopeId: Uuid;
+}
+
 export interface MyOperationView {
   id: Uuid;
   name: string;

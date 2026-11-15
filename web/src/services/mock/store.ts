@@ -55,6 +55,8 @@ export interface MockState {
   tasks: Map<Uuid, TaskView & { operationId: Uuid }>;
   assignments: Map<Uuid, AssignmentView>;
   invitations: Map<Uuid, InvitationView>;
+  /** Kurum kapsamlı roller (ADM/TEK/UYM); KOR ve GON operasyon verisinden türetilir (AC-03 taklidi). */
+  orgRoles: Array<{ userId: Uuid; role: 'ADM' | 'TEK' | 'UYM'; revokedAt?: string }>;
   idempotency: Map<string, unknown>;
   seq: number;
 }
@@ -280,6 +282,11 @@ function seed(): MockState {
     tasks,
     assignments,
     invitations,
+    orgRoles: [
+      { userId: MOCK_IDS.adm, role: 'ADM' },
+      { userId: MOCK_IDS.tek, role: 'TEK' },
+      { userId: MOCK_IDS.uym, role: 'UYM' },
+    ],
     idempotency: new Map(),
     seq: 100,
   };
