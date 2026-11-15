@@ -135,7 +135,8 @@ class TaskManagementTest {
 			permissions = EffectivePermissions(organization, operations),
 		).managementAccess()!!
 		assertTrue(access(emptyList(), mapOf("o1" to listOf("operation.manage", "task.manage"))).canManageTasks("o1"))
-		// ADM (KOR değilse) görevleri salt-okur görür: TK-01 yalnızca K1 KOR.
+		// Sunucu operasyon izni göndermezse salt-okur; ADR-015 ile ADM'ye her operasyonda task.manage gelir.
 		assertFalse(access(listOf("operation.create", "operation.manage"), emptyMap()).canManageTasks("o1"))
+		assertTrue(access(listOf("operation.create", "operation.manage"), mapOf("o1" to listOf("task.manage"))).canManageTasks("o1"))
 	}
 }

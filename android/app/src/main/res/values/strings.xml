@@ -353,7 +353,7 @@
 	<string name="volunteers_revoke_body">%1$s adresine gönderilen davet iptal edilsin mi? Kod artık kullanılamaz.</string>
 	<!-- Yönetim: gruplar (GR-01 – GR-08) -->
 	<string name="groups_management_title">Gruplar</string>
-	<string name="groups_management_read_only">Grup kurma ve üyelik işlemlerini yalnızca bu operasyonun koordinatörleri yapabilir. Gruplar salt okunur gösteriliyor.</string>
+	<string name="groups_management_read_only">Bu operasyonda grup kurma ve üyelik yetkiniz yok. Gruplar salt okunur gösteriliyor.</string>
 	<string name="groups_management_empty">Bu operasyonda henüz grup yok.</string>
 	<string name="group_create">Yeni grup</string>
 	<string name="group_name">Grup adı</string>
@@ -382,7 +382,7 @@
 	<string name="group_error_already_member">Kişi zaten bu grubun üyesi.</string>
 	<!-- Yönetim: görevler (TK-01 – TK-09) -->
 	<string name="tasks_management_title">Görevler</string>
-	<string name="tasks_management_read_only">Görev oluşturma ve yönetimini yalnızca bu operasyonun koordinatörleri yapabilir. Görevler salt okunur gösteriliyor.</string>
+	<string name="tasks_management_read_only">Bu operasyonda görev yönetimi yetkiniz yok. Görevler salt okunur gösteriliyor.</string>
 	<string name="tasks_management_empty">Bu operasyonda henüz görev yok.</string>
 	<string name="task_create">Yeni görev</string>
 	<string name="task_edit">Görevi düzenle</string>

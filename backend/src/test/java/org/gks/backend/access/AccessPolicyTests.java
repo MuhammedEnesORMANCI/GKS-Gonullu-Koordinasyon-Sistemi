@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import org.gks.backend.TestcontainersConfiguration;
@@ -20,7 +21,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * Gerçek rol atamalarıyla izin tablosu (authorization.md §2, §5; backend §2.4; ADR-013, K-07, K-19, LD-01, LD-03,
+ * Gerçek rol atamalarıyla izin tablosu (authorization.md §2, §5; backend §2.4; ADR-014, ADR-015, K-19, LD-01, LD-03,
  * LD-38). Taklit yok: kararlar {@code access.role_assignments} satırlarından hesaplanır.
  */
 @Import(TestcontainersConfiguration.class)
@@ -47,6 +48,12 @@ class AccessPolicyTests {
 	@Autowired
 	Participation participation;
 
+	@Autowired
+	AnnouncementAccess announcements;
+
+	@Autowired
+	EffectivePermissions permissions;
+
 	UUID operationId;
 	UUID otherOperationId;
 
@@ -67,6 +74,11 @@ class AccessPolicyTests {
 
 	static Subject android(UUID userId) {
 		return new Subject(userId, false, false);
+	}
+
+	/** ADR-014 MFA'lı Android yönetim oturumu. */
+	static Subject androidMfa(UUID userId) {
+		return new Subject(userId, false, true);
 	}
 
 	@Nested
@@ -146,9 +158,9 @@ class AccessPolicyTests {
 	@Nested
 	class Groups {
 
-		/** K-07: ADM operasyonel izinleri yalnızca kendini KOR olarak atayarak kazanır. */
+		/** ADR-015 (K-07'nin yerine): ADM, KOR ataması olmadan her operasyonda grupları yönetir; KOR yalnızca kendi operasyonunda. */
 		@Test
-		void onlyOwnCoordinatorManagesGroupsAndAdminIsReadOnly() {
+		void ownCoordinatorAndAdminManageGroups() {
 			UUID coordinator = user();
 			grant(coordinator, Role.KOR, operationId);
 			UUID admin = user();
@@ -158,9 +170,13 @@ class AccessPolicyTests {
 					GroupAction.REMOVE_MEMBER, GroupAction.CHANGE_LEADER, GroupAction.RENAME }) {
 				assertThat(groups.can(webMfa(coordinator), action, operationId, null)).isEqualTo(Decision.ALLOW);
 				assertThat(groups.can(webMfa(coordinator), action, otherOperationId, null)).isEqualTo(Decision.FORBIDDEN);
-				assertThat(groups.can(webMfa(admin), action, operationId, null)).isEqualTo(Decision.FORBIDDEN);
+				assertThat(groups.can(webMfa(admin), action, operationId, null)).isEqualTo(Decision.ALLOW);
+				assertThat(groups.can(webMfa(admin), action, otherOperationId, null)).isEqualTo(Decision.ALLOW);
+				assertThat(groups.can(webNoMfa(admin), action, operationId, null)).isEqualTo(Decision.CLIENT_NOT_ALLOWED);
+				assertThat(groups.can(android(admin), action, operationId, null)).isEqualTo(Decision.CLIENT_NOT_ALLOWED);
 			}
 			assertThat(groups.can(webMfa(admin), GroupAction.VIEW, operationId, null)).isEqualTo(Decision.ALLOW);
+			assertThat(groups.can(webMfa(admin), GroupAction.UPDATE_MEETING_POINT, otherOperationId, null)).isEqualTo(Decision.ALLOW);
 		}
 
 		/** AC-09.6, K-08, LD-38: lider kendi grubunu ve toplanma noktasını günceller (Android'de de); üye ekleyemez. */
@@ -199,7 +215,7 @@ class AccessPolicyTests {
 	class Tasks {
 
 		@Test
-		void manageIsOwnCoordinatorOnlyAndViewScopeFollowsRole() {
+		void manageIsOwnCoordinatorOrAdminAndViewScopeFollowsRole() {
 			UUID coordinator = user();
 			grant(coordinator, Role.KOR, operationId);
 			UUID admin = user();
@@ -210,7 +226,10 @@ class AccessPolicyTests {
 			assertThat(tasks.can(webMfa(coordinator), TaskAction.MANAGE, operationId, false)).isEqualTo(Decision.ALLOW);
 			assertThat(tasks.can(android(coordinator), TaskAction.MANAGE, operationId, false))
 				.isEqualTo(Decision.CLIENT_NOT_ALLOWED);
-			assertThat(tasks.can(webMfa(admin), TaskAction.MANAGE, operationId, false)).isEqualTo(Decision.FORBIDDEN);
+			assertThat(tasks.can(webMfa(coordinator), TaskAction.MANAGE, otherOperationId, false)).isEqualTo(Decision.FORBIDDEN);
+			assertThat(tasks.can(webMfa(admin), TaskAction.MANAGE, operationId, false)).isEqualTo(Decision.ALLOW);   // ADR-015
+			assertThat(tasks.can(webMfa(admin), TaskAction.MANAGE, otherOperationId, false)).isEqualTo(Decision.ALLOW);
+			assertThat(tasks.can(android(admin), TaskAction.MANAGE, operationId, false)).isEqualTo(Decision.CLIENT_NOT_ALLOWED);
 			assertThat(tasks.can(android(volunteer), TaskAction.RESPOND, operationId, true)).isEqualTo(Decision.ALLOW);
 			assertThat(tasks.can(android(volunteer), TaskAction.RESPOND, operationId, false)).isEqualTo(Decision.FORBIDDEN);
 
@@ -236,6 +255,50 @@ class AccessPolicyTests {
 		jdbc.sql("update access.role_assignments set revoked_at = now(), revoke_reason = 'MANUAL' where id = ?")
 			.param(assignment).update();
 		assertThat(participation.isParticipant(operationId, volunteer)).isFalse();
+	}
+
+	/** ADR-015: ADM, KOR ataması olmadan tüm operasyonlarda KOR'un operasyon kapsamlı izinlerine sahiptir. */
+	@Nested
+	class AdminCoordinatesAllOperations {
+
+		@Test
+		void operationAnnouncementIsOwnCoordinatorOrAdmin() {
+			UUID coordinator = user();
+			grant(coordinator, Role.KOR, operationId);
+			UUID admin = user();
+			grant(admin, Role.ADM, ORGANIZATION_ID);
+
+			assertThat(announcements.canSendToOperation(webMfa(coordinator), operationId)).isEqualTo(Decision.ALLOW);
+			assertThat(announcements.canSendToOperation(androidMfa(coordinator), operationId)).isEqualTo(Decision.ALLOW);
+			assertThat(announcements.canSendToOperation(webMfa(coordinator), otherOperationId)).isEqualTo(Decision.FORBIDDEN);
+			assertThat(announcements.canSendToOperation(webMfa(admin), operationId)).isEqualTo(Decision.ALLOW);
+			assertThat(announcements.canSendToOperation(androidMfa(admin), otherOperationId)).isEqualTo(Decision.ALLOW);
+			assertThat(announcements.canSendToOperation(android(admin), operationId)).isEqualTo(Decision.CLIENT_NOT_ALLOWED);
+			assertThat(announcements.canSendToOperation(webNoMfa(admin), operationId)).isEqualTo(Decision.CLIENT_NOT_ALLOWED);
+			assertThat(announcements.canSendToOperation(webMfa(user()), operationId)).isEqualTo(Decision.FORBIDDEN);
+		}
+
+		@Test
+		void effectivePermissionsGiveAdminCoordinatorSetOnEveryOperation() {
+			UUID admin = user();
+			grant(admin, Role.ADM, ORGANIZATION_ID);
+			UUID coordinator = user();
+			grant(coordinator, Role.KOR, operationId);
+
+			for (Subject session : new Subject[] { webMfa(admin), androidMfa(admin) }) {
+				var view = permissions.of(session, Map.of());
+				assertThat(view.operations().get(operationId)).containsAll(EffectivePermissions.ADM_OPERATION)
+					.contains("task.manage", "announcement.send.group", "membership.add", "meeting_point.update")
+					.doesNotContain("location.view", "alert.send");   // K-15 ve alarm kararı ayrı
+				assertThat(view.operations().get(otherOperationId)).containsAll(EffectivePermissions.ADM_OPERATION);
+			}
+			assertThat(permissions.of(android(admin), Map.of()).operations()).isEmpty();
+			assertThat(permissions.of(webNoMfa(admin), Map.of()).operations()).isEmpty();
+
+			var korView = permissions.of(webMfa(coordinator), Map.of());
+			assertThat(korView.operations()).containsOnlyKeys(operationId);
+		}
+
 	}
 
 	// --- veri ---

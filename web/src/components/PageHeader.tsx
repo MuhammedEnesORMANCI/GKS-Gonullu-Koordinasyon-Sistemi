@@ -16,12 +16,12 @@ export function PageHeader({ title, mock, actions }: { title: string; mock?: boo
   );
 }
 
-/** ADM operasyonel salt-okur bilgi bandı (mapping §0.1 madde 2). */
+/** ADM operasyonel salt-okur bilgi bandı (mapping §0.1 madde 2). ADR-015 sonrası yalnızca sunucu izin vermiyorsa görünür. */
 export function ReadOnlyBanner({ show }: { show: boolean }) {
   if (!show) return null;
   return (
     <Alert severity="info" sx={{ mb: 2 }}>
-      Salt-okur görünüm. İşlem yapmak için kendinizi bu operasyona koordinatör olarak atayın.
+      Salt-okur görünüm. Bu operasyonda yönetim izniniz yok.
     </Alert>
   );
 }

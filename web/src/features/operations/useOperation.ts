@@ -17,7 +17,7 @@ export function useOperationScope(opId: string) {
   return {
     operation,
     closed,
-    /** ADM, KOR olarak atanmadıysa salt-okur bandı (K-07). */
+    /** ADM bu operasyonda yönetim izni taşımıyorsa salt-okur bandı (ADR-015 sonrası normalde görünmez). */
     admReadOnly: perms.isAdmReadOnly(opId),
     can: (permission: string) => !closed && perms.can(permission, opId),
   };

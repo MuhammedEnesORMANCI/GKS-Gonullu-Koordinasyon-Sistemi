@@ -13,7 +13,8 @@ public interface OperationAccess {
 	Decision canCreate(Subject subject);
 
 	/**
-	 * {@code operation.manage}: ADM kurum kapsamında, KOR yalnızca kendi operasyonunda (yalnızca K1, MFA'lı web).
+	 * {@code operation.manage}: ADM tüm operasyonlarda, KOR yalnızca kendi operasyonunda (yalnızca K1, MFA'lı oturum;
+	 * kural {@link Grants#coordinates}, ADR-015).
 	 * OR-06 katılımcı listesi de aynı kapsamdır.
 	 */
 	Decision canManage(Subject subject, UUID operationId);

@@ -5,8 +5,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * authorization.md §5.4 görev izinleri. {@code task.manage} yalnızca K1 (KOR kendi operasyonu, MFA'lı web; ADM
- * yalnızca KOR olarak). ADM görevleri salt-okur görür. Android'deki KOR yalnızca kendi atamalarını görür (§2.4).
+ * authorization.md §5.4 görev izinleri. {@code task.manage}: KOR kendi operasyonunda, ADM KOR ataması olmadan
+ * tüm operasyonlarda (ADR-015; MFA'lı web veya MFA'lı Android yönetim oturumu, ADR-014). Android'deki KOR yalnızca kendi atamalarını görür (§2.4).
  */
 @Component
 class RoleBasedTaskAccess implements TaskAccess {
@@ -20,7 +20,7 @@ class RoleBasedTaskAccess implements TaskAccess {
 	@Override
 	public Decision can(Subject subject, TaskAction action, UUID operationId, boolean assignee) {
 		return switch (action) {
-			case MANAGE -> Grants.corporate(subject, store.grants(subject.userId()).has(Role.KOR, operationId), Role.KOR);
+			case MANAGE -> Grants.coordinator(subject, store.grants(subject.userId()), operationId);   // KOR kendi, ADM tümü
 			case RESPOND -> assignee ? Decision.ALLOW : Decision.FORBIDDEN;   // task.respond: atanan kişinin kendisi
 			case LIST_OWN_ASSIGNMENTS -> Decision.ALLOW;                       // self
 		};

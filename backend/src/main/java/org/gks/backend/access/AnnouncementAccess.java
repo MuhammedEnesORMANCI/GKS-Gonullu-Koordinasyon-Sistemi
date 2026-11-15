@@ -4,9 +4,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Duyuru izinleri (authorization.md §4: {@code announcement.send.group} K1/KOR kendi operasyonu,
- * {@code announcement.send.organization} yalnızca K1/ADM). İkisi de kurumsal izindir: yalnızca MFA'lı web oturumu
- * ({@link Grants#corporate}); Android oturumu {@code CLIENT_NOT_ALLOWED} alır (ADR-013, DR-12).
+ * Duyuru izinleri (authorization.md §4: {@code announcement.send.group} K1/KOR kendi operasyonu, ADM tüm operasyonlar
+ * (ADR-015); {@code announcement.send.organization} yalnızca K1/ADM). İkisi de kurumsal izindir: MFA'lı web veya MFA'lı
+ * Android yönetim oturumu ({@link Grants#corporate}, ADR-014); MFA'sız Android oturumu {@code CLIENT_NOT_ALLOWED} alır.
  */
 public interface AnnouncementAccess {
 

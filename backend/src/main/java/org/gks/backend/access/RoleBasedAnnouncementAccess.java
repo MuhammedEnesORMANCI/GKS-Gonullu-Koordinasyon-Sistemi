@@ -17,7 +17,7 @@ class RoleBasedAnnouncementAccess implements AnnouncementAccess {
 
 	@Override
 	public Decision canSendToOperation(Subject subject, UUID operationId) {
-		return Grants.corporate(subject, store.grants(subject.userId()).has(Role.KOR, operationId), Role.KOR);
+		return Grants.coordinator(subject, store.grants(subject.userId()), operationId);   // KOR kendi, ADM tümü (ADR-015)
 	}
 
 	@Override

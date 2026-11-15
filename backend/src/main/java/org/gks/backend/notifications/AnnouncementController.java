@@ -25,7 +25,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** NT-01, NT-02, NT-03, NT-06 ({@code x-client: [WEB]}; kurumsal izin, MFA kuralı access'te). */
+/**
+ * NT-01, NT-02, NT-03, NT-06 ({@code x-client: [WEB, ANDROID(MFA)]}, LD-61: web veya MFA'lı Android yönetim oturumu,
+ * {@link Subject#requireManagementSession()}; kurumsal izin ve MFA kuralı access'te, ADR-014/ADR-015).
+ */
 @RestController
 @RequestMapping("/api/v1/announcements")
 class AnnouncementController {

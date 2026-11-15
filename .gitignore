@@ -16,3 +16,6 @@ Thumbs.db
 # JVM cokme kayitlari
 hs_err_pid*.log
 replay_pid*.log
+
+# Claude yerel test/derleme betikleri ve kayıtları
+.claude-runs/

@@ -11,8 +11,13 @@ import org.springframework.stereotype.Component;
 /**
  * ID-11 {@code MeContext.permissions}: <b>bu oturumun</b> etkin izinleri; istemci kapısı ve MFA kuralı uygulanmıştır
  * (backend §2.4, §5 {@code EffectivePermissions}; authorization.md §5). Yalnızca menü ve düğmeler içindir, yetki
- * kaynağı değildir: sunucu her istekte {@code can()} ile yeniden denetler. Kurumsal izinler ADM/KOR'da MFA'lı, TEK/UYM'de
- * MFA'sız web oturumu ister; Android oturumu kurumsal izin taşımaz (ADR-013).
+ * kaynağı değildir: sunucu her istekte {@code can()} ile yeniden denetler. Kurumsal izinler ADM/KOR'da MFA'lı oturum
+ * (web veya MFA'lı Android yönetim oturumu, ADR-014), TEK/UYM'de MFA'sız web oturumu ister; TEK/UYM izinleri ve
+ * MFA'sız Android (gönüllü) oturumu kurumsal izin taşımaz.
+ * <p>
+ * ADR-015: ADM, KOR ataması olmadan kurumdaki <b>her operasyon</b> için {@link #ADM_OPERATION} izin setini taşır; istemciler
+ * operasyon kapsamlı menüleri ({@code operations[opId]}) değişiklik gerekmeden açar. Karar kaynağı
+ * {@link Grants#coordinates}'tir; bu sınıf yalnızca aynı kuralı listeye çevirir.
  */
 @Component
 public class EffectivePermissions {
@@ -26,13 +31,22 @@ public class EffectivePermissions {
 
 	static final List<String> UYM = List.of("audit.view");
 
-	/** KOR kendi operasyonunda. */
+	/** KOR kendi operasyonunda; ADM tüm operasyonlarda (ADR-015). */
 	static final List<String> KOR = List.of("operation.manage", "invitation.create", "task.manage", "location.view",
 			"alert.send", "alert.cancel", "alert.close", "alert.resend", "alert.view", "announcement.send.group",
 			"group.create.operational", "group.view", "group.update", "membership.add", "membership.remove",
 			"membership.role.update", "meeting_point.update");
 
 	/** Katılımcı (GON); her istemcide. */
+	/**
+	 * ADR-015: ADM'nin her operasyonda taşıdığı operasyon kapsamlı izinler = {@link #KOR} eksi konum ve alarm izinleri.
+	 * K-15 (konumu yalnızca KOR görür) ve alarm kararları henüz verilmediğinden bu izinler ADM'ye genişletilmez; alarm
+	 * ve konum modülleri yazılırken ayrıca karar verilecek.
+	 */
+	static final List<String> ADM_OPERATION = KOR.stream()
+		.filter(p -> !p.equals("location.view") && !p.startsWith("alert."))
+		.toList();
+
 	static final List<String> GON = List.of("task.respond", "location.share", "alert.respond");
 
 	static final List<String> LEADER = List.of("group.view", "group.update", "meeting_point.update");
@@ -40,9 +54,11 @@ public class EffectivePermissions {
 	static final List<String> MEMBER = List.of("group.view");
 
 	private final RoleAssignmentStore store;
+	private final AccessDirectory.Scopes scopes;
 
-	EffectivePermissions(RoleAssignmentStore store) {
+	EffectivePermissions(RoleAssignmentStore store, AccessDirectory.Scopes scopes) {
 		this.store = store;
+		this.scopes = scopes;
 	}
 
 	public record View(List<String> organization, Map<UUID, List<String>> operations, Map<UUID, List<String>> groups) {
@@ -52,7 +68,8 @@ public class EffectivePermissions {
 	public View of(Subject subject, Map<UUID, GroupRole> groupRoles) {
 		Grants grants = store.grants(subject.userId());
 		List<String> organization = new ArrayList<>(List.of("invitation.respond"));
-		if (Grants.corporate(subject, grants.has(Role.ADM), Role.ADM).allowed()) {
+		boolean adminSession = Grants.corporate(subject, grants.has(Role.ADM), Role.ADM).allowed();
+		if (adminSession) {
 			addAll(organization, ADM);
 		}
 		if (Grants.corporate(subject, grants.has(Role.TEK), Role.TEK).allowed()) {
@@ -69,6 +86,11 @@ public class EffectivePermissions {
 		if (coordinatorSession) {
 			for (UUID operationId : grants.operations(Role.KOR)) {
 				addAll(operations.computeIfAbsent(operationId, k -> new ArrayList<>()), KOR);
+			}
+		}
+		if (adminSession) {   // ADR-015: Grants.coordinates ile aynı kural
+			for (UUID operationId : scopes.operationIds()) {
+				addAll(operations.computeIfAbsent(operationId, k -> new ArrayList<>()), ADM_OPERATION);
 			}
 		}
 		Map<UUID, List<String>> groups = new LinkedHashMap<>();

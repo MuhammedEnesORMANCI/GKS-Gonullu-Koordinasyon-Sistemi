@@ -21,7 +21,7 @@ public interface GroupAccess {
 
 	/** authorization.md §5 izinleri. */
 	enum GroupAction {
-		/** {@code group.create.operational}: yalnızca K1 (KOR kendi operasyonu; ADM yalnızca KOR olarak). */
+		/** {@code group.create.operational}: yalnızca K1 (KOR kendi operasyonu; ADM tüm operasyonlarda, ADR-015). */
 		CREATE,
 		/** {@code group.view}: K1 kapsamı veya K2 aktif üyelik. */
 		VIEW,
@@ -29,7 +29,7 @@ public interface GroupAccess {
 		UPDATE,
 		/** {@code group.update} ad: yalnızca KOR (§8.2 {@code GroupUpdateRequest}). */
 		RENAME,
-		/** {@code meeting_point.update}: K1 (KOR kendi operasyonu) veya K2 {@code LEADER} (K-08). */
+		/** {@code meeting_point.update}: K1 (KOR kendi operasyonu, ADM tümü) veya K2 {@code LEADER} (K-08). */
 		UPDATE_MEETING_POINT,
 		/** {@code membership.add}: yalnızca K1; {@code LEADER} hiçbir zaman (AC-09.6). */
 		ADD_MEMBER,

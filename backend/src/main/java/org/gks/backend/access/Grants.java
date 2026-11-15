@@ -28,7 +28,29 @@ record Grants(List<Grant> grants) {
 	}
 
 	/**
-	 * Kurumsal bir izin bu rolden türeyebiliyorsa istemci ve MFA kapısı (§2.4, ADR-014):
+	 * Operasyonu koordine etme hakkı (ADR-015): o operasyonun KOR'u <b>veya</b> ADM. ADM, KOR ataması olmadan her
+	 * operasyonda KOR'un operasyon kapsamlı tüm yönetim izinlerine sahiptir. Operasyon kapsamlı yönetim kararları
+	 * yalnızca bu yöntemden (ve {@link #coordinator}) türer; kural tek yerde tutulur.
+	 * <p>
+	 * <b>Kapsam dışı:</b> konum ({@code location.view}, K-15) ve acil alarm izinleri ADR-015'e dahil değildir; o
+	 * modüller yazılırken bu yöntem değil {@code has(Role.KOR, operationId)} kullanılmalı ya da yeni karar alınmalıdır
+	 * ({@link EffectivePermissions#ADM_OPERATION}).
+	 */
+	boolean coordinates(UUID operationId) {
+		return has(Role.KOR, operationId) || has(Role.ADM);
+	}
+
+	/**
+	 * Operasyon kapsamlı yönetim izni kararı (task.manage, group.*, membership.*, meeting_point.update,
+	 * announcement.send.group …): {@link #coordinates} + {@link #corporate} istemci/MFA kapısı. ADM ve KOR'un ikisi de
+	 * MFA zorunlu rol olduğundan kapı aynıdır: web'de MFA, Android'de yalnızca MFA'lı yönetim oturumu (ADR-014).
+	 */
+	static Decision coordinator(Subject subject, Grants grants, UUID operationId) {
+		return corporate(subject, grants.coordinates(operationId), Role.KOR);
+	}
+
+	/**
+	 * Kurumsal bir izin bu rolden türeyebiliyorsa istemci ve MFA kapısı (§2.4, ADR-014; ADR-015 kapıyı değiştirmez):
 	 * <ul>
 	 * <li>Web: ADM/KOR için {@code mfaVerified}; TEK/UYM MFA istemez (LD-01).</li>
 	 * <li>Android: yalnızca MFA zorunlu roller (ADM/KOR) ve yalnızca {@code mfaVerified} yönetim oturumu

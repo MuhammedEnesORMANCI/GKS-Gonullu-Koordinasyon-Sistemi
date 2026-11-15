@@ -83,10 +83,15 @@ class GroupManagementTest {
 		val kor = context(emptyList(), mapOf("o1" to listOf("operation.manage", "group.create.operational", "membership.add"))).managementAccess()!!
 		assertTrue(kor.canManageGroups("o1"))
 		assertFalse(kor.canManageGroups("o2"))
-		// ADM (KOR değilse) grupları salt-okur görür: GR-01/04/05/06 yalnızca K1 KOR.
-		val adm = context(listOf("operation.create", "operation.manage", "role.assign", "group.view"), emptyMap()).managementAccess()!!
-		assertTrue(adm.canManage("o1"))
-		assertFalse(adm.canManageGroups("o1"))
+		// Görünürlük rol adından değil izinlerden: sunucu operasyon izni göndermezse salt-okur.
+		val readOnly = context(listOf("operation.create", "operation.manage", "role.assign", "group.view"), emptyMap()).managementAccess()!!
+		assertTrue(readOnly.canManage("o1"))
+		assertFalse(readOnly.canManageGroups("o1"))
+		// ADR-015: sunucu ADM'ye her operasyon için grup izinlerini gönderir → KOR ataması olmadan yönetir.
+		val adm = context(listOf("operation.create", "operation.manage", "role.assign"),
+			mapOf("o1" to listOf("group.create.operational", "membership.add", "task.manage"))).managementAccess()!!
+		assertTrue(adm.canManageGroups("o1"))
+		assertTrue(adm.canManageTasks("o1"))
 	}
 
 	private operator fun <T> List<T>.component6(): T = this[5]

@@ -181,8 +181,11 @@ export function usePermissions() {
       isUym: has('UYM'),
       isKorOf,
       can,
-      /** ADM operasyonel ekranlarda yalnızca KOR değilse salt-okur (K-07). */
-      isAdmReadOnly: (opId: Uuid) => has('ADM') && !isKorOf(opId),
+      /**
+       * ADM bu operasyonda yönetim izni taşımıyorsa salt-okur bandı. ADR-015 ile ADM tüm operasyonlarda
+       * `task.manage` taşır; karar rol adından değil sunucunun etkin izinlerinden çıkar.
+       */
+      isAdmReadOnly: (opId: Uuid) => has('ADM') && !can('task.manage', opId),
     };
   }, [context]);
 }

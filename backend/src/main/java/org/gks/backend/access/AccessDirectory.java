@@ -39,6 +39,9 @@ public final class AccessDirectory {
 
 		Map<UUID, String> names(Collection<UUID> scopeIds);
 
+		/** Kurumdaki tüm operasyonlar (kapanmışlar dahil), oluşturulma sırasıyla; ADM'nin etkin izinleri (ADR-015). */
+		List<UUID> operationIds();
+
 	}
 
 	public record UserInfo(UUID id, String displayName, boolean active) {

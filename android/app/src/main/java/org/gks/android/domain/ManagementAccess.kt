@@ -12,9 +12,9 @@ data class ManagementAccess(
 	val canAssignRoles: Boolean,
 	private val organizationWide: Boolean,
 	private val managedOperations: Set<String>,
-	/** Grup kurma ve üyelik (GR-01, GR-04 – GR-06) yalnızca operasyonun KOR'una açıktır; ADM grupları salt-okur görür. */
+	/** Grup kurma ve üyelik (GR-01, GR-04 – GR-06): sunucunun bu operasyon için verdiği izinler (KOR; ADR-015 ile ADM de). */
 	private val groupManagedOperations: Set<String> = emptySet(),
-	/** Görev yönetimi (TK-01 – TK-06) yalnızca K1 KOR (`task.manage`); ADM görevleri salt-okur görür (TK-07). */
+	/** Görev yönetimi (TK-01 – TK-06): bu operasyonda `task.manage` izni (KOR; ADR-015 ile ADM de). */
 	private val taskManagedOperations: Set<String> = emptySet(),
 ) {
 	fun canManageTasks(operationId: String): Boolean = operationId in taskManagedOperations

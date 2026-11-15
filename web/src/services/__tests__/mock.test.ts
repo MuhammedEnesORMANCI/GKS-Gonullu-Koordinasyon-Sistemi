@@ -24,9 +24,11 @@ describe('mock servisler sözleşme kurallarını taklit eder', () => {
     });
   });
 
-  it('grup: ADM salt-okur → FORBIDDEN', async () => {
+  it('grup: ADM KOR olmadan üye ekler (ADR-015); KOR olmayan TEK → FORBIDDEN', async () => {
     setMockPersona('ADM');
-    await expect(mockGroupService().addMember(MOCK_IDS.group1, MOCK_IDS.volunteer(4))).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(mockGroupService().addMember(MOCK_IDS.group1, MOCK_IDS.volunteer(4))).resolves.toBeTruthy();
+    setMockPersona('TEK');
+    await expect(mockGroupService().addMember(MOCK_IDS.group1, MOCK_IDS.volunteer(5))).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('görev: sürüm çatışması ve kapasite kabul sayısının altına inemez', async () => {

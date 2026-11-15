@@ -142,12 +142,12 @@ describe('WEB-05 grup yönetimi', () => {
     await waitFor(() => expect(screen.queryByText('Zeynep Arslan')).not.toBeInTheDocument());
   });
 
-  it('ADM salt-okur: bilgi bandı, işlem düğmesi yok', async () => {
+  it('ADM (KOR değil) grubu yönetir: salt-okur bandı yok, işlem düğmeleri var (ADR-015)', async () => {
     renderApp({ route: `/operasyonlar/${MOCK_IDS.op1}/gruplar/${MOCK_IDS.group1}`, persona: 'ADM' });
-    expect(await screen.findByText(/Salt-okur görünüm/)).toBeInTheDocument();
     await screen.findByText('Ali Kaya');
-    expect(screen.queryByRole('button', { name: 'Üye ekle' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /kişisini çıkar/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Salt-okur görünüm/)).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Üye ekle' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /kişisini çıkar/ }).length).toBeGreaterThan(0);
   });
 
   it('LEADER_REQUIRED sunucu hatası Türkçe mesajla gösterilir', async () => {
@@ -236,9 +236,9 @@ describe('WEB-06 görev yönetimi (mock)', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('ADM görevlerde salt-okur', async () => {
+  it('ADM (KOR değil) görev oluşturabilir (ADR-015)', async () => {
     renderApp({ route: `/operasyonlar/${MOCK_IDS.op1}/gorevler`, persona: 'ADM' });
-    expect(await screen.findByText(/Salt-okur görünüm/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Görev oluştur' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Görev oluştur' })).toBeInTheDocument();
+    expect(screen.queryByText(/Salt-okur görünüm/)).not.toBeInTheDocument();
   });
 });

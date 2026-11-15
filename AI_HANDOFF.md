@@ -262,7 +262,7 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 5. **Veri:** Geliştirme veritabanını silme, sıfırlama. Şema değişikliği yalnızca yeni migration. Kullanıcı gerçek telefonda test ediyor olabilir: backend'i gereksiz yeniden başlatma; gerekirse önce kullanıcıya sor.
 6. **Bellek:** Tek Gradle çağrısı, `--max-workers=1`, yalnızca değişen modülün testleri; aynı anda tek bootRun; iş bitince `./gradlew --stop` (Android). Bellek hatasında tekrar deneme, dur ve bildir.
 7. **Test kalitesi:** Backend yetki testleri gerçek rol atamalarıyla (access taklit edilmeden) yazılır; Android'de yeni depo davranışı `FakeBackend` testiyle doğrulanır. Bir test eski kuralı sabitliyorsa ancak karar değiştiyse güncellenir ve gerekçe yazılır.
-8. **Git işlemi yapma**, sırları (parola, belirteç, TOTP anahtarı, `.env`) belgeye veya koda yazma.
+8. **Git kuralı (16.11.2026, proje sahibi):** yalnızca önemli ve kararlı aşamalarda commit (aşama bitmiş, ilgili testler geçiyor, derleme temiz); ara adım/"WIP" commit'i yok. **Push yok** (push'u proje sahibi yapar); `reset --hard`, `clean` ve force işlemleri yasak. Mesaj kısa ve açıklayıcı, ör. `feat(access): ADM tüm operasyonlarda tam yönetim yetkisi (ADR-015)`. `.env`, `local.properties`, `hs_err*`/`replay_pid*` kayıtları, derleme çıktıları ve `.claude-runs/` commit'e girmez (`.gitignore`). Sırları (parola, belirteç, TOTP anahtarı, `.env`) belgeye veya koda yazma.
 9. **Dil:** Arayüz ve belgeler Türkçe.
 
 ---

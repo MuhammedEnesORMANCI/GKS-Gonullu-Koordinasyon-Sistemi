@@ -40,6 +40,11 @@ class JdbcAccessScopes implements AccessDirectory.Scopes {
 	}
 
 	@Override
+	public List<UUID> operationIds() {
+		return jdbc.sql("select id from organization.operations order by created_at, id").query(UUID.class).list();
+	}
+
+	@Override
 	public Map<UUID, String> names(Collection<UUID> scopeIds) {
 		Map<UUID, String> names = new HashMap<>(operations.names(scopeIds));
 		if (!scopeIds.isEmpty()) {

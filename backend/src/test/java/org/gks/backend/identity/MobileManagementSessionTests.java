@@ -277,7 +277,7 @@ class MobileManagementSessionTests {
 	}
 
 	@Test
-	void coordinatorManagesGroupsFromAndroidAndAdminWithoutKorIsReadOnly() throws Exception {
+	void coordinatorManagesGroupsFromAndroidAndAdminWithoutKorManagesToo() throws Exception {
 		UUID kor = register(email());
 		role(kor, "KOR", "OPERATION", operationId);
 		UUID a = register(email());
@@ -317,13 +317,17 @@ class MobileManagementSessionTests {
 		mvc.perform(get("/api/v1/groups").param("operationId", operationId.toString()).with(authenticate(token)))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].memberCount").value(2));
 
-		// ADM (bu operasyonda KOR değil): görür, üyelik değiştiremez (GR-04 yalnızca K1 KOR).
+		// ADM (bu operasyonda KOR değil): ADR-015 ile KOR ataması olmadan üyeliği de yönetir.
 		UUID admin = register(email());
 		role(admin, "ADM", "ORGANIZATION", ORGANIZATION_ID);
 		String adminToken = androidManagementSession(admin);
 		mvc.perform(get("/api/v1/groups/{id}", group).with(authenticate(adminToken))).andExpect(status().isOk());
 		mvc.perform(post("/api/v1/groups/{id}/members", group).with(authenticate(adminToken)).contentType(json)
-			.content("{\"userId\": \"%s\"}".formatted(a))).andExpect(status().isForbidden());
+			.content("{\"userId\": \"%s\"}".formatted(a))).andExpect(status().isCreated());
+		// MFA'sız Android ADM oturumu hâlâ istemci kapısına takılır.
+		mvc.perform(post("/api/v1/groups/{id}/members", group).with(authenticate(new TestSessions(jdbc, jwtEncoder).android(admin)))
+			.contentType(json).content("{\"userId\": \"%s\"}".formatted(c)))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CLIENT_NOT_ALLOWED"));
 
 		// Başka operasyonda grup kurulamaz.
 		UUID other = UUID.randomUUID();
@@ -331,6 +335,72 @@ class MobileManagementSessionTests {
 			.params(other, ORGANIZATION_ID, creator).update();
 		mvc.perform(post("/api/v1/operations/{id}/groups", other).with(authenticate(token)).contentType(json)
 			.content("{\"name\": \"Yetkisiz\", \"leaderUserId\": \"%s\"}".formatted(a))).andExpect(status().isForbidden());
+	}
+
+	// ---------------------------------------------------------------- ADR-015: ADM tüm operasyonlarda
+
+	/** ADM, KOR ataması olmadan herhangi bir operasyonda görev oluşturur ve operasyon duyurusu gönderir (web ve Android). */
+	@Test
+	void adminWithoutCoordinatorRoleCreatesTasksAndSendsOperationAnnouncements() throws Exception {
+		UUID volunteer = register(email());
+		role(volunteer, "GON", "OPERATION", operationId);
+		UUID admin = register(email());
+		role(admin, "ADM", "ORGANIZATION", ORGANIZATION_ID);
+		String web = new TestSessions(jdbc, jwtEncoder).web(admin, true);
+		String android = androidManagementSession(admin);
+		String task = "{\"title\": \"Su dağıtımı\", \"targets\": {\"userIds\": [\"%s\"]}}".formatted(volunteer);
+		String announcement = "{\"operationId\": \"%s\", \"title\": \"Toplantı\", \"body\": \"Saat 18:00'de merkezde.\"}"
+			.formatted(operationId);
+
+		for (String token : List.of(web, android)) {
+			mvc.perform(json("/api/v1/operations/" + operationId + "/tasks", task).with(authenticate(token))
+				.header("Idempotency-Key", UUID.randomUUID().toString())).andExpect(status().isCreated());
+			mvc.perform(json("/api/v1/announcements/preview", "{\"operationId\": \"%s\"}".formatted(operationId))
+				.with(authenticate(token))).andExpect(status().isOk()).andExpect(jsonPath("$.recipientCount").value(1));
+			mvc.perform(json("/api/v1/announcements", announcement).with(authenticate(token))
+				.header("Idempotency-Key", UUID.randomUUID().toString())).andExpect(status().isAccepted());
+		}
+		mvc.perform(get("/api/v1/me/context").with(authenticate(android))).andExpect(status().isOk())
+			.andExpect(jsonPath("$.permissions.operations['%s']".formatted(operationId))
+				.value(org.hamcrest.Matchers.hasItems("task.manage", "announcement.send.group", "membership.add")));
+
+		// MFA'sız Android ADM oturumu: kurumsal izin yok.
+		String volunteerSession = new TestSessions(jdbc, jwtEncoder).android(admin);
+		mvc.perform(json("/api/v1/announcements", announcement).with(authenticate(volunteerSession))
+			.header("Idempotency-Key", UUID.randomUUID().toString()))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CLIENT_NOT_ALLOWED"));
+		mvc.perform(json("/api/v1/operations/" + operationId + "/tasks", task).with(authenticate(volunteerSession))
+			.header("Idempotency-Key", UUID.randomUUID().toString()))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CLIENT_NOT_ALLOWED"));
+	}
+
+	/** KOR, MFA'lı Android oturumuyla kendi operasyonuna duyuru gönderir; atanmadığı operasyonda hâlâ 403 alır. */
+	@Test
+	void coordinatorSendsAnnouncementFromAndroidOnlyInOwnOperation() throws Exception {
+		UUID volunteer = register(email());
+		role(volunteer, "GON", "OPERATION", operationId);
+		UUID kor = register(email());
+		role(kor, "KOR", "OPERATION", operationId);
+		UUID other = UUID.randomUUID();
+		jdbc.sql("insert into organization.operations (id, organization_id, name, state, activated_at, created_by) values (?, ?, 'Başka', 'ACTIVE', now(), ?)")
+			.params(other, ORGANIZATION_ID, creator).update();
+		role(volunteer, "GON", "OPERATION", other);
+		String token = androidManagementSession(kor);
+		String body = "{\"operationId\": \"%s\", \"title\": \"Duyuru\", \"body\": \"Metin\"}";
+
+		String sent = mvc.perform(json("/api/v1/announcements", body.formatted(operationId)).with(authenticate(token))
+			.header("Idempotency-Key", UUID.randomUUID().toString())).andExpect(status().isAccepted())
+			.andExpect(jsonPath("$.recipientCount").value(1)).andReturn().getResponse().getContentAsString();
+		mvc.perform(get("/api/v1/announcements").param("operationId", operationId.toString()).with(authenticate(token)))
+			.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value((String) JsonPath.read(sent, "$.id")));
+
+		mvc.perform(json("/api/v1/announcements", body.formatted(other)).with(authenticate(token))
+			.header("Idempotency-Key", UUID.randomUUID().toString()))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
+		mvc.perform(json("/api/v1/operations/" + other + "/tasks",
+				"{\"title\": \"Yetkisiz\", \"targets\": {\"userIds\": [\"%s\"]}}".formatted(volunteer))
+			.with(authenticate(token)).header("Idempotency-Key", UUID.randomUUID().toString()))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
 	}
 
 	// ---------------------------------------------------------------- yardımcılar

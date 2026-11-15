@@ -22,9 +22,7 @@ class RoleBasedOperationAccess implements OperationAccess {
 
 	@Override
 	public Decision canManage(Subject subject, UUID operationId) {
-		Grants grants = store.grants(subject.userId());
-		return Decision.anyOf(Grants.corporate(subject, grants.has(Role.ADM), Role.ADM),
-				Grants.corporate(subject, grants.has(Role.KOR, operationId), Role.KOR));
+		return Grants.coordinator(subject, store.grants(subject.userId()), operationId);   // ADM tümü, KOR kendi (ADR-015)
 	}
 
 	/** Katılım (GON) istemciden bağımsızdır; ADM/KOR görünümü kurumsal kapıdan geçer (§2.4). */

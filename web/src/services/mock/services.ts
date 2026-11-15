@@ -52,6 +52,9 @@ const OPERATIONAL_PERMS = [
   'announcement.send.group',
 ];
 
+/** ADR-015: ADM'nin her operasyondaki izinleri = KOR seti − konum ve alarm (backend `EffectivePermissions.ADM_OPERATION`). */
+const ADM_OPERATIONAL_PERMS = OPERATIONAL_PERMS.filter((p) => p !== 'location.view' && !p.startsWith('alert.'));
+
 const PERSONA_USER: Record<MockPersona, Uuid> = {
   ADM: MOCK_IDS.adm,
   KOR: MOCK_IDS.kor,
@@ -75,7 +78,7 @@ function canSee(operationId: Uuid): boolean {
 
 function can(operationId: Uuid, permission: string): boolean {
   if (isCoordinatorOf(operationId)) return OPERATIONAL_PERMS.includes(permission);
-  if (mockStore.persona === 'ADM') return permission === 'operation.manage' || permission === 'group.view';
+  if (mockStore.persona === 'ADM') return ADM_OPERATIONAL_PERMS.includes(permission);   // ADR-015
   return false;
 }
 
@@ -274,7 +277,7 @@ export function mockMeContextService(): MeContextService {
           grantedAt: '2026-01-01T00:00:00Z',
         });
         permissions.organization = ['operation.create', 'operation.manage', 'invitation.create', 'role.assign', 'account.disable', 'session.revoke', 'user.status.view', 'audit.view', 'mfa.reset', 'announcement.send.organization'];
-        for (const op of mockStore.operations.values()) permissions.operations[op.id] = ['operation.manage', 'group.view'];
+        for (const op of mockStore.operations.values()) permissions.operations[op.id] = [...ADM_OPERATIONAL_PERMS];   // ADR-015
       } else if (persona === 'KOR') {
         for (const op of visibleOps.filter((o) => isCoordinatorOf(o.id))) {
           roles.push({

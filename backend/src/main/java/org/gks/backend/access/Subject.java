@@ -8,8 +8,9 @@ import org.gks.backend.SessionPrincipal;
 import org.springframework.security.core.Authentication;
 
 /**
- * {@code can()} öznesi: kullanıcı ve oturumun istemci/MFA durumu (authorization.md §2, ADR-013). İstemci kapısı
- * (kurumsal izinler yalnızca web ve ADM/KOR için MFA'lı oturumda) bu bilgiyle access modülünde uygulanır.
+ * {@code can()} öznesi: kullanıcı ve oturumun istemci/MFA durumu (authorization.md §2, ADR-014). İstemci kapısı
+ * (kurumsal izinler web'de; Android'de yalnızca ADM/KOR'un MFA'lı yönetim oturumunda) bu bilgiyle access modülünde
+ * uygulanır.
  */
 public record Subject(UUID userId, boolean webSession, boolean mfaVerified) {
 
