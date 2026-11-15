@@ -33,15 +33,8 @@ import { formatDateTime, isClosedState } from '../../components/format';
 import type { RoleAssignmentFilter } from '../../services/contracts';
 import { useIsMock, useServices } from '../../services/registry';
 import type { OperationView, Role, RoleAssignmentView, UserRef, Uuid } from '../../services/types';
+import { ROLE_LABEL } from './labels';
 import { useUserCandidates } from './userCandidates';
-
-export const ROLE_LABEL: Record<Role, string> = {
-  ADM: 'Kurum yöneticisi (ADM)',
-  KOR: 'Koordinatör (KOR)',
-  GON: 'Gönüllü (GON)',
-  TEK: 'Teknik destek (TEK)',
-  UYM: 'Uyum/denetim (UYM)',
-};
 
 /** Web'den atanabilen roller. Katılım (GON) davetle oluşur; burada yalnızca kaldırılabilir. */
 const GRANTABLE: Role[] = ['KOR', 'ADM', 'TEK', 'UYM'];

@@ -4,6 +4,7 @@ import type {
   OperationListFilter,
   RoleAssignmentFilter,
   TaskListFilter,
+  UserFilter,
 } from '../services/contracts';
 
 /** Sorgu anahtarları (web-screen-api-mapping.md §6.1); hiyerarşik, ön ekle toplu geçersiz kılma. */
@@ -30,4 +31,7 @@ export const Q = {
   invitations: (f: InvitationFilter = {}) => ['invitations', f] as const,
   roleAssignmentsRoot: () => ['role-assignments'] as const,
   roleAssignments: (f: RoleAssignmentFilter = {}) => ['role-assignments', f] as const,
+  usersRoot: () => ['users'] as const,
+  users: (f: UserFilter = {}) => ['users', 'list', f] as const,
+  user: (id: string) => ['users', id] as const,
 };

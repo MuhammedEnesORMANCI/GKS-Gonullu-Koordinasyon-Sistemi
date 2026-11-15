@@ -83,6 +83,20 @@ export interface RoleAssignmentView {
   revokedAt?: DateTime;
 }
 
+/** ID-20 `UserDetail`: ADM tam; KOR kendi operasyonuyla sınırlı rol/grup; TEK yalnızca ad ve durum (§3.8). */
+export interface UserDetail extends UserSummary {
+  roles?: RoleAssignmentView[];
+  groups?: Array<{ id: Uuid; name: string; operationId: Uuid; role: MembershipRole }>;
+  mfaEnrolled?: boolean;
+  lockedUntil?: DateTime;
+  createdAt?: DateTime;
+}
+
+/** ID-19 sayfası (`includeTotal=true` ise `totalCount`). */
+export interface UserPage extends Page<UserSummary> {
+  totalCount?: number;
+}
+
 /** AC-01 `RoleAssignmentCreateRequest` (rol ve kapsam türü eşleşmeli: ADM/TEK/UYM kurum, KOR/GON operasyon). */
 export interface RoleAssignmentCreateRequest {
   userId: Uuid;

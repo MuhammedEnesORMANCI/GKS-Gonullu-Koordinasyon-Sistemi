@@ -57,6 +57,8 @@ export interface MockState {
   invitations: Map<Uuid, InvitationView>;
   /** Kurum kapsamlı roller (ADM/TEK/UYM); KOR ve GON operasyon verisinden türetilir (AC-03 taklidi). */
   orgRoles: Array<{ userId: Uuid; role: 'ADM' | 'TEK' | 'UYM'; revokedAt?: string }>;
+  /** TOTP kurulu kullanıcılar (ID-25 taklidi). */
+  mfaEnrolled: Set<Uuid>;
   idempotency: Map<string, unknown>;
   seq: number;
 }
@@ -287,6 +289,7 @@ function seed(): MockState {
       { userId: MOCK_IDS.tek, role: 'TEK' },
       { userId: MOCK_IDS.uym, role: 'UYM' },
     ],
+    mfaEnrolled: new Set([MOCK_IDS.adm, MOCK_IDS.kor]),
     idempotency: new Map(),
     seq: 100,
   };

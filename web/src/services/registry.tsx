@@ -15,6 +15,7 @@ import {
   httpParticipantService,
   httpRoleAssignmentService,
   httpTaskService,
+  httpUserAdminService,
 } from './http';
 import {
   mockAccountService,
@@ -29,6 +30,7 @@ import {
   mockParticipantService,
   mockRoleAssignmentService,
   mockTaskService,
+  mockUserAdminService,
 } from './mock/services';
 
 export function createServices(config: ServiceConfig, api: ApiClient = apiClient): Services {
@@ -48,6 +50,7 @@ export function createServices(config: ServiceConfig, api: ApiClient = apiClient
     notifications: pick('notifications', () => httpNotificationService(api), mockNotificationService),
     announcements: pick('announcements', () => httpAnnouncementService(api), mockAnnouncementService),
     roleAssignments: pick('roleAssignments', () => httpRoleAssignmentService(api), mockRoleAssignmentService),
+    users: pick('users', () => httpUserAdminService(api), mockUserAdminService),
   };
 }
 

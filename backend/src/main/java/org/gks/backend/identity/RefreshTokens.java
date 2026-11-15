@@ -180,6 +180,14 @@ class RefreshTokens {
 			.param("userId", userId).param("session", sessionId).param("now", java.sql.Timestamp.from(now)).update();
 	}
 
+	/** Yönetici işleminde (ID-21, ID-23 – ID-25) kullanıcının tüm cihazları pasifleşir; bildirim gitmez. */
+	void deactivateUserDevices(UUID userId, String reason, Instant now) {
+		jdbc.sql("""
+				update identity.devices set active = false, deactivated_at = :now, deactivation_reason = :reason
+				 where active and user_id = :userId""")
+			.param("userId", userId).param("reason", reason).param("now", java.sql.Timestamp.from(now)).update();
+	}
+
 	/** Oturumun canlı belirtecinin bitişi ({@code SessionInfo.expiresAt}). */
 	Optional<Instant> sessionExpiry(UUID sessionId) {
 		return jdbc.sql("""

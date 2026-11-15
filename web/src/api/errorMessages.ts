@@ -51,7 +51,7 @@ const CONFLICT_MESSAGES: Record<string, string> = {
 };
 
 /** Ekrana özel bağlam; genel katalogdan farklı mesaj gerektiren yerler (mapping §2). */
-export type ErrorContext = 'default' | 'login' | 'mfa' | 'operationState' | 'invitation' | 'roleRevoke';
+export type ErrorContext = 'default' | 'login' | 'mfa' | 'operationState' | 'invitation' | 'roleRevoke' | 'userAdmin';
 
 /** Kodu bilinmeyen veya 5xx hatası için iz numaralı mesaj. */
 function unexpected(traceId: string | undefined): string {
@@ -80,6 +80,12 @@ export function messageFor(error: unknown, context: ErrorContext = 'default'): s
   }
   if (context === 'mfa' && code === 'AUTH_INVALID_CREDENTIALS') {
     return 'Doğrulama kodu hatalı veya süresi geçmiş.';
+  }
+  if (context === 'userAdmin' && code === 'FORBIDDEN') {
+    return 'Bu hesapta bu işlemi yapamazsınız (kendi hesabınız, kurum yöneticisi hesabı veya yetkiniz dışında).';
+  }
+  if (context === 'userAdmin' && code === 'INVALID_STATE_TRANSITION') {
+    return 'Hesabın durumu bu işlem için uygun değil (ör. zaten devre dışı veya doğrulama kurulu değil). Güncel durum yüklendi.';
   }
   if (context === 'roleRevoke' && code === 'FORBIDDEN') {
     return 'Kendi kurum yöneticisi rolünüzü veya kurumun son kurum yöneticisi rolünü kaldıramazsınız.';

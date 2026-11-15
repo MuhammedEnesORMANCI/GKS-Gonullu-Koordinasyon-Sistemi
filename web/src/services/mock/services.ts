@@ -11,6 +11,7 @@ import type {
   ParticipantService,
   RoleAssignmentService,
   TaskService,
+  UserAdminService,
 } from '../contracts';
 import type {
   AssignmentView,
@@ -28,6 +29,7 @@ import type {
   TaskState,
   TaskView,
   UserRef,
+  UserSummary,
   Uuid,
 } from '../types';
 import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockPersona } from './store';
@@ -277,7 +279,7 @@ export function mockMeContextService(): MeContextService {
           grantedBy,
           grantedAt: '2026-01-01T00:00:00Z',
         });
-        permissions.organization = ['operation.create', 'operation.manage', 'invitation.create', 'role.assign', 'account.disable', 'session.revoke', 'user.status.view', 'audit.view', 'mfa.reset', 'announcement.send.organization'];
+        permissions.organization = ['operation.create', 'operation.manage', 'invitation.create', 'role.assign', 'account.disable', 'session.revoke', 'user.status.view', 'audit.view', 'mfa.reset', 'password.reset', 'announcement.send.organization'];
         for (const op of mockStore.operations.values()) permissions.operations[op.id] = [...ADM_OPERATIONAL_PERMS];   // ADR-015
       } else if (persona === 'KOR') {
         for (const op of visibleOps.filter((o) => isCoordinatorOf(o.id))) {
@@ -991,6 +993,80 @@ export function mockRoleAssignmentService(): RoleAssignmentService {
         const list = mockStore.participants.get(found.scopeId) ?? [];
         mockStore.participants.set(found.scopeId, list.filter((p) => p.userId !== found.user.id));
       }
+      return respond(undefined);
+    },
+  };
+}
+
+// ------------------------------------------------------------- users (ID-19 – ID-25)
+
+/** TEK izdüşümü: yalnızca ad ve durum (AC-06.5). */
+function statusOnly(u: UserSummary): UserSummary {
+  return { id: u.id, displayName: u.displayName, status: u.status };
+}
+
+/** ID-19 – ID-25 taklidi: ADM tam, TEK ad+durum, KOR yalnızca kendi operasyonunun katılımcıları; kendi hesabı 403. */
+export function mockUserAdminService(): UserAdminService {
+  const persona = () => mockStore.persona;
+  const me = () => PERSONA_USER[persona()];
+  const directory = () => persona() === 'ADM' || persona() === 'TEK';
+  const project = (u: UserSummary) => (persona() === 'TEK' ? statusOnly(u) : { ...u });
+  const target = async (id: Uuid) => mockStore.users.get(id) ?? fail(404, 'NOT_FOUND');
+  return {
+    list: async (filter = {}) => {
+      let users = [...mockStore.users.values()];
+      if (filter.operationId) {
+        if (!directory() && !(persona() === 'KOR' && isCoordinatorOf(filter.operationId))) return fail(403, 'FORBIDDEN');
+        const ids = new Set((mockStore.participants.get(filter.operationId) ?? []).map((p) => p.userId));
+        users = users.filter((u) => ids.has(u.id));
+      } else if (!directory()) {
+        return fail(403, 'FORBIDDEN');
+      }
+      if (filter.status) users = users.filter((u) => u.status === filter.status);
+      users.sort((a, b) => a.id.localeCompare(b.id));
+      return respond({ items: users.map(project), ...(filter.includeTotal ? { totalCount: users.length } : {}) });
+    },
+    get: async (id) => {
+      const u = await target(id);
+      if (!directory()) return fail(403, 'FORBIDDEN');
+      if (persona() === 'TEK') return respond(statusOnly(u));
+      const roles = (await mockRoleAssignmentService().list({ userId: id, active: true })).items;
+      return respond({ ...u, roles, groups: [], mfaEnrolled: mockStore.mfaEnrolled.has(id), createdAt: '2026-01-01T00:00:00Z' });
+    },
+    disable: async (id, reason) => {
+      const u = await target(id);
+      if (!directory()) return fail(403, 'FORBIDDEN');
+      if (persona() === 'TEK' && mockStore.orgRoles.some((r) => r.userId === id && r.role === 'ADM' && !r.revokedAt)) {
+        return fail(403, 'FORBIDDEN');
+      }
+      if (id === me()) return fail(403, 'FORBIDDEN');
+      if ((reason?.trim().length ?? 0) > 300) return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'reason', code: 'TOO_LONG' }]);
+      if (u.status !== 'ACTIVE') return fail(409, 'INVALID_STATE_TRANSITION', { currentState: u.status, requestedState: 'DISABLED' });
+      u.status = 'DISABLED';
+      return respond(project(u));
+    },
+    enable: async (id) => {
+      const u = await target(id);
+      if (persona() !== 'ADM') return fail(403, 'FORBIDDEN');
+      if (u.status !== 'DISABLED') return fail(409, 'INVALID_STATE_TRANSITION', { currentState: u.status, requestedState: 'ACTIVE' });
+      u.status = 'ACTIVE';
+      return respond(project(u));
+    },
+    revokeSessions: async (id) => {
+      await target(id);
+      if (!directory()) return fail(403, 'FORBIDDEN');
+      return respond(undefined);
+    },
+    resetPassword: async (id) => {
+      await target(id);
+      if (persona() !== 'ADM' || id === me()) return fail(403, 'FORBIDDEN');
+      return respond(undefined);
+    },
+    resetMfa: async (id) => {
+      await target(id);
+      if (persona() !== 'ADM' || id === me()) return fail(403, 'FORBIDDEN');
+      if (!mockStore.mfaEnrolled.has(id)) return fail(409, 'INVALID_STATE_TRANSITION', { currentState: 'NOT_ENROLLED', requestedState: 'MFA_RESET' });
+      mockStore.mfaEnrolled.delete(id);
       return respond(undefined);
     },
   };

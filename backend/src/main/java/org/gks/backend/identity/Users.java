@@ -2,6 +2,8 @@ package org.gks.backend.identity;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -202,6 +204,126 @@ class Users {
 				 where id = :id""")
 			.param("id", id).param("fullName", fullName).param("displayName", displayName).param("phone", phone)
 			.param("now", Timestamp.from(now))
+			.update();
+	}
+
+	// ---------------------------------------------------------------- yönetim (ID-19 – ID-25)
+
+	/** ID-19 satırı; izdüşüm servis katmanında uygulanır. */
+	record Listed(UUID id, String email, String fullName, String displayName, String phone, Status status) {
+		@Override
+		public String toString() {
+			return "Listed[id=" + id + ", status=" + status + "]";
+		}
+	}
+
+	/**
+	 * Kimlik sırasıyla imleçli liste ({@code limit + 1} satır okunur). {@code ids} {@code null} ise tüm kurum,
+	 * değilse yalnızca bu kişiler (operasyon katılımcıları).
+	 */
+	List<Listed> list(Status status, Collection<UUID> ids, UUID after, int limit) {
+		if (ids != null && ids.isEmpty()) {
+			return List.of();
+		}
+		StringBuilder sql = new StringBuilder(
+				"select id, email, full_name, display_name, phone, status from identity.users where true");
+		if (status != null) {
+			sql.append(" and status = :status");
+		}
+		if (ids != null) {
+			sql.append(" and id in (:ids)");
+		}
+		if (after != null) {
+			sql.append(" and id > :after");
+		}
+		sql.append(" order by id limit :limit");
+		var query = jdbc.sql(sql.toString()).param("limit", limit + 1);
+		if (status != null) {
+			query = query.param("status", status.name());
+		}
+		if (ids != null) {
+			query = query.param("ids", ids);
+		}
+		if (after != null) {
+			query = query.param("after", after);
+		}
+		return query.query((rs, row) -> new Listed(rs.getObject("id", UUID.class), rs.getString("email"),
+				rs.getString("full_name"), rs.getString("display_name"), rs.getString("phone"),
+				Status.valueOf(rs.getString("status")))).list();
+	}
+
+	long count(Status status, Collection<UUID> ids) {
+		if (ids != null && ids.isEmpty()) {
+			return 0;
+		}
+		StringBuilder sql = new StringBuilder("select count(*) from identity.users where true");
+		if (status != null) {
+			sql.append(" and status = :status");
+		}
+		if (ids != null) {
+			sql.append(" and id in (:ids)");
+		}
+		var query = jdbc.sql(sql.toString());
+		if (status != null) {
+			query = query.param("status", status.name());
+		}
+		if (ids != null) {
+			query = query.param("ids", ids);
+		}
+		return query.query(Long.class).single();
+	}
+
+	/** ID-20 – ID-25: yönetim işlemleri satırı kilitleyerek okur (eşzamanlı iki işlem sıraya girer). */
+	record Managed(UUID id, String email, String fullName, String displayName, String phone, Status status,
+			boolean mfaEnrolled, boolean totpPresent, Instant lockedUntil, Instant createdAt) {
+		@Override
+		public String toString() {
+			return "Managed[id=" + id + ", status=" + status + "]";
+		}
+	}
+
+	Optional<Managed> managed(UUID id, boolean forUpdate) {
+		return jdbc.sql("""
+				select id, email, full_name, display_name, phone, status, totp_secret is not null as totp_present,
+				       totp_enrolled_at, locked_until, created_at
+				  from identity.users where id = :id""" + (forUpdate ? " for update" : ""))
+			.param("id", id)
+			.query((rs, row) -> new Managed(rs.getObject("id", UUID.class), rs.getString("email"), rs.getString("full_name"),
+					rs.getString("display_name"), rs.getString("phone"), Status.valueOf(rs.getString("status")),
+					rs.getTimestamp("totp_enrolled_at") != null, rs.getBoolean("totp_present"),
+					instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("created_at"))))
+			.optional();
+	}
+
+	/** ID-21 (devre dışı) / ID-22 (etkin). */
+	void setStatus(UUID id, Status status, Instant now) {
+		jdbc.sql("""
+				update identity.users set status = :status, disabled_at = :disabledAt, updated_at = :now
+				 where id = :id""")
+			.param("id", id).param("status", status.name())
+			.param("disabledAt", status == Status.DISABLED ? Timestamp.from(now) : null)
+			.param("now", Timestamp.from(now))
+			.update();
+	}
+
+	/** ID-24: yönetici sıfırlaması; ilk girişte değişim zorunlu (AC-03.5), kilit ve hatalı deneme sayacı temizlenir. */
+	void resetPasswordByAdmin(UUID id, String passwordHash, Instant now) {
+		jdbc.sql("""
+				update identity.users
+				   set password_hash = :hash, must_change_password = true, password_changed_at = :now,
+				       failed_login_count = 0, locked_until = null, updated_at = :now
+				 where id = :id""")
+			.param("id", id).param("hash", passwordHash).param("now", Timestamp.from(now))
+			.update();
+	}
+
+	/** ID-25: TOTP silinir; sonraki yönetim girişinde yeniden kurulur (ID-03). */
+	void clearTotp(UUID id, Instant now) {
+		jdbc.sql("""
+				update identity.users
+				   set totp_secret = null, totp_enrolled_at = null, totp_last_used_step = null, updated_at = :now
+				 where id = :id""")
+			.param("id", id).param("now", Timestamp.from(now))
 			.update();
 	}
 

@@ -12,6 +12,7 @@ import type {
   ParticipantService,
   RoleAssignmentService,
   TaskService,
+  UserAdminService,
 } from './contracts';
 import type {
   AnnouncementPreview,
@@ -32,6 +33,9 @@ import type {
   ParticipantView,
   RoleAssignmentView,
   TaskSummary,
+  UserDetail,
+  UserPage,
+  UserSummary,
   TaskView,
 } from './types';
 
@@ -118,6 +122,35 @@ export function httpRoleAssignmentService(api: ApiClient): RoleAssignmentService
       }),
     revoke: async (id) => {
       await api.delete<void>(`/role-assignments/${p(id)}`);
+    },
+  };
+}
+
+export function httpUserAdminService(api: ApiClient): UserAdminService {
+  const action = (id: string, name: string, body?: unknown) => api.post<void>(`/users/${p(id)}/${name}`, body);
+  return {
+    list: (filter = {}) =>
+      api.get<UserPage>('/users', {
+        query: {
+          status: filter.status,
+          operationId: filter.operationId,
+          includeTotal: filter.includeTotal ? true : undefined,
+          limit: filter.limit,
+          cursor: filter.cursor,
+        },
+      }),
+    get: (id) => api.get<UserDetail>(`/users/${p(id)}`),
+    disable: (id, reason) =>
+      api.post<UserSummary>(`/users/${p(id)}/disable`, reason?.trim() ? { reason: reason.trim() } : undefined),
+    enable: (id) => api.post<UserSummary>(`/users/${p(id)}/enable`),
+    revokeSessions: async (id) => {
+      await action(id, 'revoke-sessions');
+    },
+    resetPassword: async (id) => {
+      await action(id, 'reset-password');
+    },
+    resetMfa: async (id) => {
+      await action(id, 'reset-mfa');
     },
   };
 }

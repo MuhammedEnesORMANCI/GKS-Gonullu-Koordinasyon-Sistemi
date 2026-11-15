@@ -110,6 +110,7 @@ export function AppShell() {
     { label: 'Bildirimler', to: '/bildirimler', show: true },
     { label: 'Duyurular', to: '/duyurular', show: canAnnounce },
     { label: 'Roller', to: '/roller', show: perms.can('role.assign') },
+    { label: 'Kullanıcılar', to: '/kullanicilar', show: perms.can('user.status.view') },
     { label: 'Hesabım', to: '/hesabim', show: true },
   ];
   const opNav = opId

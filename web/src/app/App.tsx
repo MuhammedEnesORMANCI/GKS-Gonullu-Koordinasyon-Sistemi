@@ -22,6 +22,7 @@ import { OperationListPage } from '../features/operations/OperationListPage';
 import { ProfilePage } from '../features/account/ProfilePage';
 import { AnnouncementsPage } from '../features/notifications/AnnouncementsPage';
 import { RoleAssignmentsPage } from '../features/roles/RoleAssignmentsPage';
+import { UsersPage } from '../features/users/UsersPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { TaskDetailPage } from '../features/tasks/TaskDetailPage';
 import { TaskListPage } from '../features/tasks/TaskListPage';
@@ -91,6 +92,7 @@ export function AppRoutes() {
         <Route path="bildirimler" element={<NotificationsPage />} />
         <Route path="duyurular" element={<AnnouncementsPage />} />
         <Route path="roller" element={<RoleAssignmentsPage />} />
+        <Route path="kullanicilar" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

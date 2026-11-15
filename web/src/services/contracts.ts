@@ -41,6 +41,10 @@ import type {
   TaskSummary,
   TaskUpdateRequest,
   TaskView,
+  UserDetail,
+  UserPage,
+  UserStatus,
+  UserSummary,
   Uuid,
 } from './types';
 
@@ -122,6 +126,26 @@ export interface RoleAssignmentService {
   grant(request: RoleAssignmentCreateRequest): Promise<RoleAssignmentView>;
   /** AC-02: ADM kendi ADM atamasını ve kurumun son ADM atamasını kaldıramaz (`403`). */
   revoke(id: Uuid): Promise<void>;
+}
+
+export interface UserFilter extends PageRequest {
+  status?: UserStatus;
+  operationId?: Uuid;
+  includeTotal?: boolean;
+}
+
+/** ID-19 – ID-25 kullanıcı ve hesap yönetimi (ADM; TEK durum ve oturum işlemleri; KOR kendi operasyonu listesi). */
+export interface UserAdminService {
+  list(filter?: UserFilter): Promise<UserPage>;
+  get(id: Uuid): Promise<UserDetail>;
+  /** ID-21: kendi hesabı `403`; gerekçe ≤ 300. */
+  disable(id: Uuid, reason?: string): Promise<UserSummary>;
+  /** ID-22: yalnızca ADM. */
+  enable(id: Uuid): Promise<UserSummary>;
+  revokeSessions(id: Uuid): Promise<void>;
+  /** ID-24: geçici parola e-postayla gider; ilk girişte değişim zorunlu. */
+  resetPassword(id: Uuid): Promise<void>;
+  resetMfa(id: Uuid): Promise<void>;
 }
 
 /** ID-11 `GET /me/context`. */
@@ -225,4 +249,5 @@ export interface Services {
   notifications: NotificationService;
   announcements: AnnouncementService;
   roleAssignments: RoleAssignmentService;
+  users: UserAdminService;
 }
