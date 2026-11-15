@@ -9,6 +9,14 @@
 | Korunan kararlar | K-01 – K-33, TD-01 – TD-22, ADR-001 – ADR-013, MVP kapsamı. Web rolleri yalnızca ADM, KOR, TEK, UYM (VS-06). R2+ ekranı **yok** |
 | Lider kararları | **LD-01** (MFA kapsamı), **LD-02** (push gecikmesi göstergesi), **LD-03** (web rolü olmayan girişin reddi), **LD-04** (idempotency tek kaynağı basis §3), **LD-05** (konum denetimi sunucuda 5 dk birleştirme) işlendi; S-01, S-05, S-12, S-13 ve S-19 kapandı. LocationView sorusu S-13'ten S-20'ye taşındı |
 | Etiketler | **Ç** = Çekirdek, **G** = Genişletilmiş (KP3). Yollar `/api/v1` öneklidir ve basis §3'teki gibi **taslaktır.** `[BOŞLUK-n]` = §3.2'deki boşluk listesine bağlantı. `[S-n]` = §8'deki açık soru |
+| Güncelleme | **16.11.2026 — ADR-014 ve ADR-015 sonrası.** Aşağıdaki "Güncel durum" bölümü bu belgenin eski metinleriyle çelişirse **esastır** |
+
+> **Güncel durum (16.11.2026)**
+>
+> - **ADR-014 (LD-61):** Kurumsal yönetim uçları yalnızca web değildir; `x-client: [WEB]` işaretli yönetim uçları `[WEB, ANDROID(MFA)]` okunur (ADM/KOR, TOTP ile açılan 12 sa mutlak Android oturumu). TEK ve UYM izinleri yalnızca web'dedir. Belgedeki "kurumsal işlemler yalnızca MFA'lı web oturumunda (ADR-013)" ifadeleri bu notla birlikte okunur; web panelinin kendi davranışı değişmedi.
+> - **ADR-015 (LD-62):** ADM, KOR ataması olmadan **tüm operasyonlarda** KOR'un operasyon yönetimi izinlerine sahiptir (`task.manage`, `group.*`, `membership.*`, `meeting_point.update`, `announcement.send.group`; `operation.manage` ve `invitation.create` zaten vardı). §0.1 madde 2'deki "ADM operasyonel salt-okur" kuralı ve "kendini KOR olarak ata" yönlendirmesi **WEB-03, WEB-05, WEB-06 ve WEB-07 için kalktı.** Salt-okur bandı artık rol adından değil, sunucunun `MeContext.permissions.operations[opId]` alanında `task.manage` olmamasından hesaplanır (normalde ADM'de görünmez). **Konum (WEB-08) ve acil alarm (WEB-09/10) ADR-015'e dahil değildir;** bu ekranlarda ADM kuralı değişmedi (K-15, alarm kararı bekliyor).
+> - **Uygulanan ekran düzeni (WEB-04):** WEB-04 web panelinde üç rotaya bölündü: `/davetler` (ID-12 – ID-14), `/roller` (AC-01 – AC-03; yalnızca `role.assign`, ADM) ve `/kullanicilar` (ID-19 – ID-25; `user.status.view`, ADM ve TEK). WEB-03 operasyon detayında ADM için "Koordinatörleri yönet" bağlantısı `/roller?rol=KOR&operasyon={opId}` sayfasını açar. Web'den GON rolü atanmaz (katılım davetle oluşur), yalnızca kaldırılabilir.
+> - **Kullanıcı yönetimi kuralları (uygulama):** Kendi hesabında devre dışı bırakma, parola ve MFA sıfırlama `403`; TEK, ADM rolü olan hesabı devre dışı bırakamaz (`403`); MFA sıfırlama web ve MFA'lı Android dahil tüm oturumları kapatır; KOR `GET /users` için `operationId` vermek zorundadır (kendi operasyonu; ADM tümü).
 
 ---
 
@@ -16,7 +24,7 @@
 
 ### 0.1 Yetki ve görünürlük ilkesi
 1. **Arayüz gizler, sunucu karar verir (NFR-02).** Menü ve düğmeler `GET /me/context` yanıtındaki rol ve kapsamlara göre çizilir. Sunucu `403` dönerse arayüz bunu her zaman doğru kabul eder: önce `me/context`'i yeniler, sonra mesaj gösterir.
-2. **ADM operasyonel salt-okur (K-07):** WEB-05, 06, 09, 10'da ADM yalnızca okur; işlem düğmeleri hiç çizilmez. Ekranın üstünde bilgi bandı çıkar: "Salt-okur görünüm. İşlem yapmak için kendinizi bu operasyona koordinatör olarak atayın." Bant WEB-03'teki "KOR ata" eylemine götürür (yeni ekran değildir; atama denetime yazılır). WEB-08 ADM'ye hiç gösterilmez; ADM kendini KOR olarak atarsa o operasyon için KOR gibi davranılır.
+2. **~~ADM operasyonel salt-okur (K-07)~~ — ADR-015 ile WEB-03/05/06/07 için kalktı (bkz. "Güncel durum"); WEB-08/09/10 için geçerli.** Eski metin: WEB-05, 06, 09, 10'da ADM yalnızca okur; işlem düğmeleri hiç çizilmez. Ekranın üstünde bilgi bandı çıkar: "Salt-okur görünüm. İşlem yapmak için kendinizi bu operasyona koordinatör olarak atayın." Bant WEB-03'teki "KOR ata" eylemine götürür (yeni ekran değildir; atama denetime yazılır). WEB-08 ADM'ye hiç gösterilmez; ADM kendini KOR olarak atarsa o operasyon için KOR gibi davranılır.
 3. **Konum yalnızca aktif operasyonun KOR'u (K-15).** ADM, TEK ve UYM konum uçlarını çağırmaz ve konum olaylarına abone olmaz.
 4. **Denetim yalnızca ADM ve UYM (K-26).**
 5. **TEK yalnızca görünen ad + hesap durumu (TD-14).** TEK'in istemcisi başka alan beklememeli; bileşenler eksik alanı "–" ile göstermez, sütunu hiç çizmez.
@@ -204,7 +212,7 @@ Her ekran için: amaç, rol farkları, API çağrıları, SSE, durumlar, ekrana 
 
 | Rol | Görünürlük | İşlemler |
 |---|---|---|
-| ADM | Tüm operasyonlar | Oluştur + KOR ata; KOR ekle/kaldır; aktif et; kapat (Tamamlandı/İptal); (G) askıya al; katılımcıları gör; davet gönder ve iptal et; **kendini KOR olarak ata** (K-07) |
+| ADM | Tüm operasyonlar | Oluştur + KOR ata; KOR ekle/kaldır (`/roller`); aktif et; kapat (Tamamlandı/İptal); (G) askıya al; katılımcıları gör; davet gönder ve iptal et. ADR-015: kendini KOR atamaya gerek yok; görev, grup ve duyuru işlemlerini doğrudan yapar |
 | KOR | Kendi operasyonları | Aktif et; kapat; (G) askıya al; katılımcılar; davet gönder ve iptal et. Operasyon oluşturamaz, KOR atayamaz |
 
 | Ne zaman | Çağrı |
@@ -256,7 +264,7 @@ Her ekran için: amaç, rol farkları, API çağrıları, SSE, durumlar, ekrana 
 
 ### WEB-05 Grup yönetimi
 - **Amaç:** Operasyon gruplarını kurmak ve yönetmek.
-- **Roller:** KOR (tam); ADM salt-okur.
+- **Roller:** KOR kendi operasyonunda (tam); ADM tüm operasyonlarda (tam, ADR-015).
 
 | Ne zaman | Çağrı |
 |---|---|
@@ -277,7 +285,7 @@ Her ekran için: amaç, rol farkları, API çağrıları, SSE, durumlar, ekrana 
 
 ### WEB-06 Görev yönetimi
 - **Amaç:** Görev oluşturma, yayın, atama izleme ve durum ilerletme.
-- **Roller:** KOR (tam); ADM salt-okur.
+- **Roller:** KOR kendi operasyonunda (tam); ADM tüm operasyonlarda (tam, ADR-015).
 
 | Ne zaman | Çağrı |
 |---|---|
@@ -351,7 +359,7 @@ Her ekran için: amaç, rol farkları, API çağrıları, SSE, durumlar, ekrana 
 
 ### WEB-09 Acil alarm yönetimi
 - **Amaç:** Alarm listesi ve onaylı alarm gönderimi.
-- **Roller:** KOR (tam); ADM salt-okur (liste ve detay). "Yeni alarm" yalnızca `ACTIVE` operasyonda ve yalnızca `alert.send` izni olana etkindir.
+- **Roller:** KOR (tam); ADM salt-okur (liste ve detay; ADR-015 alarm izinlerini kapsamaz). "Yeni alarm" yalnızca `ACTIVE` operasyonda ve yalnızca `alert.send` izni olana etkindir.
 
 | Ne zaman | Çağrı |
 |---|---|

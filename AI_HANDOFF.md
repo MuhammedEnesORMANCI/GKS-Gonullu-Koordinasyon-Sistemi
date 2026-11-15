@@ -1,6 +1,6 @@
 # GKS — Yapay Zekâ Devir ve Devam Belgesi
 
-> Hazırlanma: 15.11.2026. Kaynaklar: proje dosyaları (klasör yapısı, migration listesi, controller/test dizinleri, yapılandırma), `PROJECT_PROGRESS.md`, `docs/architecture/design/team/TASKS.md` (LD-xx kararları), `docs/architecture/decisions.md` (ADR-xx) ve bu projede yürütülen geliştirme oturumlarının kayıtları.
+> Hazırlanma: 15.11.2026; **güncelleme: 16.11.2026 gece oturumu** (ADR-015, Android duyuru ve tarih seçici, web rol atama ve kullanıcı yönetimi, sayfalama birleştirme). Kaynaklar: proje dosyaları (klasör yapısı, migration listesi, controller/test dizinleri, yapılandırma), `PROJECT_PROGRESS.md`, `docs/architecture/design/team/TASKS.md` (LD-xx kararları), `docs/architecture/decisions.md` (ADR-xx) ve bu projede yürütülen geliştirme oturumlarının kayıtları.
 > **Kural:** Bu belgede parola, belirteç, TOTP anahtarı veya `.env` içeriği yoktur ve eklenmemelidir.
 > Kesinlik işaretleri: **[doğrulandı]** = kodda/testte görüldü; **[doğrulanmadı]** = yalnızca tasarım belgesinde veya hiç denenmedi.
 
@@ -14,10 +14,10 @@
 
 | Rol | Kapsam | Açıklama |
 |---|---|---|
-| ADM | Kurum | Kurum yöneticisi: operasyon oluşturma, rol atama, kurum geneli duyuru |
+| ADM | Kurum | Kurum yöneticisi: operasyon oluşturma, rol atama, kurum geneli duyuru, kullanıcı yönetimi; **ADR-015: KOR ataması olmadan tüm operasyonlarda KOR'un operasyon yönetimi yetkileri** (konum ve alarm hariç) |
 | KOR | Operasyon | Koordinatör: kendi operasyonunda görev, grup, davet, duyuru yönetimi |
 | GON | Operasyon | Gönüllü (operasyon katılımcısı) |
-| TEK | Kurum | Teknik destek (hesap durumu, oturum iptali) — uçları henüz yok |
+| TEK | Kurum | Teknik destek: kullanıcı listesi (yalnızca ad + durum), hesabı devre dışı bırakma (ADM hesabı hariç), oturum iptali — ID-19/21/23 (16.11), yalnızca web |
 | UYM | Kurum | Uyum/denetim (denetim kayıtları) — modülü henüz yok |
 | Grup lideri | Grup üyeliği (rol değil) | `groups.group_memberships.role = LEADER`; açıklama ve toplanma noktası |
 
@@ -57,19 +57,21 @@ Modül sınırları `backend/src/test/java/org/gks/backend/ModularityTests.java`
 | Davet (ID-12…18), davet koduyla kayıt | ✅ | ✅ oluştur/listele/iptal | ✅ kodla kayıt; operasyon davetini kabul/ret; yönetimde davet gönder/iptal |
 | Hesap: profil, telefon, parola, zorunlu parola | ✅ | ✅ `/hesabim` | ✅ |
 | Operasyon (OR-01…06) | ✅ | ✅ | ✅ Yönetim sekmesi (liste, ayrıntı, oluştur, düzenle, durum, ADM koordinatör atama) |
-| Rol atama (AC-01…03) | ✅ | ❌ ekran yok | ✅ yalnızca koordinatör ekle/kaldır |
+| Rol atama (AC-01…03) | ✅ | ✅ `/roller` | ✅ yalnızca koordinatör ekle/kaldır |
+| Kullanıcı yönetimi (ID-19…25) | ✅ | ✅ `/kullanicilar` | – |
+| ADM tüm operasyonlarda yönetim (ADR-015) | ✅ | ✅ | ✅ (izinlerden kendiliğinden) |
 | Grup (GR-01…08) | ✅ | ✅ | ✅ gönüllü/lider ekranları + KOR grup yönetimi |
 | Görev (TK-01…12) | ✅ | ✅ | ✅ gönüllü kabul/ret + KOR görev yönetimi |
 | Bildirim gelen kutusu (NT-04/05/07/08) | ✅ | ✅ zil rozeti, `/bildirimler` | ✅ sekme, rozet, 30 sn yoklama |
-| Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ❌ **ilk yapılacak iş** |
+| Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ✅ operasyon/grup/kişi hedefi, önizleme, >50 onay, geçmiş, kurum duyurusu |
 
 ### 3.2 Planlanan / yok
 
-Denetim kaydı (audit), acil alarm (alerts), konum ve harita (location), kullanıcı yönetimi uçları (ID-19…25), cihaz kaydı (ID-26), FCM push, gerçek zamanlı akış (SSE), parola sıfırlama e-postası (ID-27/28), onay metni (ID-29). Ayrıntı ve öncelik: §11.
+Denetim kaydı (audit), acil alarm (alerts), konum ve harita (location), cihaz kaydı (ID-26), FCM push, gerçek zamanlı akış (SSE), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
 
 ### 3.3 Gerçek cihazda/kullanıcıyla doğrulanmamış
 
-- Android uygulaması emülatörde açılmadı; ekranlar yalnızca derleme + birim testleriyle doğrulandı. Kullanıcı gerçek telefonda test etmeye başladı (USB, `adb reverse`); sonuç bu belgeye yansımadı.
+- Android uygulaması emülatörde açılmadı; ekranlar (16.11'deki duyuru yönetimi ve tarih-saat seçici dahil) yalnızca derleme + birim testleriyle doğrulandı. Web'in yeni `/roller` ve `/kullanicilar` ekranları tarayıcıda gerçek backend'le denenmedi (mock + birim testleri). Kullanıcı gerçek telefonda test etmeye başladı (USB, `adb reverse`); sonuç bu belgeye yansımadı.
 - ADM/KOR için Android MFA girişi gerçek hesapla denenmedi (backend entegrasyon testi gerçek TOTP ile geçiyor).
 - Gerçek SMTP yok; davet e-postası yalnızca Mailpit'e gider.
 
@@ -93,11 +95,14 @@ Denetim kaydı (audit), acil alarm (alerts), konum ve harita (location), kullan�
 - DB kısıtı `ck_refresh_tokens_mfa_absolute`: MFA'lı hiçbir zincir 12 saati aşamaz (V11).
 - Android istemcisi: ekran kilidi olmayan cihazda yönetim (MFA) girişi yapılmaz; TOTP anahtarı panoya hassas işaretle kopyalanır.
 
+**ADR-015 (16.11.2026, LD-62):** `access/Grants.coordinates(op)` = o operasyonun KOR'u **veya** ADM; `Grants.coordinator(...)` istemci/MFA kapısıyla birlikte. Görev (`RoleBasedTaskAccess`), grup/üyelik/toplanma noktası (`RoleBasedGroupAccess`), operasyon duyurusu (`RoleBasedAnnouncementAccess`) ve operasyon yönetimi (`RoleBasedOperationAccess`) bu tek yöntemi kullanır. `EffectivePermissions.ADM_OPERATION` (= KOR seti − `location.view` − `alert.*`) ADM'ye kurumdaki tüm operasyonlar için `/me/context`'te döner. **Konum ve alarm modülleri yazılırken `coordinates` kullanılmamalı** (K-15; ayrı karar). ADM'nin bu işlemleri audit gelince kaydedilmeli.
+
 **Yetki modeli (ADR-002):** Her karar `can()` ile access modülünde, roller her istekte veritabanından (LD-55). Önemli kurallar [doğrulandı, testlerle]:
 - Operasyon yönetimi: ADM tümü, KOR yalnızca kendi operasyonu. Operasyon oluşturma ve rol atama yalnızca ADM.
-- Grup kurma/üyelik/lider değişikliği ve görev yönetimi: **yalnızca operasyonun KOR'u**; KOR olmayan ADM salt-okur.
+- Grup kurma/üyelik/lider değişikliği ve görev yönetimi: operasyonun KOR'u ve (ADR-015) ADM; KOR başka operasyonda `403`.
 - Grup açıklaması ve toplanma noktası: KOR veya grubun lideri.
-- Duyuru: operasyon duyurusu KOR (operasyon `ACTIVE` olmalı, N-19), kurum geneli duyuru ADM.
+- Duyuru: operasyon duyurusu KOR ve (ADR-015) ADM (operasyon `ACTIVE` olmalı, N-19), kurum geneli duyuru ADM.
+- Kullanıcı yönetimi (`access/UserAdminAccess`): liste/ayrıntı ADM tam, TEK ad+durum, KOR yalnızca `operationId` ile kendi operasyonu; disable ADM/TEK (TEK ADM hesabına dokunamaz), enable ADM, oturum iptali ADM/TEK, parola ve MFA sıfırlama ADM; kendi hesabında yönetim işlemi `403`.
 
 **İstemci izin görünürlüğü:** `GET /me/context` → `permissions` sunucuda bu oturum için hesaplanır (`access/EffectivePermissions.java`); istemciler menüyü buna göre çizer, sunucu yine her istekte denetler.
 
@@ -147,9 +152,11 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 | Görev | `POST/GET /operations/{id}/tasks`, `GET/PATCH /tasks/{id}`, `/publish`, `/state`, `/assignments`, `GET /me/assignments`, `/assignments/{id}/accept|reject` | `tasks/TaskController.java` |
 | Gelen kutusu | `GET /me/notifications`, `GET /me/notifications/{id}`, `POST /{id}/read`, `GET /unread-count` | `notifications/InboxController.java` |
 | Duyuru | `POST /announcements/preview`, `POST /announcements`, `GET /announcements`, `GET /announcements/{id}` | `notifications/AnnouncementController.java` |
+| Kullanıcılar (16.11) | `GET /users`, `GET /users/{id}`, `POST /users/{id}/disable`, `/enable`, `/revoke-sessions`, `/reset-password`, `/reset-mfa` | `identity/UserAdminController.java` |
 
 **Kurallar:**
 - **Idempotency (§3.6):** "Z" uçlarında `Idempotency-Key` zorunlu (ör. ID-12, ID-16, ID-17/18, TK-03, TK-11/12, NT-02); "d" uçlarında isteğe bağlı. Eksikse `400 REQUIRED`.
+- **Sayfalama (16.11):** tüm listeler `org.gks.backend.PageCursor` (limit 1..100, varsayılan 50; base64url imleç). Modüllerin eski imleç kabul biçimi `PageCursor.CursorFormat` ile korunur (tasks `HEX`, groups/rol atamaları `LENIENT`, diğerleri `CANONICAL`).
 - **Hata gövdesi:** `application/problem+json` + `code`; alan hataları `errors[{field, code, message}]` (Türkçe ileti).
 - **Bilinmeyen alan reddedilir** (`fail-on-unknown-properties`): istemciler yalnızca sözleşme alanlarını gönderir.
 - **Kısmi güncelleme (LD-52):** gönderilmeyen alan korunur, açık `null` temizler/varsayılana döndürür.
@@ -164,18 +171,18 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 - `data/remote/GksApi.kt`, `Dtos.kt`: tüm uçlar ve DTO'lar.
 - `data/session/`: `KeystoreSessionStore`, `SessionManager`, `TokenRefresher` (tek uçuşlu yenileme), `AuthInterceptors.kt` (Bearer + 401 işleme).
 - `data/ApiCall.kt`: `ApiResult`, `ApiError`, `ApiCaller.call/allPages`, `IdempotencyKeys` (ağ hatasında aynı anahtar).
-- Depolar: `AuthRepository`, `InvitationRepository`, `VolunteerRepository`, `NotificationRepository`, `ManagementRepository` (operasyon, koordinatör, gönüllü/davet, grup), `TaskManagementRepository`.
-- `domain/`: `HomeModel.kt`, `RolePanels.kt`, `ProfileChanges.kt`, `ManagementAccess.kt` (Yönetim sekmesi ve düğme görünürlüğü).
+- Depolar: `AuthRepository`, `InvitationRepository`, `VolunteerRepository`, `NotificationRepository`, `ManagementRepository` (operasyon, koordinatör, gönüllü/davet, grup), `TaskManagementRepository`, `AnnouncementRepository` (16.11).
+- `domain/`: `HomeModel.kt`, `RolePanels.kt`, `ProfileChanges.kt`, `ManagementAccess.kt` (Yönetim sekmesi ve düğme görünürlüğü; `canAnnounce`, `canAnnounceOrganization`), `AnnouncementForm.kt` (hedef, kişi arama, doğrulama).
 
 **Navigasyon:** `ui/MainActivity.kt` (giriş/kayıt/MFA/bağlam yükleme durumları, `ui/AppViewModel.kt`) → `ui/MainShell.kt` (alt navigasyon + NavHost).
 - Gönüllü sekmeleri: Ana sayfa, Görevler, Grubum, Bildirimler, Hesap.
 - Yönetim oturumu sekmeleri: Ana sayfa, Görevler, **Yönetim**, Bildirimler, Hesap (Grubum, Ana sayfadaki grup kartlarından açılır).
 
-**Ekran paketleri:** `ui/login`, `ui/register`, `ui/mfa`, `ui/home`, `ui/tasks`, `ui/groups`, `ui/notifications`, `ui/account`, `ui/management` (`ManagementScreens.kt`, `VolunteersScreen.kt`, `GroupManagementScreens.kt`, `TaskManagementScreens.kt`).
+**Ekran paketleri:** `ui/login`, `ui/register`, `ui/mfa`, `ui/home`, `ui/tasks`, `ui/groups`, `ui/notifications`, `ui/account`, `ui/management` (`ManagementScreens.kt`, `VolunteersScreen.kt`, `GroupManagementScreens.kt`, `TaskManagementScreens.kt`, `AnnouncementScreens.kt`).
 
-**Ortak bileşenler (`ui/common/`):** `LoadViewModel` + `Load` (yükleniyor/hata/hazır), `LoadContent`, `StateViews.kt` (Empty/Error/MessageCard/Fact), `FormField`, `DateInput` (`gg.aa.yyyy ss:dd` ↔ ISO), `Messages.kt` (`ApiError.toUiText`), `Labels.kt` (enum → Türkçe), `containerViewModel(...)`.
+**Ortak bileşenler (`ui/common/`):** `LoadViewModel` + `Load` (yükleniyor/hata/hazır), `LoadContent`, `StateViews.kt` (Empty/Error/MessageCard/Fact), `FormField`, `DateTimeField` + `DateTimes` (16.11: Material3 tarih + 24 saat seçici, yerel saat ↔ UTC ISO; görev ve operasyon formları), `DateInput` (eski metin girişi; yalnızca grup toplanma noktası saati), `Messages.kt` (`ApiError.toUiText`), `Labels.kt` (enum → Türkçe), `containerViewModel(...)`.
 
-**Yönetim modülleri (tamamlandı):** operasyon listesi/ayrıntı/form/durum, koordinatör ekle/kaldır (ADM), gönüllüler ve davetler, gruplar (oluştur, üye ekle/çıkar, lider, ad/açıklama, toplanma noktası), görevler (oluştur/düzenle, yayımla, durum, atama ekle/kaldır, geçmiş).
+**Yönetim modülleri (tamamlandı):** operasyon listesi/ayrıntı/form/durum, koordinatör ekle/kaldır (ADM), gönüllüler ve davetler, gruplar (oluştur, üye ekle/çıkar, lider, ad/açıklama, toplanma noktası), görevler (oluştur/düzenle, yayımla, durum, atama ekle/kaldır, geçmiş), duyurular (operasyon ayrıntısı → "Duyurular"; Yönetim listesi → "Kurum duyurusu" ADM). Rotalar: `management/operation/{op}/announcements`, `management/announcements/organization`, `management/announcement/{id}`.
 
 **Yapılandırma:** API kökü `gks.apiBaseUrl` — öncelik: `-P` > `android/local.properties` > `android/gradle.properties` (emülatör varsayılanı `http://10.0.2.2:8080/`). Debug derlemesi düz HTTP'ye izin verir (`src/debug/res/xml/network_security_config.xml`), sürüm derlemesi yalnızca HTTPS.
 
@@ -183,13 +190,15 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 
 ## 8. Web
 
-Rotalar (`web/src/app/App.tsx`): `/giris`, `/` (panel), `/operasyonlar`, `/operasyonlar/:opId`, `.../gruplar`, `.../gruplar/:groupId`, `.../gorevler`, `.../gorevler/:taskId`, `/davetler`, `/hesabim`, `/bildirimler`, `/duyurular`.
+Rotalar (`web/src/app/App.tsx`): `/giris`, `/` (panel), `/operasyonlar`, `/operasyonlar/:opId`, `.../gruplar`, `.../gruplar/:groupId`, `.../gorevler`, `.../gorevler/:taskId`, `/davetler`, `/hesabim`, `/bildirimler`, `/duyurular`, `/roller` (16.11, `role.assign`), `/kullanicilar` (16.11, `user.status.view`).
 
 - Servis katmanı: `web/src/services/contracts.ts` (arayüzler), `http.ts` (gerçek API), `mock/services.ts` (yalnızca `npm run dev:mock` tanıtımı; "Örnek veri" rozeti), `registry.tsx`, kaynak modu `web/src/config/services.ts` (varsayılan hepsi `http`).
 - API istemcisi: `web/src/api/client.ts` (CSRF, tek sekmede yenileme, 401/503 kuralları), hata iletileri `web/src/api/errorMessages.ts`.
 - Menü görünürlüğü `web/src/app/AppShell.tsx` (bağlam izinlerinden).
 
-**Eksik web yönetim ekranları:** rol atama / koordinatör yönetimi (backend var, web'de ekran yok — `role-assignments` web kodunda geçmiyor [doğrulandı]), kullanıcı yönetimi (backend yok), denetim kayıtları, acil alarm, konum haritası.
+- Salt-okur bandı (`ReadOnlyBanner`) artık rol adından değil izinden: `usePermissions().isAdmReadOnly(op)` = ADM ve `task.manage` yok (ADR-015 sonrası normalde görünmez). Servis kaynakları `config/services.ts`: `roleAssignments`, `users` eklendi (http + mock).
+
+**Eksik web yönetim ekranları:** denetim kayıtları, acil alarm, konum haritası.
 
 ---
 
@@ -207,6 +216,8 @@ Geliştirme makinesi: Windows 11, 16 GB RAM. JDK'lar: Temurin 17 (Android derlem
 | Gerçek telefon (USB) | `adb reverse tcp:8080 tcp:8080` ve `android/local.properties` içinde `gks.apiBaseUrl=http://127.0.0.1:8080/` (şu an bu değer ayarlı [doğrulandı]) |
 | Aynı Wi-Fi | `gks.apiBaseUrl=http://<bilgisayar LAN IP>:8080/` + Windows güvenlik duvarında 8080 izni |
 
+**Yapay zekâ ajanının komut çalıştırma düzeni (16.11):** Ajanın kabuğu Windows'ta değil, ayrı bir Linux sanal makinesindedir (JDK 17/21, Docker, Android SDK yok). Testler ve git komutları proje sahibinin açtığı bir PowerShell döngüsüyle çalışır: ajan `C:\AIProjects\.claude-runs\job.cmd` dosyasını yazar ve `job.ready` koyar; döngü `run.cmd`'yi çalıştırır, çıktı `job.log`'a **eklenir** (her iş komutlarıyla birlikte kaydedilir), sonuç kodu `job.done`'a yazılır. `.claude-runs/` git'e girmez. Döngü komutu (proje sahibi başlatır, ajan değiştirmez): `cd C:\AIProjects; while ($true) { Get-Date -Format o | Set-Content .claude-runs\watcher.alive; if (Test-Path .claude-runs\job.ready) { Remove-Item .claude-runs\job.ready; cmd /c .claude-runs\run.cmd }; Start-Sleep 3 }`. JDK yolları: Temurin 21 `C:\Program Files\Eclipse Adoptium\jdk-21.0.4.7-hotspot`, Temurin 17 `...\jdk-17.0.12.7-hotspot`. Gradle her zaman `--offline`.
+
 Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kullanıcı davetlerini kabul eder). Demo hesap bilgileri bu belgeye yazılmamıştır.
 
 ---
@@ -215,9 +226,9 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 | Paket | Komut | Son sonuç |
 |---|---|---|
-| Backend (hedefli) | `cd backend && ./gradlew test --max-workers=1 --tests "org.gks.backend.<paket>.*"` | identity+access+notifications+Modularity+Security 192/192; organization+tasks+groups 231/231; `identity.MobileManagementSessionTests` 8/8 |
-| Web | `cd web && npx tsc -b && npx eslint src && npx vitest run --maxWorkers=1 --minWorkers=1` | 106/106 |
-| Android | `cd android && ./gradlew testDebugUnitTest` (JDK 17) | 58/58 |
+| Backend (paket paket) | `cd backend && ./gradlew test --offline --no-daemon --max-workers=1 --tests "org.gks.backend.<paket>.*"` | 16.11: access 37, identity 128, notifications 19, organization 54, tasks 115, groups 62, kök 46 → **461/461** |
+| Web | `cd web && npx tsc -b && npx eslint src && npx vitest run --maxWorkers=1 --minWorkers=1` | **118/118** (tsc, eslint temiz) |
+| Android | `cd android && ./gradlew assembleDebug testDebugUnitTest --offline` (JDK 17) | **73/73** |
 
 - Backend testleri Testcontainers kullanır (Docker gerekir).
 - **Backend tam test paketini tek seferde çalıştırmayın**: makinede iki kez JVM "insufficient memory" çökmesine yol açtı. Paket paket ve `--max-workers=1`.
@@ -228,12 +239,11 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ## 11. Eksikler ve yol haritası (öncelik sırası)
 
-1. **Android duyuru yönetimi** — backend ve web hazır; Android ekranı yok (§14).
-2. **Denetim kaydı (audit)** — `audit` modülü boş. K-26 (yalnızca ADM/UYM görür), LD-05/LD-22/LD-44 (konum görüntüleme penceresi), `x-audit` olayları (`ANNOUNCEMENT_SENT`, rol/operasyon işlemleri) henüz yazılmıyor.
+1. ~~Android duyuru yönetimi~~ — **tamamlandı (16.11)**. Ayrıca tamamlananlar: ADR-015, Android tarih-saat seçici, web rol atama ekranı, kullanıcı yönetimi (ID-19…25), sayfalama birleştirme.
+2. **Denetim kaydı (audit)** — sıradaki iş; **proje sahibinin tasarım onayı bekleniyor** (`.claude-runs/SABAH_RAPORU.md`). — `audit` modülü boş. K-26 (yalnızca ADM/UYM görür), LD-05/LD-22/LD-44 (konum görüntüleme penceresi), `x-audit` olayları (`ANNOUNCEMENT_SENT`, rol/operasyon işlemleri) henüz yazılmıyor.
 3. **Acil alarm (US-20…25)** — `alerts` boş. Tasarım: `emergency-alert-design.md`, DB §6.3–6.4, API §11.1. Bildirim altyapısı (`Notifier`, CRITICAL kuyruk) hazır. ADR-014 ile MFA'lı Android oturumundan da gönderilebilir (DR-12 güncellendi).
 4. **Konum ve harita (US-17…19)** — `location` boş. K-14 (kullanıcı başlatır), K-15 (başkalarının konumunu yalnızca KOR görür), K-16 (yalnızca son konum), ADR-011 (ön plan servisi). Harita kütüphanesi kararı verilmedi (Google Maps API anahtarı vs. OSM).
-5. **Kullanıcı ve kurum yönetimi (ID-19…25)** — backend'de yok: kullanıcı listesi/arama, devre dışı bırakma, oturum iptali, parola/MFA sıfırlama. Android koordinatör seçimi bu yüzden katılımcılar + diğer KOR'larla sınırlı.
-6. **Web rol atama ekranı** — backend hazır.
+5. ~~Kullanıcı yönetimi (ID-19…25)~~ ve ~~web rol atama ekranı~~ — **tamamlandı (16.11)**. Kalan: Android'de kullanıcı yönetimi ekranı yok; Android koordinatör seçimi hâlâ katılımcılar + diğer KOR'larla sınırlı (ID-19 Android'den kullanılmıyor).
 7. **FCM push + cihaz kaydı (ID-26)** — kullanıcının Firebase projesi yok. `notifications/PushGateway.java`, `DeliveryWorker.java` hazır; `gks.notifications.push.provider` şu an `none`.
 8. **SSE gerçek zamanlı** (ADR-009) — yok; istemciler 30 sn yoklama.
 9. Genişletilmiş kapsam: operasyonun "Askıda" durumu, parola sıfırlama e-postası, onay metni, toplanma noktası geçmişi.
@@ -242,12 +252,13 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ## 12. Bilinen sorunlar, teknik borç ve açık kararlar
 
-- **Bellek:** 16 GB makinede backend tam test paketi ve VS Code Java dil sunucusu (2 GB) JVM çökmelerine yol açtı. Kökte bir `hs_err_pid24196.log` var (15.11 19:42; VS Code Java dil sunucusu). `backend/` altında eski `hs_err_pid*.log` dosyaları da var; zararsız, silinmesi kullanıcı kararı.
-- **Sayfalama yardımcısı tekrarı:** `tasks/TaskValidation.page`, `groups/GroupValidation.page` ve yeni `PageCursor.java` aynı işi yapıyor; ileride birleştirilebilir.
+- **Bellek:** 16 GB makinede backend tam test paketi ve VS Code Java dil sunucusu (2 GB) JVM çökmelerine yol açtı. JVM çökme kayıtları: kökte `hs_err_pid24196.log` (15.11 19:42; VS Code Java dil sunucusu); `android/` altında `hs_err_pid10924.log` ve `replay_pid10924.log` (aynı zaman, ~1,7 MB); `backend/` altında `hs_err_pid21340/28608/29364/9128.log` ve `replay_pid21340/9128.log` (~2,4 MB). Hepsi `.gitignore`'da; zararsız, silinmesi kullanıcı kararı.
+- ~~Sayfalama yardımcısı tekrarı~~ — 16.11'de `PageCursor`'da birleştirildi (rol atamaları dahil). Açık konu: üç farklı imleç kabul biçimi korundu (`CursorFormat`); tek biçime indirmek davranış değişikliği olur.
 - **Mobil yönetim riski (kabul edilen):** TOTP uygulaması aynı telefondaysa iki faktörün bağımsızlığı azalır (ADR-014 belgede yazılı).
-- **Koordinatör aday listesi** ID-19 olmadığı için sınırlı (geçici çözüm, `ManagementRepository.coordinatorCandidates`).
-- **Android tarih girişi** metin alanı (`gg.aa.yyyy ss:dd`); tarih/saat seçici yok.
-- **Belge tutarlılığı:** `backend-api-design.md` §2.4 ve `authorization.md` §5.4'teki eski "yalnızca web" metinleri silinmedi, üstlerine ADR-014 notu eklendi; okurken not esas alınmalı. `web-screen-api-mapping.md` ADR-014 sonrası güncellenmedi [doğrulanmadı].
+- **Koordinatör aday listesi (Android)** hâlâ katılımcılar + diğer KOR'larla sınırlı (`ManagementRepository.coordinatorCandidates`); web `/roller` kurum dizinini (ID-19) kullanır.
+- ~~Android tarih girişi metin alanı~~ — görev ve operasyon formlarında seçiciyle değişti (16.11); grup toplanma noktası saati hâlâ metin alanı.
+- **Eski kod yorumları:** ADR-013'ü anlatan yorumlar (EffectivePermissions, AnnouncementController `x-client`, AnnouncementAccess, Subject, TaskAccess) 16.11'de düzeltildi.
+- **Belge tutarlılığı:** `backend-api-design.md` §2.4 ve `authorization.md` §5.4'teki eski "yalnızca web" metinleri silinmedi, üstlerine ADR-014 notu eklendi; okurken not esas alınmalı. `web-screen-api-mapping.md` 16.11'de başa "Güncel durum (ADR-014/015)" bölümü eklenerek güncellendi; eski metinler o notla birlikte okunur.
 - **PROJECT_PROGRESS.md ile çelişki:** yok, bu belgeyle uyumlu. Ancak oradaki test tablosu farklı tarihlerde çalıştırılan paketlerin son sonuçlarıdır; tam paket hiç tek seferde çalıştırılmadı.
 - **Açık kararlar:** harita sağlayıcısı; FCM projesi; TEK/UYM'nin mobile alınıp alınmayacağı (şu an hayır); "Askıda" durumunun Çekirdek'e alınması.
 
@@ -257,7 +268,7 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 1. **Önce oku:** bu belge, `PROJECT_PROGRESS.md`, `TASKS.md` içinde LD-59…LD-61, `decisions.md` ADR-014.
 2. **Mevcut kodu koru:** Tamamlanan modülleri yeniden yazma. Ortak bileşenleri (`ui/common`, `ApiCaller`, `LoadViewModel`, `IdempotencyKeys`, `PageCursor`, `Notifier`) yeniden kullan.
-3. **Yetki kurallarını bozma:** `Grants.corporate`, `requireManagementSession`, `requireAndroid`, MFA ve 12 sa sınırı değiştirilmez. Yeni yönetim uçları `requireManagementSession()` + `can()` ile korunur. İstemcide görünürlük yalnızca menü içindir.
+3. **Yetki kurallarını bozma:** `Grants.corporate`, `Grants.coordinates` (ADR-015), `requireManagementSession`, `requireAndroid`, MFA ve 12 sa sınırı değiştirilmez. Yeni yönetim uçları `requireManagementSession()` + `can()` ile korunur. İstemcide görünürlük yalnızca menü içindir.
 4. **Sözleşmeyi koru:** Uç yolları ve alan adları `backend-api-design.md` ile birebir. Sapma gerekiyorsa `TASKS.md`'ye yeni LD kaydı ve API tablosuna not.
 5. **Veri:** Geliştirme veritabanını silme, sıfırlama. Şema değişikliği yalnızca yeni migration. Kullanıcı gerçek telefonda test ediyor olabilir: backend'i gereksiz yeniden başlatma; gerekirse önce kullanıcıya sor.
 6. **Bellek:** Tek Gradle çağrısı, `--max-workers=1`, yalnızca değişen modülün testleri; aynı anda tek bootRun; iş bitince `./gradlew --stop` (Android). Bellek hatasında tekrar deneme, dur ve bildir.
@@ -267,28 +278,13 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ---
 
-## 14. İlk yapılacak görev: Android duyuru yönetimi
+## 14. Sıradaki görev: Denetim kaydı (audit) — proje sahibinin onayı bekleniyor
 
-**Amaç:** ADM/KOR'un Android Yönetim sekmesinden duyuru önizleyip göndermesi ve gönderilen duyuruları görmesi. Backend değişikliği beklenmez.
+16.11 gecesinde Android duyuru yönetimi (§14'ün eski içeriği) tamamlandı: `data/AnnouncementRepository.kt`, `domain/AnnouncementForm.kt`, `ui/management/AnnouncementScreens.kt`, test `AnnouncementManagementTest.kt` (commit `094ff9d`).
 
-**Backend (hazır, değiştirme):** `backend/src/main/java/org/gks/backend/notifications/AnnouncementController.java`, `AnnouncementService.java`.
-- `POST /api/v1/announcements/preview` gövde `{operationId?, userIds?, groupIds?, organization?}` → `{recipientCount, recipients[{id, displayName}], confirmationRequired}`
-- `POST /api/v1/announcements` (**Idempotency-Key zorunlu**) gövde = hedef + `title` (3–120), `body` (1–2000), `confirm` (>50 alıcıda `true` gerekir, aksi `422 CONFIRMATION_REQUIRED`) → `202 AnnouncementView`
-- `GET /api/v1/announcements?operationId=&limit=&cursor=` → `{items[AnnouncementView], nextCursor}` (listede `body` yok)
-- `GET /api/v1/announcements/{id}` → `AnnouncementView` (`body` dahil)
-- Kurallar: KOR yalnızca kendi `ACTIVE` operasyonu (`409 OPERATION_NOT_ACTIVE`); kapsam dışı grup/kişi `403 FORBIDDEN`; kurum geneli yalnızca ADM; kurum geneli + başka hedef `400`; alıcı yoksa `422 EMPTY_AUDIENCE`.
-- İzinler `MeContext.permissions`: `announcement.send.group` (operasyon), `announcement.send.organization` (kurum).
+Audit, acil alarm, konum/harita, FCM ve SSE **proje sahibinin kararı olmadan başlatılmaz.** Audit için tasarım önerisi (tablolar, olay listesi, ADM işlemlerinin kaydı) `.claude-runs/SABAH_RAPORU.md` dosyasındadır; proje sahibi onaylarsa:
 
-**Referans uygulama:** web `web/src/features/notifications/AnnouncementsPage.tsx` (önizleme → onay → gönder akışı), web test `web/src/features/__tests__/notifications.test.tsx`; backend test `backend/src/test/java/org/gks/backend/notifications/NotificationApiTests.java` (`Announcements` iç sınıfı).
-
-**Android'de dokunulacak yerler:**
-- `data/remote/Dtos.kt`: `AnnouncementTarget/CreateRequest`, `AnnouncementPreview`, `AnnouncementView`, `AnnouncementDelivery`.
-- `data/remote/GksApi.kt`: 4 uç (`@Header(IDEMPOTENCY_HEADER)` gönderimde).
-- Yeni `data/AnnouncementRepository.kt` (`ApiCaller`, `IdempotencyKeys.run`) ve `AppContainer.kt`'ye kayıt.
-- `domain/ManagementAccess.kt`: `canAnnounce(operationId)` ve `canAnnounceOrganization` (izinlerden).
-- Yeni `ui/management/AnnouncementScreens.kt`: hedef seçimi (operasyon katılımcıları / gruplar — `ManagementRepository.groups`), başlık/metin, önizleme, >50 onay kutusu, gönder; geçmiş listesi.
-- `ui/management/ManagementScreens.kt`: operasyon ayrıntısına "Duyurular" düğmesi (diğer düğmelerin yanına) ve gerekiyorsa Yönetim listesine "Kurum duyurusu" (ADM).
-- `ui/MainShell.kt`: rotalar (`management/operation/{op}/announcements` vb.), `strings.xml`: Türkçe metinler.
-- Test: `app/src/test/java/org/gks/android/data/AnnouncementManagementTest.kt` (gövde, anahtar, tekrarda aynı anahtar, `CONFIRMATION_REQUIRED`/`OPERATION_NOT_ACTIVE` hata eşleme, görünürlük). Kalıp: `TaskManagementTest.kt`, `VolunteerManagementTest.kt`.
-
-**Bitince:** `./gradlew assembleDebug testDebugUnitTest` (JDK 17), `PROJECT_PROGRESS.md` güncelle, telefona kurulum kullanıcıya bırakılır (`./gradlew installDebug`).
+- Yeni şema V12 (`audit` şeması V1'de var, tablo yok).
+- Olaylar üretici modülün işleminde yazılır (Notifier deseniyle aynı: `MANDATORY` yayılım, tek işlem).
+- ADR-015 gereği ADM'nin KOR ataması olmadan yaptığı operasyon işlemleri ve kullanıcı yönetimi işlemleri (ID-21…25) mutlaka kaydedilir.
+- Okuma ucu `audit.view` (ADM, UYM; K-26), web WEB-11.

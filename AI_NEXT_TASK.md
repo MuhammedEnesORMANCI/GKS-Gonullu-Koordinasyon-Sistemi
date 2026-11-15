@@ -1,5 +1,7 @@
 # Sonraki Yapay Zekâ İçin Başlangıç Promptu
 
+> **16.11.2026 notu:** Bu dosyadaki görev (Android duyuru yönetimi) tamamlandı (commit `094ff9d`). Güncel durum ve sıradaki iş için `AI_HANDOFF.md` §11 ve §14 ile `PROJECT_PROGRESS.md` esastır; Git kuralı da değişti (AI_HANDOFF §13 madde 8).
+
 Aşağıdaki metni olduğu gibi yeni ajana verin.
 
 ---
