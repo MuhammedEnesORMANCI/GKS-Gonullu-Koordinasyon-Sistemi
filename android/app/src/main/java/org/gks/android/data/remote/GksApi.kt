@@ -21,8 +21,8 @@ const val PAGE_LIMIT = 100
 const val INBOX_PAGE = 30
 
 /**
- * Oturumlu istemci (Bearer + otomatik yenileme). Yalnızca Android'e açık (`A` / `W/A`) uçlar tanımlıdır;
- * web'e özgü yönetim uçları Android oturumunda `403 CLIENT_NOT_ALLOWED` döndüğü için burada yoktur (ADR-013).
+ * Oturumlu istemci (Bearer + otomatik yenileme). Gönüllü uçları ve ADR-014 sonrası MFA'lı Android yönetim
+ * oturumunda kullanılan yönetim uçları tanımlıdır; MFA'sız oturumda yönetim uçları `403 CLIENT_NOT_ALLOWED` döner.
  */
 interface GksApi {
 
@@ -284,6 +284,28 @@ interface GksApi {
 	/** TK-12 (Android; Idempotency-Key zorunlu; gövde isteğe bağlı). */
 	@POST("api/v1/assignments/{id}/reject")
 	suspend fun rejectAssignment(@Path("id") id: String, @Header(IDEMPOTENCY_HEADER) key: String): Response<Unit>
+
+	// ------------------------------------------------------------ duyurular (NT-01 – NT-03, NT-06; MFA'lı yönetim oturumu)
+
+	/** NT-01: yan etkisiz alıcı önizlemesi. */
+	@POST("api/v1/announcements/preview")
+	suspend fun previewAnnouncement(@Body target: AnnouncementTarget): Response<AnnouncementPreview>
+
+	/** NT-02 (`Z`: Idempotency-Key zorunlu) → `202`. */
+	@POST("api/v1/announcements")
+	suspend fun createAnnouncement(@Header(IDEMPOTENCY_HEADER) key: String, @Body request: AnnouncementCreateRequest): Response<AnnouncementView>
+
+	/** NT-03: gönderen kapsamındaki duyurular, en yeni önce (`body` yok). */
+	@GET("api/v1/announcements")
+	suspend fun announcements(
+		@Query("operationId") operationId: String?,
+		@Query("cursor") cursor: String?,
+		@Query("limit") limit: Int = PAGE_LIMIT,
+	): Response<Page<AnnouncementView>>
+
+	/** NT-06 (`body` dahil). */
+	@GET("api/v1/announcements/{id}")
+	suspend fun announcement(@Path("id") id: String): Response<AnnouncementView>
 }
 
 /** Yalnızca yenileme; kimlik doğrulayıcı (Authenticator) içinde eşzamanlı çağrılır, kendisi yenileme tetiklemez. */

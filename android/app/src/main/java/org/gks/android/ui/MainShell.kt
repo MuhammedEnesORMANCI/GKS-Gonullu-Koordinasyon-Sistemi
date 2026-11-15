@@ -67,6 +67,11 @@ import org.gks.android.ui.home.HomeTab
 import org.gks.android.ui.home.HomeViewModel
 import org.gks.android.ui.home.OperationDetailScreen
 import org.gks.android.ui.home.OperationDetailViewModel
+import org.gks.android.ui.management.AnnouncementDetailScreen
+import org.gks.android.ui.management.AnnouncementDetailViewModel
+import org.gks.android.ui.management.AnnouncementFormViewModel
+import org.gks.android.ui.management.AnnouncementHistoryViewModel
+import org.gks.android.ui.management.AnnouncementsScreen
 import org.gks.android.ui.management.ManagementOperationsViewModel
 import org.gks.android.ui.management.ManagementScreen
 import org.gks.android.ui.management.OperationFormScreen
@@ -133,6 +138,11 @@ private object Routes {
 	fun newTask(op: String) = "management/operation/$op/tasks/new"
 	fun managedTask(op: String, id: String) = "management/operation/$op/task/$id"
 	fun editTask(op: String, id: String) = "management/operation/$op/task/$id/edit"
+	const val OPERATION_ANNOUNCEMENTS = "management/operation/{op}/announcements"
+	const val ORGANIZATION_ANNOUNCEMENTS = "management/announcements/organization"
+	const val MANAGED_ANNOUNCEMENT = "management/announcement/{id}"
+	fun operationAnnouncements(op: String) = "management/operation/$op/announcements"
+	fun managedAnnouncement(id: String) = "management/announcement/$id"
 	fun managedOperation(id: String) = "management/operation/$id"
 	fun editOperation(id: String) = "management/operation/$id/edit"
 	fun notification(id: String) = "notification/$id"
@@ -159,6 +169,9 @@ private object Routes {
 		NEW_TASK -> R.string.task_create
 		MANAGED_TASK -> R.string.title_task
 		EDIT_TASK -> R.string.task_edit
+		OPERATION_ANNOUNCEMENTS -> R.string.announcements_title
+		ORGANIZATION_ANNOUNCEMENTS -> R.string.announcements_organization_title
+		MANAGED_ANNOUNCEMENT -> R.string.announcement_detail_title
 		else -> Tab.entries.firstOrNull { it.route == route }?.label ?: R.string.app_name
 	}
 }
@@ -265,6 +278,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						sessionExpiresAt = main.context.session.expiresAt,
 						onOpen = { nav.navigate(Routes.managedOperation(it)) },
 						onCreate = { nav.navigate(Routes.NEW_OPERATION) },
+						onOrganizationAnnouncement = { nav.navigate(Routes.ORGANIZATION_ANNOUNCEMENTS) },
 					)
 				}
 			}
@@ -286,6 +300,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						onGroups = { nav.navigate(Routes.operationGroups(id)) },
 						onTasks = { nav.navigate(Routes.operationTasks(id)) },
 						onChanged = app::refreshContext,
+						onAnnouncements = { nav.navigate(Routes.operationAnnouncements(id)) },
 					)
 				}
 			}
@@ -350,6 +365,27 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 					containerViewModel(key = "edit-task-$id") { TaskFormViewModel(it.taskManagementRepository, it.managementRepository, op, id) },
 					onSaved = { nav.popBackStack() },
 				)
+			}
+			composable(Routes.OPERATION_ANNOUNCEMENTS) { backStack ->
+				val op = backStack.arguments?.getString("op").orEmpty()
+				AnnouncementsScreen(
+					form = containerViewModel(key = "announce-form-$op") { AnnouncementFormViewModel(it.announcementRepository, it.managementRepository, op) },
+					history = containerViewModel(key = "announce-history-$op") { AnnouncementHistoryViewModel(it.announcementRepository, op) },
+					canSend = management?.canAnnounce(op) == true,
+					onOpen = { nav.navigate(Routes.managedAnnouncement(it)) },
+				)
+			}
+			composable(Routes.ORGANIZATION_ANNOUNCEMENTS) {
+				AnnouncementsScreen(
+					form = containerViewModel(key = "announce-form-org") { AnnouncementFormViewModel(it.announcementRepository, it.managementRepository, null) },
+					history = containerViewModel(key = "announce-history-org") { AnnouncementHistoryViewModel(it.announcementRepository, null) },
+					canSend = management?.canAnnounceOrganization == true,
+					onOpen = { nav.navigate(Routes.managedAnnouncement(it)) },
+				)
+			}
+			composable(Routes.MANAGED_ANNOUNCEMENT) { backStack ->
+				val id = backStack.arguments?.getString("id").orEmpty()
+				AnnouncementDetailScreen(containerViewModel(key = "announcement-$id") { AnnouncementDetailViewModel(it.announcementRepository, id) })
 			}
 			composable(Routes.EDIT_OPERATION) { backStack ->
 				val id = backStack.arguments?.getString("id").orEmpty()

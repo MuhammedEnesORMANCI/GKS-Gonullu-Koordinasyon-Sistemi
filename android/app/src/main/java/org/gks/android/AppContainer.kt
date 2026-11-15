@@ -6,6 +6,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import org.gks.android.data.AnnouncementRepository
 import org.gks.android.data.ApiCaller
 import org.gks.android.data.AuthRepository
 import org.gks.android.data.InvitationRepository
@@ -41,6 +42,7 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val notificationRepository by lazy { NotificationRepository(api, caller) }
 	val managementRepository by lazy { ManagementRepository(api, caller) }
 	val taskManagementRepository by lazy { TaskManagementRepository(api, caller) }
+	val announcementRepository by lazy { AnnouncementRepository(api, caller) }
 }
 
 /** Yanıtlardaki yeni alanlar yok sayılır; isteklerde null alan gönderilmez (backend fazla alanı reddeder). */

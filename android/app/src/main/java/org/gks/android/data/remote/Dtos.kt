@@ -452,3 +452,55 @@ data class UnreadCount(val unreadCount: Int)
 
 @Serializable
 data class FieldProblem(val field: String? = null, val code: String? = null, val message: String? = null)
+
+// ---------------------------------------------------------------- duyurular (NT-01 – NT-03, NT-06)
+
+/**
+ * §11.3 `AnnouncementTargetRequest`. Kurum geneli (`organization = true`) başka hedefle birlikte gönderilmez;
+ * operasyon hedefinde `userIds`/`groupIds` boşsa operasyonun tüm katılımcıları alıcıdır. Boş liste ve `null`
+ * gönderilmez (backend fazla alanı reddeder; `GksJson.explicitNulls = false`).
+ */
+@Serializable
+data class AnnouncementTarget(
+	val operationId: String? = null,
+	val userIds: List<String>? = null,
+	val groupIds: List<String>? = null,
+	val organization: Boolean? = null,
+)
+
+/** NT-02 gövdesi: hedef + başlık (3–120) + metin (1–2000) + 50'den fazla alıcıda `confirm`. */
+@Serializable
+data class AnnouncementCreateRequest(
+	val operationId: String? = null,
+	val userIds: List<String>? = null,
+	val groupIds: List<String>? = null,
+	val organization: Boolean? = null,
+	val title: String,
+	val body: String,
+	val confirm: Boolean? = null,
+)
+
+/** NT-01 yanıtı. */
+@Serializable
+data class AnnouncementPreview(
+	val recipientCount: Int = 0,
+	val recipients: List<UserRef> = emptyList(),
+	val confirmationRequired: Boolean = false,
+)
+
+@Serializable
+data class AnnouncementDelivery(val sent: Int = 0, val failed: Int = 0, val read: Int = 0)
+
+/** NT-02/NT-03/NT-06 `AnnouncementView`; listede `body` yoktur. */
+@Serializable
+data class AnnouncementView(
+	val id: String,
+	val title: String,
+	val body: String? = null,
+	val operationId: String? = null,
+	val operationName: String? = null,
+	val createdBy: UserRef? = null,
+	val createdAt: String? = null,
+	val recipientCount: Int = 0,
+	val delivery: AnnouncementDelivery? = null,
+)

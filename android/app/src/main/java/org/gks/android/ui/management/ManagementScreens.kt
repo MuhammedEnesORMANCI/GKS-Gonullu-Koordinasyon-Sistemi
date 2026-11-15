@@ -71,6 +71,7 @@ fun ManagementScreen(
 	sessionExpiresAt: String,
 	onOpen: (String) -> Unit,
 	onCreate: () -> Unit,
+	onOrganizationAnnouncement: () -> Unit = {},
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val filter by viewModel.filter.collectAsStateWithLifecycle()
@@ -93,6 +94,11 @@ fun ManagementScreen(
 			}
 			if (access.canCreateOperation) {
 				Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.operation_create)) }
+			}
+			if (access.canAnnounceOrganization) {
+				OutlinedButton(onClick = onOrganizationAnnouncement, modifier = Modifier.fillMaxWidth()) {
+					Text(stringResource(R.string.announcements_organization_title))
+				}
 			}
 		}
 		LoadContent(state, onRetry = viewModel::load) { operations ->
@@ -152,6 +158,7 @@ fun OperationManageScreen(
 	onGroups: () -> Unit,
 	onTasks: () -> Unit,
 	onChanged: () -> Unit,
+	onAnnouncements: () -> Unit = {},
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
@@ -216,6 +223,11 @@ fun OperationManageScreen(
 			}
 			item {
 				OutlinedButton(onClick = onTasks, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tasks_management_title)) }
+			}
+		}
+		if (access.canAnnounce(operation.id)) {
+			item {
+				OutlinedButton(onClick = onAnnouncements, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.announcements_title)) }
 			}
 		}
 

@@ -16,7 +16,13 @@ data class ManagementAccess(
 	private val groupManagedOperations: Set<String> = emptySet(),
 	/** Görev yönetimi (TK-01 – TK-06): bu operasyonda `task.manage` izni (KOR; ADR-015 ile ADM de). */
 	private val taskManagedOperations: Set<String> = emptySet(),
+	/** Operasyon duyurusu (NT-02, `announcement.send.group`): KOR kendi operasyonu, ADR-015 ile ADM tümü. */
+	private val announcementOperations: Set<String> = emptySet(),
+	/** Kurum geneli duyuru (`announcement.send.organization`, yalnızca ADM). */
+	val canAnnounceOrganization: Boolean = false,
 ) {
+	fun canAnnounce(operationId: String): Boolean = operationId in announcementOperations
+
 	fun canManageTasks(operationId: String): Boolean = operationId in taskManagedOperations
 
 	fun canManage(operationId: String): Boolean = organizationWide || operationId in managedOperations
@@ -40,6 +46,8 @@ fun MeContext.managementAccess(): ManagementAccess? {
 		managedOperations = managed,
 		groupManagedOperations = permissions.operations.filterValues { GROUP_CREATE in it && MEMBERSHIP_ADD in it }.keys,
 		taskManagedOperations = permissions.operations.filterValues { TASK_MANAGE in it }.keys,
+		announcementOperations = permissions.operations.filterValues { ANNOUNCE_GROUP in it }.keys,
+		canAnnounceOrganization = ANNOUNCE_ORGANIZATION in organization,
 	)
 }
 
@@ -49,6 +57,8 @@ private const val ROLE_ASSIGN = "role.assign"
 private const val GROUP_CREATE = "group.create.operational"
 private const val MEMBERSHIP_ADD = "membership.add"
 private const val TASK_MANAGE = "task.manage"
+private const val ANNOUNCE_GROUP = "announcement.send.group"
+private const val ANNOUNCE_ORGANIZATION = "announcement.send.organization"
 
 /**
  * §7.2 geçiş tablosu (Çekirdek: `SUSPENDED` yok). İstemci yalnızca anlamlı düğmeleri göstermek için kullanır;
