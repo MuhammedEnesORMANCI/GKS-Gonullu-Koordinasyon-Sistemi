@@ -1,13 +1,12 @@
 package org.gks.backend.access;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 import org.gks.backend.ApiException;
+import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -101,34 +100,13 @@ class RoleAssignmentController {
 				errors.add(new FieldError("active", "INVALID_FORMAT", "true veya false olmalıdır"));
 			}
 		}
-		int size = 50;
-		if (limit != null) {
-			try {
-				size = Integer.parseInt(limit);
-				if (size < 1 || size > 100) {
-					errors.add(new FieldError("limit", "OUT_OF_RANGE", "limit 1 ile 100 arasında olmalıdır"));
-				}
-			}
-			catch (NumberFormatException ex) {
-				errors.add(new FieldError("limit", "INVALID_FORMAT", "limit sayı olmalıdır"));
-			}
-		}
-		UUID after = null;
-		if (cursor != null) {
-			try {
-				after = UUID.fromString(new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.US_ASCII));
-			}
-			catch (IllegalArgumentException ex) {
-				errors.add(new FieldError("cursor", "INVALID_FORMAT", "Geçersiz imleç"));
-			}
-		}
+		PageCursor cursorPage = PageCursor.parse(limit, cursor, errors, PageCursor.CursorFormat.LENIENT);
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		RoleAssignments.Page page = service.list(subject, user, scope, roleFilter, activeFilter, after, size);
-		String next = page.lastId() == null ? null
-				: Base64.getUrlEncoder().withoutPadding().encodeToString(page.lastId().toString().getBytes(StandardCharsets.US_ASCII));
-		return new RoleAssignmentPage(page.items(), next);
+		RoleAssignments.Page page = service.list(subject, user, scope, roleFilter, activeFilter, cursorPage.after(),
+				cursorPage.limit());
+		return new RoleAssignmentPage(page.items(), page.lastId() == null ? null : PageCursor.encode(page.lastId()));
 	}
 
 	private static UUID uuid(String field, String value, List<FieldError> errors) {

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.gks.backend.ApiException;
+import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
 import org.gks.backend.Idempotency;
@@ -16,7 +17,6 @@ import org.gks.backend.tasks.TaskRequests.AssignmentAddRequest;
 import org.gks.backend.tasks.TaskRequests.AssignmentResponseRequest;
 import org.gks.backend.tasks.TaskRequests.TaskPublishRequest;
 import org.gks.backend.tasks.TaskRequests.TaskStateRequest;
-import org.gks.backend.tasks.TaskValidation.PageRequest;
 import org.gks.backend.tasks.TaskViews.AssignmentView;
 import org.gks.backend.tasks.TaskViews.MyAssignmentView;
 import org.gks.backend.tasks.TaskViews.Page;
@@ -123,7 +123,7 @@ class TaskController {
 		Subject subject = any(authentication);
 		List<FieldError> errors = new ArrayList<>();
 		TaskState filter = TaskValidation.queryEnum(state, "state", TaskState.class, errors);
-		PageRequest page = TaskValidation.page(limit, cursor, errors);
+		PageCursor page = PageCursor.parse(limit, cursor, errors, PageCursor.CursorFormat.HEX);
 		requireValid(errors);
 		return service.list(subject, operationId, filter, page);
 	}
@@ -143,7 +143,7 @@ class TaskController {
 		List<FieldError> errors = new ArrayList<>();
 		Set<AssignmentStatus> statuses = TaskValidation.statuses(status, errors);
 		Boolean overdueFilter = TaskValidation.queryBoolean(overdue, "overdue", errors);
-		PageRequest page = TaskValidation.page(limit, cursor, errors);
+		PageCursor page = PageCursor.parse(limit, cursor, errors, PageCursor.CursorFormat.HEX);
 		requireValid(errors);
 		return service.assignments(subject, taskId, statuses, overdueFilter, page);
 	}
@@ -157,7 +157,7 @@ class TaskController {
 		List<FieldError> errors = new ArrayList<>();
 		Set<AssignmentStatus> statuses = TaskValidation.statuses(status, errors);
 		UUID operation = TaskValidation.queryUuid(operationId, "operationId", errors);
-		PageRequest page = TaskValidation.page(limit, cursor, errors);
+		PageCursor page = PageCursor.parse(limit, cursor, errors, PageCursor.CursorFormat.HEX);
 		requireValid(errors);
 		return service.myAssignments(subject, statuses, operation, page);
 	}

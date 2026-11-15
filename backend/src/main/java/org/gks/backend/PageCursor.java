@@ -16,8 +16,29 @@ public record PageCursor(int limit, UUID after) {
 	public static final int DEFAULT_LIMIT = 50;
 	public static final int MAX_LIMIT = 100;
 
+	/**
+	 * İmleç içindeki kimliğin kabul biçimi. Modüller tek yardımcıya taşınırken mevcut davranışları aynen korunur
+	 * (sunucu her zaman kanonik küçük harf üretir; fark yalnızca elle yazılmış imleçlerde görülür).
+	 */
+	public enum CursorFormat {
+		/** Yalnızca {@link UUID#toString()} biçimi (küçük harf); notifications, identity. */
+		CANONICAL,
+		/** 8-4-4-4-12 onaltılı, büyük/küçük harf serbest; tasks. */
+		HEX,
+		/** {@link UUID#fromString} ne kabul ederse; groups, access (rol atamaları). */
+		LENIENT
+	}
+
+	private static final java.util.regex.Pattern HEX_UUID = java.util.regex.Pattern
+		.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
 	/** Hatalar {@code errors} listesine eklenir; çağıran toplu {@code 400} üretir. */
 	public static PageCursor parse(String limit, String cursor, List<FieldError> errors) {
+		return parse(limit, cursor, errors, CursorFormat.CANONICAL);
+	}
+
+	/** {@link #parse(String, String, List)}; imleç kimliği [format] kuralıyla çözülür. */
+	public static PageCursor parse(String limit, String cursor, List<FieldError> errors, CursorFormat format) {
 		int size = DEFAULT_LIMIT;
 		if (limit != null) {
 			try {
@@ -34,8 +55,11 @@ public record PageCursor(int limit, UUID after) {
 		if (cursor != null) {
 			try {
 				String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.US_ASCII);
+				if (format == CursorFormat.HEX && !HEX_UUID.matcher(raw).matches()) {
+					throw new IllegalArgumentException(raw);
+				}
 				after = UUID.fromString(raw);
-				if (!after.toString().equals(raw)) {
+				if (format == CursorFormat.CANONICAL && !after.toString().equals(raw)) {
 					throw new IllegalArgumentException(raw);
 				}
 			}

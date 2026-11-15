@@ -2,15 +2,14 @@ package org.gks.backend.groups;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.nio.charset.StandardCharsets;
 
 import org.gks.backend.ApiException;
+import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.groups.GroupRequests.GroupCreateRequest;
 import org.gks.backend.groups.GroupRequests.MeetingPointRequest;
@@ -166,35 +165,11 @@ final class GroupValidation {
 				errors.add(new FieldError("includeArchived", "INVALID_FORMAT", "true veya false olmalıdır"));
 			}
 		}
-		int size = 50;
-		if (limit != null) {
-			try {
-				size = Integer.parseInt(limit);
-				if (size < 1 || size > 100) {
-					errors.add(new FieldError("limit", "OUT_OF_RANGE", "limit 1 ile 100 arasında olmalıdır"));
-				}
-			}
-			catch (NumberFormatException ex) {
-				errors.add(new FieldError("limit", "INVALID_FORMAT", "limit sayı olmalıdır"));
-			}
-		}
-		UUID after = null;
-		if (cursor != null) {
-			try {
-				after = UUID.fromString(new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.US_ASCII));
-			}
-			catch (IllegalArgumentException ex) {
-				errors.add(new FieldError("cursor", "INVALID_FORMAT", "Geçersiz imleç"));
-			}
-		}
+		PageCursor page = PageCursor.parse(limit, cursor, errors, PageCursor.CursorFormat.LENIENT);
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		return new PageRequest(operation, archived, size, after);
-	}
-
-	static String cursor(UUID lastId) {
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(lastId.toString().getBytes(StandardCharsets.US_ASCII));
+		return new PageRequest(operation, archived, page.limit(), page.after());
 	}
 
 	static void requireUser(String field, UUID userId) {

@@ -1,11 +1,9 @@
 package org.gks.backend.tasks;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -61,9 +59,6 @@ final class TaskValidation {
 	record TaskFields(String title, Optional<String> description, TaskPriority priority,
 			Optional<String> meetingPoint, Optional<TimeWindowInput> timeWindow, TargetsInput targets,
 			Optional<Integer> capacity, Integer responseWindowMinutes, Integer version) {
-	}
-
-	record PageRequest(int limit, UUID after) {
 	}
 
 	/** TK-01 {@code TaskCreateRequest}: {@code title} ve {@code targets} zorunlu (AC-13.1). */
@@ -187,37 +182,6 @@ final class TaskValidation {
 			throw ApiException.validation(List.of(new FieldError("userId", "REQUIRED", "Kullanıcı kimliği zorunludur")));
 		}
 		return userId;
-	}
-
-	/** §3.5: {@code limit} 1..100 (varsayılan 50), imleç opak base64url. */
-	static PageRequest page(String limit, String cursor, List<FieldError> errors) {
-		int size = 50;
-		if (limit != null) {
-			try {
-				size = Integer.parseInt(limit);
-				if (size < 1 || size > 100) {
-					errors.add(new FieldError("limit", "OUT_OF_RANGE", "limit 1 ile 100 arasında olmalıdır"));
-				}
-			}
-			catch (NumberFormatException ex) {
-				errors.add(new FieldError("limit", "INVALID_FORMAT", "limit sayı olmalıdır"));
-			}
-		}
-		UUID after = null;
-		if (cursor != null) {
-			try {
-				after = strictUuid(new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.US_ASCII));
-			}
-			catch (IllegalArgumentException ex) {
-				errors.add(new FieldError("cursor", "INVALID_FORMAT", "Geçersiz imleç"));
-			}
-		}
-		return new PageRequest(size, after);
-	}
-
-	static String cursor(UUID lastId) {
-		return Base64.getUrlEncoder().withoutPadding()
-			.encodeToString(lastId.toString().getBytes(StandardCharsets.US_ASCII));
 	}
 
 	static <E extends Enum<E>> E queryEnum(String value, String field, Class<E> type, List<FieldError> errors) {

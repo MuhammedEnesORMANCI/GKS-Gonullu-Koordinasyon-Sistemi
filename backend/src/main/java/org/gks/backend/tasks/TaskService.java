@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.gks.backend.ApiException;
+import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
 import org.gks.backend.Idempotency;
@@ -32,7 +33,6 @@ import org.gks.backend.tasks.TaskStore.AssignmentRow;
 import org.gks.backend.tasks.TaskStore.Counts;
 import org.gks.backend.tasks.TaskStore.SummaryRow;
 import org.gks.backend.tasks.TaskStore.TaskRow;
-import org.gks.backend.tasks.TaskValidation.PageRequest;
 import org.gks.backend.tasks.TaskValidation.TargetsInput;
 import org.gks.backend.tasks.TaskValidation.TaskFields;
 import org.gks.backend.tasks.TaskValidation.TimeWindowInput;
@@ -307,7 +307,7 @@ class TaskService {
 
 	/** TK-07. Gönüllü izdüşümünde yalnızca kendisine atanmış görevler ve {@code myAssignment} (§14 N-03 A). */
 	@Transactional(readOnly = true)
-	Page<TaskSummary> list(Subject subject, UUID operationId, TaskState state, PageRequest page) {
+	Page<TaskSummary> list(Subject subject, UUID operationId, TaskState state, PageCursor page) {
 		OperationRef operation = operations.find(operationId).orElseThrow(() -> ApiException.of(Code.NOT_FOUND));
 		ViewScope scope = access.viewScope(subject, operation.id());
 		if (scope == ViewScope.NONE) {
@@ -323,7 +323,7 @@ class TaskService {
 			.map(row -> summary(row.task(), full ? new Counts(row.pendingCount(), row.overdueCount()) : null,
 					full ? null : row.mine(), null, now))
 			.toList();
-		return new Page<>(items, more ? TaskValidation.cursor(current.getLast().task().id()) : null);
+		return new Page<>(items, more ? PageCursor.encode(current.getLast().task().id()) : null);
 	}
 
 	/** TK-08. Gönüllü yalnızca kendi atamasını görür; diğer atamalar, hedefler ve geçmiş yazılmaz. */
@@ -346,7 +346,7 @@ class TaskService {
 	/** TK-09. Yalnızca KOR/ADM kapsamı. */
 	@Transactional(readOnly = true)
 	Page<AssignmentView> assignments(Subject subject, UUID taskId, Set<AssignmentStatus> statuses, Boolean overdue,
-			PageRequest page) {
+			PageCursor page) {
 		TaskRow task = store.find(taskId).orElseThrow(() -> ApiException.of(Code.NOT_FOUND));
 		if (access.viewScope(subject, task.operationId()) != ViewScope.ALL) {
 			throw ApiException.of(Code.FORBIDDEN);
@@ -365,13 +365,13 @@ class TaskService {
 		Map<UUID, String> names = users.displayNames(ids);
 		Instant now = clock.instant();
 		List<AssignmentView> items = current.stream().map(row -> assignmentView(row, names, now)).toList();
-		return new Page<>(items, more ? TaskValidation.cursor(current.getLast().id()) : null);
+		return new Page<>(items, more ? PageCursor.encode(current.getLast().id()) : null);
 	}
 
 	/** TK-10 ({@code self}). */
 	@Transactional(readOnly = true)
 	Page<MyAssignmentView> myAssignments(Subject subject, Set<AssignmentStatus> statuses, UUID operationId,
-			PageRequest page) {
+			PageCursor page) {
 		access.can(subject, TaskAction.LIST_OWN_ASSIGNMENTS, null, true).require();
 		List<AssignmentRow> rows = store.myAssignments(subject.userId(), statuses, operationId, page.after(),
 				page.limit() + 1);
@@ -383,7 +383,7 @@ class TaskService {
 		List<MyAssignmentView> items = current.stream()
 			.map(row -> myAssignmentView(row, tasks.get(row.taskId()), operationNames, now))
 			.toList();
-		return new Page<>(items, more ? TaskValidation.cursor(current.getLast().id()) : null);
+		return new Page<>(items, more ? PageCursor.encode(current.getLast().id()) : null);
 	}
 
 	/**

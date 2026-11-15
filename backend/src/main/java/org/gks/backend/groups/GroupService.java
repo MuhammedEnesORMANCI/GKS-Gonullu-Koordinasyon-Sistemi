@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.gks.backend.ApiException;
+import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
 import org.gks.backend.Ids;
@@ -127,7 +128,7 @@ class GroupService {
 			.map(row -> new GroupSummary(row.id(), row.name(), row.operationId(), operationNames.get(row.operationId()),
 					ref(row.leaderId(), names), row.memberCount(), row.archived(), row.myRole()))
 			.toList();
-		return new GroupPage(items, more ? GroupValidation.cursor(current.getLast().id()) : null);
+		return new GroupPage(items, more ? PageCursor.encode(current.getLast().id()) : null);
 	}
 
 	/** GR-03. Üye olmayan GON {@code 403} alır (AC-10.2); veri dönmez. */
