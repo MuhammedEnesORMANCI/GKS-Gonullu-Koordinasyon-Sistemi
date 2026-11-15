@@ -1,0 +1,18 @@
+# Sırlar (NFR-01)
+.env
+*.pem
+*-service-account*.json
+
+# Claude Code yerel ayarları
+.claude/settings.local.json
+
+# IDE ve işletim sistemi
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# JVM cokme kayitlari
+hs_err_pid*.log
+replay_pid*.log

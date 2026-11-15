@@ -1,0 +1,114 @@
+spring:
+  application:
+    name: gks-backend
+  mail:
+    # Geliştirme ve demoda Mailpit (compose.yaml); gerçek e-posta gönderilmez (K-04).
+    host: ${GKS_MAIL_HOST:localhost}
+    port: ${GKS_MAIL_PORT:1025}
+
+  task:
+    scheduling:
+      # Teslim işçisinde CRITICAL ve STANDARD kuyrukları ayrı görevlerdir; tek iş parçacığında CRITICAL,
+      # STANDARD'ı beklerdi (ADR-004). Idempotency temizliği de bu havuzdadır.
+      pool:
+        size: 3
+
+  autoconfigure:
+    # Kimlik doğrulama identity modülünde belirteçle yapılacak (ADR-012); Spring'in rastgele
+    # parolalı bellek içi varsayılan kullanıcısı oluşturulmaz.
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+
+  # Yerel geliştirmede (bootRun) kök dizindeki compose.yaml kullanılır;
+  # bağlantı bilgileri Spring Boot Docker Compose desteğiyle otomatik alınır.
+  docker:
+    compose:
+      file: ../compose.yaml
+      lifecycle-management: start-only
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Şemanın tek sahibi Flyway'dir (ADR-008); Hibernate yalnızca doğrular.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    # Flyway geçmiş tablosu platform şemasında tutulur; modül şemaları V1 ile oluşur (TD-20).
+    default-schema: platform
+    schemas: platform
+
+  jackson:
+    time-zone: UTC
+    deserialization:
+      # Bilinmeyen alan reddedilir → 400 VALIDATION_FAILED / UNKNOWN_FIELD (backend-api-design.md §3).
+      fail-on-unknown-properties: true
+
+gks:
+  security:
+    jwt:
+      # Base64 HS256 imza anahtarı (en az 256 bit). Depoya yazılmaz; ortam değişkeninden gelir (ADR-012).
+      # Örnek üretim: openssl rand -base64 32
+      signing-key: ${GKS_JWT_SIGNING_KEY:}
+      key-id: v1
+      access-token-ttl: PT15M
+    totp:
+      # TOTP gizli anahtarlarının AES-256-GCM şifreleme anahtarı (Base64, tam 256 bit; DB §3.1, LD-57). Depoya yazılmaz.
+      encryption-key: ${GKS_TOTP_ENCRYPTION_KEY:}
+      key-version: 1
+    invitation:
+      # Davet kodu ve bağlantı belirtecinin HMAC-SHA-256 anahtarı (Base64, en az 256 bit; DB §3.2, TD-02). Depoya yazılmaz.
+      hash-key: ${GKS_INVITATION_HASH_KEY:}
+      # Davet e-postasındaki bağlantının kökü (kod URL parçası olarak eklenir, LD-37).
+      link-base: ${GKS_INVITATION_LINK_BASE:http://localhost:5173/davet}
+      mail-from: ${GKS_MAIL_FROM:gks@localhost}
+  notifications:
+    push:
+      # Push sağlayıcısı (ADR-004): bu sürümde yalnızca 'none' — Firebase projesi yok; PUSH teslim satırı oluşmaz,
+      # uygulama içi (IN_APP) bildirim çalışır. FCM ayrı aşamada 'fcm' değeriyle eklenecek.
+      provider: ${GKS_PUSH_PROVIDER:none}
+  idempotency:
+    # İstek özeti için HMAC-SHA-256 anahtarı (Base64, en az 256 bit); sürümlüdür (backend-api-design.md §3.6, LD-42).
+    # Depoya ve veritabanına yazılmaz; ortam değişkeninden / sır deposundan gelir. Örnek: openssl rand -base64 32
+    hash-key: ${GKS_IDEMPOTENCY_HASH_KEY:}
+    hash-key-version: ${GKS_IDEMPOTENCY_HASH_KEY_VERSION:1}
+    # Döndürme penceresinde (25 sa) önceki anahtar yalnızca doğrulama için; normalde boş.
+    verify-only-key: ${GKS_IDEMPOTENCY_VERIFY_ONLY_KEY:}
+    verify-only-key-version: ${GKS_IDEMPOTENCY_VERIFY_ONLY_KEY_VERSION:}
+    ttl: PT24H
+
+  bootstrap:
+    # Tek seferlik ilk yönetici (LD-54): yalnızca kurumda aktif ADM yokken kullanılır. Parola depoya yazılmaz.
+    admin:
+      email: ${GKS_BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${GKS_BOOTSTRAP_ADMIN_PASSWORD:}
+      full-name: ${GKS_BOOTSTRAP_ADMIN_FULL_NAME:}
+      display-name: ${GKS_BOOTSTRAP_ADMIN_DISPLAY_NAME:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,modulith
+  endpoint:
+    health:
+      # Bileşen durumları (db, diskSpace) görünür; ayrıntılar (sürüm, yol) gizli.
+      show-components: always
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    mail:
+      # Davet e-postası en iyi çabayla gönderilir (InvitationMailer); SMTP kesintisi uygulamayı DOWN göstermez.
+      enabled: false
+
+server:
+  error:
+    include-stacktrace: never
+
+logging:
+  pattern:
+    # Hata yanıtındaki traceId ile günlük satırını eşleştirmek için (§4.1).
+    correlation: "[%X{traceId:-}] "

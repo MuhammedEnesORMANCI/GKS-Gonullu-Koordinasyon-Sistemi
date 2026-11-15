@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Yalnızca debug: yerel backend düz HTTP (8080) ile çalışır. Emülatör (10.0.2.2), adb reverse (localhost) ve
+	aynı ağdaki geliştirme makinesi (LAN IP'si önceden bilinmediği için genel izin) için açık metne izin verilir.
+	Sürüm derlemesi bu dosyayı içermez ve yalnızca HTTPS kullanır.
+-->
+<network-security-config>
+	<base-config cleartextTrafficPermitted="true" />
+</network-security-config>

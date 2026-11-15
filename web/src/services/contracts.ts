@@ -1,0 +1,209 @@
+import type {
+  AnnouncementCreateRequest,
+  AnnouncementPreview,
+  AnnouncementTarget,
+  AnnouncementView,
+  AssignmentStatus,
+  AssignmentView,
+  GroupCreateRequest,
+  GroupMemberView,
+  GroupSummary,
+  GroupUpdateRequest,
+  GroupView,
+  InboxItem,
+  InvitationCreateRequest,
+  InvitationStatus,
+  InvitationView,
+  LoginRequest,
+  MfaEnrollResponse,
+  PasswordChangeRequest,
+  ScopeType,
+  LoginResponse,
+  MeContext,
+  MeProfile,
+  MeProfileUpdate,
+  MeetingPoint,
+  MeetingPointRequest,
+  OperationCreateRequest,
+  OperationState,
+  OperationStateRequest,
+  OperationUpdateRequest,
+  OperationView,
+  Page,
+  PageRequest,
+  ParticipantView,
+  TaskCreateRequest,
+  TaskState,
+  TaskStateRequest,
+  TaskSummary,
+  TaskUpdateRequest,
+  TaskView,
+  Uuid,
+} from './types';
+
+/** Kimlik akışı (ID-01 – ID-04, ID-06, ID-08). MFA bileti yalnızca bellekte tutulur (mapping §0.4). */
+export interface AuthService {
+  /** ID-01 `GET /auth/csrf`. */
+  fetchCsrf(): Promise<void>;
+  /** ID-02 `POST /auth/login` (`clientType=WEB`). */
+  login(request: Omit<LoginRequest, 'clientType'>): Promise<LoginResponse>;
+  /** ID-03 `POST /auth/mfa/enroll`: ilk girişte TOTP anahtarı (kurulum ID-04'teki ilk doğru kodla kalıcılaşır). */
+  enrollMfa(mfaTicket: string): Promise<MfaEnrollResponse>;
+  /** ID-04 `POST /auth/mfa`: doğru kod → `mfaVerified=true` web oturumu (çerezler). */
+  verifyMfa(mfaTicket: string, code: string): Promise<LoginResponse>;
+  /** ID-08 `POST /me/password`: tüm eski oturumlar iptal, çağıran yeni oturum alır (LD-58). */
+  changePassword(request: PasswordChangeRequest): Promise<void>;
+  /** ID-06 `POST /auth/logout`. Başarısız olsa da çağıran yerel temizliği yapar. */
+  logout(): Promise<void>;
+}
+
+export interface InvitationFilter extends PageRequest {
+  scopeType?: ScopeType;
+  scopeId?: Uuid;
+  status?: InvitationStatus[];
+}
+
+/** ID-12 – ID-14 (web). ID-15 – ID-18 Android uçlarıdır. */
+export interface InvitationService {
+  /** ID-13 `GET /invitations`. */
+  list(filter?: InvitationFilter): Promise<Page<InvitationView>>;
+  /** ID-12 `POST /invitations` (Z: `Idempotency-Key` zorunlu). */
+  create(request: InvitationCreateRequest, idempotencyKey: string): Promise<InvitationView>;
+  /** ID-14 `POST /invitations/{id}/revoke`. */
+  revoke(id: Uuid): Promise<InvitationView>;
+}
+
+/** ID-09 / ID-10: kendi profili (web ve Android aynı uçlar). */
+export interface AccountService {
+  /** ID-09 `GET /me`. */
+  getProfile(): Promise<MeProfile>;
+  /** ID-10 `PATCH /me`: yalnızca `fullName`, `displayName`, `phone`. */
+  updateProfile(update: MeProfileUpdate): Promise<MeProfile>;
+}
+
+export interface InboxFilter extends PageRequest {
+  unreadOnly?: boolean;
+}
+
+/** Uygulama içi gelen kutusu (NT-04/05/07/08, LD-60): kişinin kendi kayıtları; web ve Android aynı uçlar. */
+export interface NotificationService {
+  list(filter?: InboxFilter): Promise<Page<InboxItem>>;
+  get(id: Uuid): Promise<InboxItem>;
+  markRead(id: Uuid): Promise<void>;
+  unreadCount(): Promise<number>;
+}
+
+export interface AnnouncementFilter extends PageRequest {
+  operationId?: Uuid;
+}
+
+/** NT-01 – NT-03, NT-06 (web; KOR kendi aktif operasyonu, ADM kurum geneli). */
+export interface AnnouncementService {
+  preview(target: AnnouncementTarget): Promise<AnnouncementPreview>;
+  /** NT-02 (Z: `Idempotency-Key` zorunlu). */
+  create(request: AnnouncementCreateRequest, idempotencyKey: string): Promise<AnnouncementView>;
+  list(filter?: AnnouncementFilter): Promise<Page<AnnouncementView>>;
+  get(id: Uuid): Promise<AnnouncementView>;
+}
+
+/** ID-11 `GET /me/context`. */
+export interface MeContextService {
+  getContext(): Promise<MeContext>;
+}
+
+/** OR-01, OR-05, OR-02, OR-03. */
+export interface OperationService {
+  /** OR-01 (d): yalnızca ADM; operasyon ve KOR atamaları tek işlemde. */
+  create(request: OperationCreateRequest, idempotencyKey?: string): Promise<OperationView>;
+  get(id: Uuid): Promise<OperationView>;
+  update(id: Uuid, request: OperationUpdateRequest): Promise<OperationView>;
+  changeState(id: Uuid, request: OperationStateRequest): Promise<OperationView>;
+}
+
+export interface OperationListFilter extends PageRequest {
+  state?: OperationState[];
+}
+
+/** OR-04 `GET /operations`. */
+export interface OperationListService {
+  list(filter?: OperationListFilter): Promise<Page<OperationView>>;
+}
+
+export interface ParticipantFilter extends PageRequest {
+  notInGroup?: Uuid;
+}
+
+/** OR-06 `GET /operations/{id}/participants`. */
+export interface ParticipantService {
+  list(operationId: Uuid, filter?: ParticipantFilter): Promise<Page<ParticipantView>>;
+}
+
+export interface GroupListFilter extends PageRequest {
+  includeArchived?: boolean;
+}
+
+/** GR-01 … GR-08. `idempotencyKey` yalnızca "d" (destekleyen) uçlarda gönderilir. */
+export interface GroupService {
+  /** GR-02 `GET /groups?operationId=`. */
+  list(operationId: Uuid, filter?: GroupListFilter): Promise<Page<GroupSummary>>;
+  /** GR-03. */
+  get(groupId: Uuid): Promise<GroupView>;
+  /** GR-01 `POST /operations/{id}/groups`. */
+  create(operationId: Uuid, request: GroupCreateRequest, idempotencyKey?: string): Promise<GroupView>;
+  /** GR-04. */
+  addMember(groupId: Uuid, userId: Uuid, idempotencyKey?: string): Promise<GroupMemberView>;
+  /** GR-05. */
+  removeMember(groupId: Uuid, userId: Uuid): Promise<void>;
+  /** GR-06. */
+  changeLeader(groupId: Uuid, userId: Uuid, idempotencyKey?: string): Promise<GroupView>;
+  /** GR-07. */
+  update(groupId: Uuid, request: GroupUpdateRequest): Promise<GroupView>;
+  /** GR-08. */
+  setMeetingPoint(groupId: Uuid, request: MeetingPointRequest): Promise<MeetingPoint>;
+}
+
+/** TK-07: `state` tek değerdir (§9.1 `state?`); birden fazla değer backend'de 400 olur. */
+export interface TaskListFilter extends PageRequest {
+  state?: TaskState;
+}
+
+export interface AssignmentFilter extends PageRequest {
+  status?: AssignmentStatus[];
+  overdue?: boolean;
+}
+
+/** TK-01 … TK-09 (web tarafı; TK-10 … TK-12 Android uçlarıdır). */
+export interface TaskService {
+  /** TK-07. */
+  list(operationId: Uuid, filter?: TaskListFilter): Promise<Page<TaskSummary>>;
+  /** TK-08. */
+  get(taskId: Uuid): Promise<TaskView>;
+  /** TK-09. */
+  assignments(taskId: Uuid, filter?: AssignmentFilter): Promise<Page<AssignmentView>>;
+  /** TK-01 (d). */
+  create(operationId: Uuid, request: TaskCreateRequest, idempotencyKey?: string): Promise<TaskView>;
+  /** TK-02. */
+  update(taskId: Uuid, request: TaskUpdateRequest): Promise<TaskView>;
+  /** TK-03 (Z: `Idempotency-Key` zorunlu). */
+  publish(taskId: Uuid, version: number, idempotencyKey: string): Promise<TaskView>;
+  /** TK-04 (taslağı atma dahil: `CANCELLED`). */
+  changeState(taskId: Uuid, request: TaskStateRequest): Promise<TaskView>;
+  /** TK-05 (d). */
+  addAssignment(taskId: Uuid, userId: Uuid, idempotencyKey?: string): Promise<AssignmentView>;
+  /** TK-06. */
+  removeAssignment(taskId: Uuid, assignmentId: Uuid): Promise<void>;
+}
+
+export interface Services {
+  auth: AuthService;
+  account: AccountService;
+  meContext: MeContextService;
+  operations: OperationService;
+  operationList: OperationListService;
+  participants: ParticipantService;
+  groups: GroupService;
+  tasks: TaskService;
+  invitations: InvitationService;
+  notifications: NotificationService;
+  announcements: AnnouncementService;
+}
