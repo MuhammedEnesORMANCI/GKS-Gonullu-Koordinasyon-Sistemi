@@ -43,16 +43,20 @@
 | **Gerçek zamanlı SSE (RT-01, ADR-017, 16.11)** | ✅ `realtime/` | ✅ gelen kutusu, duyuru, alarm, konum canlı | ✅ (ADR-021) | Bağlantı başına yetki, işlem sonrası yayın, `Last-Event-ID`/`resync`, rol kaldırmada `subscription.revoked`, oturum iptalinde `session.revoked`; tek örnek |
 | **Acil alarm (V13, ADR-018, 16.11)** | ✅ `alerts/` AL-01, 03–16 | ✅ WEB-09/10, `/alarmlar` | ✅ gönüllü: alarm bandı, yanıt ekranı | Taslak → alıcı listeli onay → gönderim; iptal/düzeltme/kapatma/yeniden gönderim; hatırlatma sayacı; operasyon kapanışında kapanır. **İletim gelen kutusu + SSE; FCM yok** |
 | **Konum (V14, ADR-019, 16.11)** | ✅ `location/` LC-01…05 | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi | Yalnızca aktif operasyonda açık başlatma; yalnızca KOR görür; 5 dk pencerede tek denetim kaydı; kapanıştan 30 gün sonra silinir; **harita yok** (sağlayıcı arayüzü hazır) |
-
-## 3. Eksik modüller (önem sırasına göre)
-
-1. **Harita** — konum şu an tablo; sağlayıcı kararı (OSM/Leaflet, Google, MapLibre) ve bağımlılık gerekir. Bağlanma noktası: web `features/location/mapProvider.ts`.
+| **Mesajlaşma (V17, ADR-024, 16.11 gece)** | ✅ `messaging/` | ✅ `/panel/mesajlar` | ✅ Mesajlar sekmesi, çevrimdışı kuyruk | Operasyon/koordinasyon/grup kanalları, her istekte erişim, yalnızca yöneticiler modu, silme/gizleme, SSE, içeriksiz FCM, 90 gün saklama |
+| **Harita (V18, ADR-025)** | ✅ `/map/operations`, operasyon bölgesi | ✅ MapLibre `/panel/harita`, Özet kartı, operasyon/konum haritaları | ✅ MapLibre 11.13.5 | OSM karosu yalnızca geliştirme; WebGL yoksa metin yedeği; Android "Yol tarifi" (`geo:`) |
+| **Genel Acil Alarm (V19, ADR-026)** | ✅ `/general-alerts` | ✅ üst çubuk düğmesi | ✅ yönetim: genel alarm, açık alarmlar, takip | Birleştirilebilir hedef, tekil alıcı, `confirmed` zorunlu, oran sınırı, denetim, kanallara sistem mesajı, olay yeri |
+| **Demo verisi aracı (Görev 25)** | ✅ `devseed/` | – | – | `scripts/dev/demo-seed.ps1`; yalnızca ekler, idempotent, üretimde çalışmaz |
 | **Tasarım sistemi (ADR-023, 16.11 gece)** | – | ✅ `app/theme.ts`, `config/brand.ts` | ✅ `ui/theme/` , `res/values/brand.xml` | Lacivert + turuncu, WCAG AA testli, sistem fontları; logo/hero dosyası proje sahibince (yoksa yer tutucu/gradyan) |
 | **Halka açık site (ADR-023)** | – | ✅ `features/public/`, içerik `src/content/*.json` | – | `/`, `/afet/:tur`, `/rehber`, `/ne-yapmali`, `/duyurular`, `/gonulluluk`, `/iletisim`; iç veri yok (testli); eski panel adresleri `/panel/...`e yönlenir |
 | **Kamu duyuruları (V16, ADR-023)** | ✅ `PublicAnnouncement*` | ✅ `/panel/kamu-duyurulari` + site | ✅ Duyurular sekmesi | ADM yönetir (taslak/yayında, denetimli); `GET /api/v1/public/announcements` kimliksiz, sayfalı, IP başına 60/dk |
 | **Panel yeniden tasarımı + Özet (WEB-02)** | – | ✅ `AppShell`, `dashboard/HomePage` | – | Daraltılabilir yan menü (izinlere göre), üst çubuk, Özet kartları (SSE), ortak durum rozeti |
 | **Android tasarım (ADR-023)** | – | – | ✅ `ui/guide/`, `ui/home/HomeLanding`, `ui/announcements/` | Alt gezinme Ana Sayfa/Rehberler/Duyurular/(Yönetim)/Hesap; internetsiz rehber (web içeriği gömülü), girişten önce de |
-2. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM varken de hâlâ `false` (push teslim durumundan hesaplanmıyor); alarm hatırlatmaları (AL) push'u yeniden tetiklemiyor; KOR/ADM için Android alarm yönetim ekranı yok (web'de).
+
+## 3. Eksik modüller (önem sırasına göre)
+
+1. **Görev 23 (kalan) ve Görev 24 (a–e) bu turda yapılmadı** (proje sahibi kararı, 16.11 22.44). Görev 23'ün olay yeri ve alarm/operasyon → mesaj kanalı bağlantısı parçaları plan değişmeden önce yazılmıştı (3d5d424). Görev 24 kalanları: REUSE_DETECTED ve oturum bitişinde cihaz kaydını kapatma, Türkçe I taraması, bildirim içerik kuralları + kamu duyurusunda "Telefonlara bildir", gerçek teslim durumundan "iletim gecikti" ve FCM ile hatırlatma. (Android alarm takip ekranı Görev 22 ile geldi.)
+2. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM varken de hâlâ `false`; hatırlatmalar push'u yeniden tetiklemiyor. Android'de genel alarm hedefi olarak grup/kişi seçimi yok (web'de var).
 3. FCM kalanları: `REUSE_DETECTED` ile iptal edilen oturum cihazı kapatmıyor; FCM gerçek cihazda henüz denenmedi (MANUEL_TEST §11).
 4. Konum: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma nedenleri üretilmiyor.
 5. Küçük kalanlar: Android'de kullanıcı yönetimi ekranı yok (yalnızca web); grup toplanma noktası saati Android'de hâlâ metin alanı.
@@ -69,30 +73,32 @@
 - **ADR-019 (konum):** yalnızca KOR görür (ADM görmez — proje sahibinin onayı bekleniyor); saklama `gks.location.retention-after-close` (varsayılan `P30D`).
 - **`OperationClosed`** (organization): kapanış işleminde eşzamanlı yayımlanır; alerts (açık alarmları kapatır) ve location (paylaşımı durdurur, saklamayı başlatır) dinler.
 
-## 5. Test durumu (16.11.2026 gece, tam backend s42, web 17. iş sonrası, Android s44)
+## 5. Test durumu (16.11.2026 gece: tam backend s67, web s63, Android s62)
 
 | Paket | Sonuç |
 |---|---|
 | Backend access | 37/37 |
 | Backend identity | 131/131 |
-| Backend notifications | 50/50 |
+| Backend notifications | 51/51 |
 | Backend organization | 54/54 |
 | Backend tasks | 115/115 |
 | Backend groups | 62/62 |
 | Backend audit | 6/6 |
 | Backend realtime | 5/5 |
-| Backend alerts | 6/6 |
+| Backend alerts | 14/14 |
+| Backend messaging | 6/6 |
+| Backend devseed | 3/3 |
 | Backend location | 4/4 |
 | Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **516/516** |
-| Web | tsc + eslint temiz, vitest **180/180** (testTimeout 15 sn, RAPOR_5 §5) |
-| Android | **93/93**, `assembleDebug` başarılı; rehber içeriği APK içinde `assets/guide/` |
+| **Backend toplam** | **534/534** |
+| Web | tsc + eslint temiz (uyarısız), vitest **198/198** |
+| Android | **105/105**, `assembleDebug` başarılı (telefon bağlı değildi, installDebug yok) |
 
 Denenmeyenler (16.11 gece): yeni tasarım tarayıcıda/telefonda görülmedi (telefon çıkarılmıştı, `installDebug` yapılmadı); V16 dev DB'ye uygulanmadı (backend yeniden başlatılmadı). MANUEL_TEST §12–§15. FCM gerçek cihazda doğrulandı (proje sahibi). Proje sahibi 16.11'de doğruladı: web girişi, alarm (aktif operasyonda), duyurular; telefonda uygulama açıkken SSE ve yerel bildirim. Harita ve gerçek GPS ölçümü denenmedi.
 
 ## 6. Sonraki oturumda başlangıç adımları
 
-1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V16'ya kadar uygulanmış olmalı (V16 ilk yeniden başlatmada uygulanır). FCM için `.env`: `GKS_PUSH_PROVIDER=fcm`, `GKS_FIREBASE_CREDENTIALS_FILE=<yol>`.
-2. `.claude-runs/RAPOR_5.md` (tasarım, içerik doğrulama listesi, kararlar) ve MANUEL_TEST §12–§15 sonuçlarını oku.
+1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Dev DB Flyway **V19**'da (16.11 23.15 demo aracı uyguladı), demo verisi ekli. FCM için `.env`: `GKS_PUSH_PROVIDER=fcm`, `GKS_FIREBASE_CREDENTIALS_FILE=<yol>`.
+2. `.claude-runs/RAPOR_6.md` (Görev 20–22 ve 25, indirilen sürümler, yedek, demo hesapları, bekleyen kararlar) ve MANUEL_TEST §16–§19.
 3. Kod yerleri: backend `backend/src/main/java/org/gks/backend/<modül>/`; Android `android/app/src/main/java/org/gks/android/` (`data/*Repository.kt`, `ui/alerts/`, `ui/location/`, `location/LocationSharingService.kt`); web `web/src/features/<ekran>/`, servisler `web/src/services/`, canlı akış `web/src/app/live.ts`.
 4. Yeni yönetim işlemi: yetki `access/` arayüzü, denetim `AuditTrail.record`, canlı güncelleme `RealtimeBus.publish`; web'de yeni servis için http + mock + `config/services.ts` anahtarı ve `screens.test.tsx` anahtar listesi.

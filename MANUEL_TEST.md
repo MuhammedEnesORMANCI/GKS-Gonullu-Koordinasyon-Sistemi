@@ -263,6 +263,45 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 | T8 | Uçak modunda Rehberler sekmesi | İçerik eksiksiz açılır | [ ] |
 | T9 | kor1: Yönetim → operasyon/görev listeleri | Durum rozetleri web ile aynı renklerde; onay pencereleri çalışır; görev/grup/duyuru akışları değişmeden | [ ] |
 
+## 16. Mesajlaşma (ADR-024; W + A)
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| M1 | Web: KOR/ADM → Mesajlar; "Marmara Deprem Tatbikatı 2026" | Kanallar: Operasyon, Koordinasyon, 2 grup; demo mesajları görünür, okunmamış sayıları | [ ] |
+| M2 | Mesaj yaz, Enter | Mesaj anında görünür; telefonda (aynı kanalın üyesi) bildirim "Gönderen: metin", aynı kanal açıkken bildirim yok | [ ] |
+| M3 | Operasyon kanalında "Yalnızca yöneticiler yazabilir" aç | Gönüllü telefonunda yazma alanı yerine açıklama | [ ] |
+| M4 | Telefon uçak modunda mesaj gönder, sonra ağı aç | "Gönderilmeyi bekliyor" → ağ gelince gönderilir, tek kopya | [ ] |
+| M5 | Kendi mesajını 5 dk içinde sil; KOR başkasınınkini gizle | "Mesaj silindi" / "Yönetici tarafından kaldırıldı" | [ ] |
+
+## 17. Harita (ADR-025; W + A)
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| H1 | Web ADM: Operasyon Haritası | İzmit'te lacivert işaret + 3 km daire; "Planlananları da göster" → Seferihisar gri; altta "© OpenStreetMap katkıcıları" | [ ] |
+| H2 | İşarete tıkla | Özet kartı: ad, durum, katılımcı, alarm durumu, "Operasyona git" | [ ] |
+| H3 | Operasyon sayfası → Harita; "Gönüllülerin son konumlarını göster" | 6 yeşil nokta; denetimde konum görüntüleme kaydı | [ ] |
+| H4 | Operasyonu düzenle → haritaya tıkla, yarıçap gir, kaydet | Bölge güncellenir; 95 gibi geçersiz enlem kaydedilmez | [ ] |
+| H5 | Telefon (demo gönüllü): Grubum → toplanma noktası | Harita + koordinat + "Yol tarifi" telefonun harita uygulamasını açar; uçak modunda da metin ve yol tarifi var | [ ] |
+
+## 18. Genel Acil Alarm (ADR-026; W + A)
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| G1 | Web üst çubuk: kırmızı "Genel Acil Alarm" (ADM) | Pencere: mesaj, hedefler (Tüm kurum yalnızca ADM), operasyon/grup/kişi, olay yeri haritası | [ ] |
+| G2 | Önizle | Tekilleştirilmiş alıcı sayısı ve listesi; onay kutusu işaretlenmeden "GÖNDER" pasif | [ ] |
+| G3 | Gönder (yalnızca tatbikat metniyle, demo operasyonunu hedefle) | Telefonlarda sürekli sesli "GENEL ACİL ALARM", bildirimden yanıt; takip ekranı; operasyon kanalına sistem mesajı | [ ] |
+| G4 | Kapat | Telefonlarda "Acil durum sona erdi", ses durur | [ ] |
+| G5 | KOR web'de | "Tüm kurum" seçeneği yok; yalnızca kendi operasyonları | [ ] |
+| G6 | Android KOR/ADM: Yönetim → Genel Acil Alarm → onay → GÖNDER | Takip ekranı (yanıtlayan/bekleyen/yardım isteyen), "Alarmı kapat" | [ ] |
+
+## 19. Demo verisi (Görev 25)
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| D1 | `ayse.yildiz@demo.local` ve demo parolası ile telefondan giriş | Marmara tatbikatı, Arama Kurtarma Ekibi 1 (lider), görev "Enkaz alanı keşfi" kabul edilmiş, duyurular, mesajlar | [ ] |
+| D2 | Halka açık site → Duyurular | İki demo kamu duyurusu | [ ] |
+| D3 | `.\scripts\dev\demo-seed.ps1` yeniden | "0 yeni satır"; veri değişmez | [ ] |
+
 ---
 
-**Bilinen sınırlar (hata değil):** harita yok (tablo); Android'de alarm oluşturma/izleme ekranı yok (web'de). `android/app/google-services.json` git dışıdır (`.gitignore`); FCM yükünde alarm başlığı/metni Google üzerinden geçer.
+**Bilinen sınırlar (hata değil):** OSM karoları yalnızca geliştirme içindir; Android'de genel alarmda grup/kişi seçimi yok (web'de); Android'de operasyon alarmı oluşturma yok (web'de). `android/app/google-services.json` git dışıdır (`.gitignore`); FCM yükünde alarm başlığı/metni Google üzerinden geçer.

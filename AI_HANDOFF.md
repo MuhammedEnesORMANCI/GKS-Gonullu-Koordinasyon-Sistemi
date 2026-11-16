@@ -1,6 +1,6 @@
 # GKS — Yapay Zekâ Devir ve Devam Belgesi
 
-> Hazırlanma: 15.11.2026; **güncelleme: 16.11.2026 gece oturumu** (ADR-015, Android duyuru ve tarih seçici, web rol atama ve kullanıcı yönetimi, sayfalama birleştirme). Kaynaklar: proje dosyaları (klasör yapısı, migration listesi, controller/test dizinleri, yapılandırma), `PROJECT_PROGRESS.md`, `docs/architecture/design/team/TASKS.md` (LD-xx kararları), `docs/architecture/decisions.md` (ADR-xx) ve bu projede yürütülen geliştirme oturumlarının kayıtları.
+> Hazırlanma: 15.11.2026; **son güncelleme: 16.11.2026 23.30 (RAPOR_6: mesajlaşma ADR-024, harita ADR-025, Genel Acil Alarm ADR-026, demo verisi aracı)**; önceki güncelleme: 16.11.2026 gece oturumu (ADR-015, Android duyuru ve tarih seçici, web rol atama ve kullanıcı yönetimi, sayfalama birleştirme). Kaynaklar: proje dosyaları (klasör yapısı, migration listesi, controller/test dizinleri, yapılandırma), `PROJECT_PROGRESS.md`, `docs/architecture/design/team/TASKS.md` (LD-xx kararları), `docs/architecture/decisions.md` (ADR-xx) ve bu projede yürütülen geliştirme oturumlarının kayıtları.
 > **Kural:** Bu belgede parola, belirteç, TOTP anahtarı veya `.env` içeriği yoktur ve eklenmemelidir.
 > Kesinlik işaretleri: **[doğrulandı]** = kodda/testte görüldü; **[doğrulanmadı]** = yalnızca tasarım belgesinde veya hiç denenmedi.
 
@@ -72,11 +72,15 @@ Modül sınırları `backend/src/test/java/org/gks/backend/ModularityTests.java`
 | Denetim kaydı (AU-01, ADR-016) | ✅ `audit/` (V12) | ✅ `/denetim` salt-okur | – |
 | Gerçek zamanlı akış (RT-01, ADR-017) | ✅ `realtime/` | ✅ `app/live.ts` | ✅ `data/realtime/` (ADR-021) |
 | Acil alarm (AL-01, 03–16, ADR-018) | ✅ `alerts/` (V13) | ✅ `/operasyonlar/:id/alarmlar`, `/alarmlar/:id`, `/alarmlar` | ✅ gönüllü: alarm bandı + yanıt ekranı (`ui/alerts/`) |
-| Konum (LC-01…05, ADR-019) | ✅ `location/` (V14) | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi (`location/`, `ui/location/`) |
+| Konum (LC-01…05, ADR-019) | ✅ `location/` (V14) | ✅ `/operasyonlar/:id/konum` tablo + harita | ✅ izin akışı + ön plan servisi (`location/`, `ui/location/`) |
+| Mesajlaşma (ADR-024) | ✅ `messaging/` (V17) | ✅ `/panel/mesajlar` | ✅ Mesajlar sekmesi, çevrimdışı kuyruk (`data/messaging/`, `ui/messaging/`) |
+| Harita (ADR-025) | ✅ operasyon bölgesi (V18), `/map/operations` (`alerts/OperationMap*`) | ✅ MapLibre `components/map/`, `features/map/` | ✅ MapLibre `ui/map/` |
+| Genel Acil Alarm (ADR-026) | ✅ `alerts.scope=GENERAL` (V19), `/general-alerts` | ✅ üst çubuk, `GeneralAlertDialog` | ✅ `ui/alerts/AlertManagementScreens.kt` (genel alarm, açık alarmlar, takip) |
+| Demo verisi aracı (Görev 25) | ✅ `devseed/` (`demo-seed` profili) | – | – |
 
 ### 3.2 Planlanan / yok
 
-Harita (sağlayıcı arayüzü hazır), alarm taslak düzenleme (AL-02), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
+Görev 23 kalanı ve Görev 24 (a–e) (RAPOR_6 §7), alarm taslak düzenleme (AL-02), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
 
 ### 3.3 Gerçek cihazda/kullanıcıyla doğrulanmamış
 
@@ -232,7 +236,8 @@ Geliştirme makinesi: Windows 11, 16 GB RAM. JDK'lar: Temurin 17 (Android derlem
 |---|---|
 | PostgreSQL + Mailpit | Backend `bootRun` Docker Compose desteğiyle başlatır (`spring.docker.compose.lifecycle-management: start-only`); elle: `docker compose up -d` (kökte). Kontrol: `docker ps` |
 | Backend | `cd backend && ./gradlew bootRun` → `http://localhost:8080`, sağlık: `/actuator/health`. Sırlar kök `.env` dosyasından (içeriği belgeye yazılmaz; şablon `.env.example`). **Aynı anda tek bootRun.** |
-| Web | `cd web && npm run dev` → `http://localhost:5173` (Vite proxy ile backend) |
+| Web | `cd web && npm run dev` → `http://localhost:5173` (Vite proxy ile backend). Harita karosu: `VITE_MAP_TILE_URL` (varsayılan OSM yalnızca geliştirme) |
+| Demo verisi | Backend kapalıyken `$env:GKS_DEMO_PASSWORD=...; .\scripts\dev\demo-seed.ps1` (yalnızca ekler, idempotent; `scripts/dev/README.md`) |
 | Mailpit arayüzü | `http://localhost:8025` |
 | Android derleme | `cd android` ; `JAVA_HOME=<Temurin 17>` ; `./gradlew assembleDebug` ; kurulum `./gradlew installDebug` |
 | Gerçek telefon (USB) | `adb reverse tcp:8080 tcp:8080` ve `android/local.properties` içinde `gks.apiBaseUrl=http://127.0.0.1:8080/` (şu an bu değer ayarlı [doğrulandı]) |
@@ -240,7 +245,7 @@ Geliştirme makinesi: Windows 11, 16 GB RAM. JDK'lar: Temurin 17 (Android derlem
 
 **Yapay zekâ ajanının komut çalıştırma düzeni (16.11):** Ajanın kabuğu Windows'ta değil, ayrı bir Linux sanal makinesindedir (JDK 17/21, Docker, Android SDK yok). Testler ve git komutları proje sahibinin açtığı bir PowerShell döngüsüyle çalışır: ajan `C:\AIProjects\.claude-runs\job.cmd` dosyasını yazar ve `job.ready` koyar; döngü `run.cmd`'yi çalıştırır, çıktı `job.log`'a **eklenir** (her iş komutlarıyla birlikte kaydedilir), sonuç kodu `job.done`'a yazılır. `.claude-runs/` git'e girmez. Döngü komutu (proje sahibi başlatır, ajan değiştirmez): `cd C:\AIProjects; while ($true) { Get-Date -Format o | Set-Content .claude-runs\watcher.alive; if (Test-Path .claude-runs\job.ready) { Remove-Item .claude-runs\job.ready; cmd /c .claude-runs\run.cmd }; Start-Sleep 3 }`. JDK yolları: Temurin 21 `C:\Program Files\Eclipse Adoptium\jdk-21.0.4.7-hotspot`, Temurin 17 `...\jdk-17.0.12.7-hotspot`. Gradle her zaman `--offline`.
 
-Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kullanıcı davetlerini kabul eder). Demo hesap bilgileri bu belgeye yazılmamıştır.
+Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kullanıcı davetlerini kabul eder). Demo hesap bilgileri bu belgeye yazılmamıştır (`@demo.local` hesaplarının parolası yalnızca `.claude-runs/RAPOR_6.md`).
 
 ---
 
@@ -264,9 +269,9 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, web rol atama, kullanıcı yönetimi, sayfalama birleştirme; sabah: **denetim kaydı (ADR-016), SSE (ADR-017), acil alarm (ADR-018), konum (ADR-019)**; öğleden sonra: ADR-020 (ADM konum, `gks_app` DB rolü, kimlik denetimi), Android SSE (ADR-021); akşam: **FCM + acil alarm bildirimi (ADR-022)**.
 
 1. **FCM gerçek cihaz doğrulaması** — kod tamam (ADR-022, 16.11 akşam); MANUEL_TEST §11 sonuçlarına göre düzeltme. Kalan: `deliveryDelayed` push teslim durumundan hesaplanmıyor, alarm hatırlatmaları push'u yeniden göndermiyor, `REUSE_DETECTED` cihazı kapatmıyor.
-2. **Harita** — sağlayıcı kararı ve bağımlılık; web `features/location/mapProvider.ts` arayüzü hazır.
+2. ~~Harita~~ — tamamlandı (ADR-025, MapLibre). Üretim için kendi karo sunucusu gerekir.
 3. ~~Android SSE~~ — tamamlandı (ADR-021).
-4. Alarm kalanları: AL-02, `alert:{id}` konusu ve 1 sn birleştirme, KOR/ADM için Android alarm yönetimi.
+4. Alarm kalanları: AL-02, `alert:{id}` konusu ve 1 sn birleştirme; Görev 24 (cihaz kaydını oturum iptali/bitişinde kapatma, Türkçe I, bildirim içerik kuralları, iletim gecikmesi ve FCM hatırlatması).
 5. Konum kalanları: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma; `OPERATION_SUSPENDED` (G).
 6. Denetim kalanları: kimlik olayları (giriş/çıkış/MFA); ayrı yalnızca `SELECT/INSERT` DB rolü.
 7. Android'de kullanıcı yönetimi ekranı; Android koordinatör seçimi (ID-19).
@@ -308,4 +313,4 @@ Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, we
 
 16.11 sabahı tamamlananlar ve commit'ler: denetim `5fd8771`, SSE `2b800a1`, acil alarm `9a79e24`, konum `0f51d86` (ayrıntı `.claude-runs/RAPOR_2.md`).
 
-Sonraki oturumlar: RAPOR_3 (ADR-020/021), RAPOR_4 (ADR-022, FCM), RAPOR_5 (ADR-023 tasarım, halka açık site, kamu duyuruları). Firebase: `android/app/google-services.json` git dışıdır, asla commit edilmez; sunucu anahtarı yalnızca `.env`'deki `GKS_FIREBASE_CREDENTIALS_FILE` yolundan okunur, dosya açılmaz. Sıradaki iş proje sahibinin MANUEL_TEST §11 sonuçlarına ve harita sağlayıcısı kararına bağlıdır. Yeni bağımlılık/indirme yalnızca açık izinle.
+Sonraki oturumlar: RAPOR_3 (ADR-020/021), RAPOR_4 (ADR-022, FCM), RAPOR_5 (ADR-023 tasarım, halka açık site, kamu duyuruları), RAPOR_6 (ADR-024 mesajlaşma `2655a1f`, ADR-025 harita `608761c`, ADR-026 genel alarm `3d5d424`, demo aracı `a478745`; Görev 23 kalanı ve 24 bekliyor). Firebase: `android/app/google-services.json` git dışıdır, asla commit edilmez; sunucu anahtarı yalnızca `.env`'deki `GKS_FIREBASE_CREDENTIALS_FILE` yolundan okunur, dosya açılmaz. Sıradaki iş proje sahibinin MANUEL_TEST §11 sonuçlarına ve harita sağlayıcısı kararına bağlıdır. Yeni bağımlılık/indirme yalnızca açık izinle.
