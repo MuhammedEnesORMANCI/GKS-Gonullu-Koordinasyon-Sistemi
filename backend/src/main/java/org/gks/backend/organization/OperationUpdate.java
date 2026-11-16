@@ -18,7 +18,8 @@ import tools.jackson.databind.JsonNode;
  * açıkça {@code null} gönderilen isteğe bağlı alan {@code Optional.empty()} olur (değeri siler).
  * Gövde ağaç olarak okunur, çünkü "gönderilmedi" ile "null gönderildi" ayrımı gerekir.
  */
-record OperationUpdate(String name, Optional<String> description, Optional<Instant> plannedEndAt) {
+record OperationUpdate(String name, Optional<String> description, Optional<Instant> plannedEndAt,
+		Optional<OperationArea> area) {
 
 	static final int NAME_MIN = 3;
 	static final int NAME_MAX = 120;
@@ -28,7 +29,7 @@ record OperationUpdate(String name, Optional<String> description, Optional<Insta
 	static final Set<String> READ_ONLY = Set.of("id", "state", "createdAt", "activatedAt", "closedAt",
 			"coordinators", "overdue", "activeSharingCount", "openAlertCount", "pendingAssignmentCount");
 
-	private static final Set<String> FIELDS = Set.of("name", "description", "plannedEndAt");
+	private static final Set<String> FIELDS = Set.of("name", "description", "plannedEndAt", "area");
 
 	static OperationUpdate parse(JsonNode body, Instant now) {
 		if (body == null || !body.isObject()) {
@@ -47,10 +48,11 @@ record OperationUpdate(String name, Optional<String> description, Optional<Insta
 		Optional<String> description = body.has("description") ? description(body.get("description"), errors) : null;
 		Optional<Instant> plannedEndAt = body.has("plannedEndAt")
 				? plannedEndAt(body.get("plannedEndAt"), now, errors) : null;
+		Optional<OperationArea> area = body.has("area") ? OperationArea.parse(body.get("area"), errors) : null;
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		return new OperationUpdate(name, description, plannedEndAt);
+		return new OperationUpdate(name, description, plannedEndAt, area);
 	}
 
 	static String name(JsonNode node, List<FieldError> errors) {

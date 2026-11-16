@@ -29,6 +29,8 @@ import {
 } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
 import { OperationParticipants } from './OperationParticipants';
+import { AreaPicker, areaDraft, parseArea } from '../map/AreaPicker';
+import { OperationAreaMap } from '../map/OperationAreaMap';
 import type { OperationState, OperationUpdateRequest, OperationView } from '../../services/types';
 
 /** Çekirdek geçişler (backend §7.2). `SUSPENDED` (askıya alma) Genişletilmiş halkadır; buradan başlatılmaz. */
@@ -193,6 +195,8 @@ export function OperationDetailPage() {
               )}
             </Stack>
 
+            {(canManage || perms.isAdm) && <OperationAreaMap operation={op!} />}
+
             {(canManage || perms.isAdm) && (
               <OperationParticipants operationId={opId} canInvite={!closed && perms.can('invitation.create', opId)} />
             )}
@@ -261,6 +265,8 @@ function OperationEditDialog({
   const [name, setName] = useState(operation.name);
   const [description, setDescription] = useState(operation.description ?? '');
   const [plannedEnd, setPlannedEnd] = useState(toLocalInput(operation.plannedEndAt));
+  const [areaValue, setAreaValue] = useState(areaDraft(operation.area));
+  const parsedArea = parseArea(areaValue);
 
   const mutation = useMutation({
     mutationFn: (request: OperationUpdateRequest) => services.operations.update(operation.id, request),
@@ -291,6 +297,8 @@ function OperationEditDialog({
   if (description.trim() !== (operation.description ?? '')) request.description = description.trim() || null;
   // Karşılaştırma dakika hassasiyetinde (giriş alanı saniye taşımaz).
   if (plannedIso !== originalPlanned) request.plannedEndAt = plannedIso ?? null;
+  if (JSON.stringify(parsedArea.area) !== JSON.stringify(operation.area ?? null)) request.area = parsedArea.area;
+  Object.assign(localErrors, parsedArea.errors);
   const changed = Object.keys(request).length > 0;
 
   return (
@@ -328,6 +336,7 @@ function OperationEditDialog({
               localErrors.plannedEndAt ?? serverErrors.plannedEndAt ?? 'Türkiye saati; boş bırakılırsa planlanan bitiş kaldırılır'
             }
           />
+          <AreaPicker value={areaValue} onChange={setAreaValue} serverErrors={serverErrors} />
           <ErrorAlert error={mutation.error} />
         </Stack>
       </DialogContent>

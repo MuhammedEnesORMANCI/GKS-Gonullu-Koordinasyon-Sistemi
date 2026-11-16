@@ -39,6 +39,7 @@ import { ContactPage } from '../features/public/ContactPage';
 import { PublicNotFoundPage } from '../features/public/PublicNotFoundPage';
 import { PublicAnnouncementAdminPage } from '../features/publicAnnouncements/PublicAnnouncementAdminPage';
 import { MessagesPage } from '../features/messaging/MessagesPage';
+import { OperationMapPage } from '../features/map/OperationMapPage';
 import { AppShell } from './AppShell';
 import { createQueryClient } from './queryClient';
 import { createAppTheme } from './theme';
@@ -144,6 +145,7 @@ export function AppRoutes() {
         <Route path="duyurular" element={<AnnouncementsPage />} />
         <Route path="kamu-duyurulari" element={<PublicAnnouncementAdminPage />} />
         <Route path="mesajlar" element={<MessagesPage />} />
+        <Route path="harita" element={<OperationMapPage />} />
         <Route path="mesajlar/:channelId" element={<MessagesPage />} />
         <Route path="roller" element={<RoleAssignmentsPage />} />
         <Route path="kullanicilar" element={<UsersPage />} />

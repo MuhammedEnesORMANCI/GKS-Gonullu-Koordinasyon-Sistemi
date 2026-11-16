@@ -1,47 +1,49 @@
-import type {
-  AccountService,
-  AlertService,
-  AnnouncementService,
-  AuditService,
-  AuthService,
-  GroupService,
-  InvitationService,
-  LiveEvent,
-  LocationService,
-  MeContextService,
-  NotificationService,
-  OperationListService,
-  OperationService,
-  ParticipantService,
-  PublicAnnouncementService,
-  MessagingService,
-  RealtimeService,
-  RoleAssignmentService,
-  TaskService,
-  UserAdminService,
+import type {
+  AccountService,
+  AlertService,
+  AnnouncementService,
+  AuditService,
+  AuthService,
+  GroupService,
+  InvitationService,
+  LiveEvent,
+  LocationService,
+  MeContextService,
+  NotificationService,
+  OperationListService,
+  OperationService,
+  ParticipantService,
+  PublicAnnouncementService,
+  MessagingService,
+  RealtimeService,
+  RoleAssignmentService,
+  TaskService,
+  UserAdminService,
+  MapService,
 } from '../contracts';
-import type {
-  AlertRecipientView,
-  AlertView,
-  AssignmentView,
-  AuditEntryView,
-  EffectivePermissions,
-  AnnouncementView,
-  GroupView,
-  InboxItem,
-  InvitationView,
-  MessageView,
-  MeContext,
-  MeProfile,
-  OperationState,
-  OperationView,
-  ParticipantView,
-  RoleAssignmentView,
-  TaskState,
-  TaskView,
-  UserRef,
-  UserSummary,
-  Uuid,
+import type {
+  AlertRecipientView,
+  AlertView,
+  AssignmentView,
+  AuditEntryView,
+  EffectivePermissions,
+  AnnouncementView,
+  GroupView,
+  InboxItem,
+  InvitationView,
+  MessageView,
+  MeContext,
+  MeProfile,
+  OperationState,
+  OperationView,
+  ParticipantView,
+  RoleAssignmentView,
+  TaskState,
+  TaskView,
+  UserRef,
+  UserSummary,
+  Uuid,
+  MapOperationView,
 } from '../types';
 import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockMessage, type MockPersona, type MockPublicAnnouncement } from './store';
 
@@ -386,6 +388,7 @@ export function mockOperationService(): OperationService {
         openAlertCount: 0,
         ...(request.description ? { description: request.description.trim() } : {}),
         ...(request.plannedEndAt ? { plannedEndAt: request.plannedEndAt } : {}),
+        ...(request.area ? { area: request.area } : {}),
       };
       mockStore.operations.set(op.id, op);
       mockStore.participants.set(op.id, []);
@@ -405,6 +408,12 @@ export function mockOperationService(): OperationService {
       if (request.plannedEndAt !== undefined) {
         if (request.plannedEndAt === null) delete op.plannedEndAt;
         else op.plannedEndAt = request.plannedEndAt;
+      }
+      if (request.area !== undefined) {
+        if (request.area === null) delete op.area;
+        else if (Math.abs(request.area.lat) > 90 || Math.abs(request.area.lon) > 180) {
+          return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'area.lat', code: 'OUT_OF_RANGE' }]);
+        } else op.area = request.area;
       }
       return respond(op);
     },
@@ -1199,6 +1208,37 @@ async function lockPublic(id: string, version: number): Promise<MockPublicAnnoun
   if (!row) return fail(404, 'NOT_FOUND');
   if (row.version !== version) return fail(409, 'VERSION_CONFLICT', { currentVersion: row.version });
   return row;
+}
+
+export function mockMapService(): MapService {
+  const service: MapService = {
+    operation: async (operationId) => {
+      const op = mockStore.operations.get(operationId);
+      if (!op) return fail(404, 'NOT_FOUND');
+      if (mockStore.persona !== 'ADM' && !isCoordinatorOf(operationId)) return fail(403, 'FORBIDDEN');
+      const all = await service.operations([op.state]);
+      return all.find((o) => o.id === operationId)!;
+    },
+    operations: async (states = []) => {
+      const wanted = states.length ? states : ['ACTIVE'];
+      if (mockStore.persona !== 'ADM' && mockStore.persona !== 'KOR') return fail(403, 'FORBIDDEN');
+      const items: MapOperationView[] = [...mockStore.operations.values()]
+        .filter((op) => wanted.includes(op.state) && (mockStore.persona === 'ADM' || isCoordinatorOf(op.id)))
+        .map((op) => {
+          const alert = [...mockStore.alerts.values()].find((a) => a.view.operationId === op.id && a.view.state === 'OPEN');
+          return {
+            id: op.id, name: op.name, state: op.state, area: op.area,
+            participantCount: mockStore.participants.get(op.id)?.length ?? 0,
+            meetingPoints: [...mockStore.groups.values()]
+              .filter((g) => g.operationId === op.id && !g.archived && g.meetingPoint?.lat !== undefined && g.meetingPoint.lon !== undefined)
+              .map((g) => ({ groupId: g.id, groupName: g.name, lat: g.meetingPoint!.lat!, lon: g.meetingPoint!.lon!, address: g.meetingPoint!.address })),
+            ...(alert ? { openAlert: { id: alert.view.id, sentAt: alert.view.sentAt ?? nowIso(), counts: alert.view.counts } } : {}),
+          };
+        });
+      return respond(items);
+    },
+  };
+  return service;
 }
 
 export function mockMessagingService(): MessagingService {

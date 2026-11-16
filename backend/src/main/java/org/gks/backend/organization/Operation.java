@@ -58,6 +58,15 @@ class Operation {
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
 
+	@Column(name = "center_lat")
+	private Double centerLat;
+
+	@Column(name = "center_lon")
+	private Double centerLon;
+
+	@Column(name = "radius_m")
+	private Integer radiusM;
+
 	protected Operation() {
 	}
 
@@ -69,5 +78,6 @@ class Operation {
 	Instant activatedAt() { return activatedAt; }
 	Instant closedAt() { return closedAt; }
 	Instant createdAt() { return createdAt; }
+	OperationArea area() { return OperationArea.of(centerLat, centerLon, radiusM); }
 
 }

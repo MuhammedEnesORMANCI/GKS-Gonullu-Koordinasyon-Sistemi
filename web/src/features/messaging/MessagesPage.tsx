@@ -56,7 +56,7 @@ export function MessagesPage() {
   const services = useServices();
   const mock = useIsMock('messaging');
   const channels = useQuery({ queryKey: Q.channels(), queryFn: () => services.messaging.channels() });
-  const list = channels.data ?? [];
+  const list = useMemo(() => channels.data ?? [], [channels.data]);
   const selected = list.find((c) => c.id === channelId) ?? (channelId ? undefined : list[0]);
 
   useEffect(() => {

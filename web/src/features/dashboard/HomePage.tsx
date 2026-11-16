@@ -30,6 +30,7 @@ import { useServices } from '../../services/registry';
 import type { PushStatus } from '../../services/contracts';
 import type { AlertCounts } from '../../services/types';
 import { ACTION_LABEL } from '../audit/AuditPage';
+import { OperationMapCard } from '../map/OperationMapPage';
 
 const SELECTED_OP_KEY = 'gks.selectedOperation';
 
@@ -189,6 +190,8 @@ export function HomePage() {
           </Card>
         </Grid>
       </Grid>
+
+      {canOperations && <OperationMapCard />}
 
       <Grid container spacing={2.5}>
         {canAnnounce && (

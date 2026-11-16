@@ -87,6 +87,9 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val openChannel = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 	val messageNotifier by lazy { MessageNotifier(context.applicationContext, messagingRepository, openChannel) }
 	/** Canlı akıştan mesaj olayı: kanal listesi ve açık sohbet tazelenir. */
+	/** ADR-025: harita tazeleme olayları (alarm/operasyon). */
+	val mapEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
 	val messagingEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 8)
 	/** ADR-023: gömülü (internetsiz) rehber içeriği; web/src/content ile aynı dosyalar. */
 	val guideContent by lazy { GuideContent.load(context.applicationContext.assets) }

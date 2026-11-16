@@ -87,6 +87,9 @@ class OperationService {
 		UUID id = Ids.newId();
 		Instant now = clock.instant();
 		operations.insert(id, input.name(), input.description(), input.plannedEndAt(), subject.userId(), now);
+		if (input.area() != null) {
+			operations.updateArea(id, input.area().lat(), input.area().lon(), input.area().radiusM(), now);
+		}
 		roles.assignCoordinators(id, input.coordinatorIds(), subject.userId());
 		audit.record(subject.userId(), acting.organization(subject), subject.client(), "OPERATION_CREATED", "OPERATION", id, id,
 				Map.of("coordinatorIds", input.coordinatorIds()));
@@ -176,7 +179,15 @@ class OperationService {
 		if (operations.updateDetails(id, name, description, plannedEndAt, clock.instant(), CLOSED) == 0) {
 			throw ApiException.of(Code.OPERATION_CLOSED);   // okuma ile yazma arasında kapatıldı
 		}
+		if (update.area() != null) {
+			OperationArea area = update.area().orElse(null);
+			operations.updateArea(id, area == null ? null : area.lat(), area == null ? null : area.lon(),
+					area == null ? null : area.radiusM(), clock.instant());
+		}
 		List<String> changed = new ArrayList<>();
+		if (update.area() != null) {
+			changed.add("area");
+		}
 		if (update.name() != null) {
 			changed.add("name");
 		}

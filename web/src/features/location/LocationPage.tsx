@@ -22,7 +22,8 @@ import { formatDateTime } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
 import type { Freshness } from '../../services/types';
 import { useOperationScope } from '../operations/useOperation';
-import { LOCATION_MAP_PROVIDER } from './mapProvider';
+import { GksMap } from '../../components/map/GksMap';
+import { PERSON_COLOR } from '../map/mapModel';
 
 export const FRESHNESS_LABEL: Record<Freshness, string> = {
   LIVE: 'Güncel',
@@ -55,7 +56,6 @@ export function LocationPage() {
     enabled: !!opId && canView && active,
     staleTime: 15_000,
   });
-  const map = LOCATION_MAP_PROVIDER;
 
   return (
     <>
@@ -86,10 +86,19 @@ export function LocationPage() {
           <QueryState isPending={query.isPending} error={query.error} onRetry={() => void query.refetch()}>
             {() => (
               <Stack spacing={2}>
-                {map && (
+                {query.data!.items.length > 0 && (
                   <Paper sx={{ p: 1 }}>
-                    {map.render({ items: query.data!.items, height: 360 })}
-                    <Typography variant="caption">{map.attribution}</Typography>
+                    <GksMap
+                      height={360}
+                      ariaLabel="Son konumlar haritası"
+                      markers={query.data!.items.map((l) => ({
+                        id: l.user.id,
+                        lat: l.lat,
+                        lon: l.lon,
+                        color: PERSON_COLOR,
+                        label: `${l.user.displayName} — ${FRESHNESS_LABEL[l.freshness]}`,
+                      }))}
+                    />
                   </Paper>
                 )}
                 {query.data!.items.length === 0 ? (

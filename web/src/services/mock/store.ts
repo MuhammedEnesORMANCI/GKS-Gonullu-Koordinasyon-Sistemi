@@ -189,6 +189,7 @@ function seed(): MockState {
     openAlertCount: 0,
     pendingAssignmentCount: 2,
     activeSharingCount: 4,
+    area: { lat: 39.92, lon: 32.854, radiusM: 2500 },
   });
   operations.set(MOCK_IDS.op2, {
     id: MOCK_IDS.op2,
@@ -197,6 +198,7 @@ function seed(): MockState {
     state: 'PLANNED',
     createdAt: iso(-600),
     plannedEndAt: iso(10000),
+    area: { lat: 41.01, lon: 28.97 },
     coordinators: [korRef],
     openAlertCount: 0,
     pendingAssignmentCount: 0,

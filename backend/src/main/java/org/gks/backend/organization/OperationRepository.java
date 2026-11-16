@@ -21,6 +21,15 @@ interface OperationRepository extends JpaRepository<Operation, UUID> {
 	int insert(@Param("id") UUID id, @Param("name") String name, @Param("description") String description,
 			@Param("plannedEndAt") Instant plannedEndAt, @Param("createdBy") UUID createdBy, @Param("now") Instant now);
 
+	/** ADR-025: operasyon bölgesini yazar ({@code null} merkez: siler); operasyon kapalıysa 0 döner. */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query(nativeQuery = true, value = """
+			update organization.operations
+			   set center_lat = :lat, center_lon = :lon, radius_m = :radius, updated_at = :now
+			 where id = :id and state not in ('COMPLETED', 'CANCELLED')""")
+	int updateArea(@Param("id") UUID id, @Param("lat") Double lat, @Param("lon") Double lon,
+			@Param("radius") Integer radius, @Param("now") Instant now);
+
 	/** Ad, açıklama ve planlanan bitişi yazar; operasyon kapalıysa 0 döner. */
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""

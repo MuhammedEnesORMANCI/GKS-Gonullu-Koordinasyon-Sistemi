@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
@@ -28,6 +27,8 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader, ReadOnlyBanner } from '../../components/PageHeader';
 import { ChannelLinkButton } from '../messaging/ChannelLinkButton';
+import { GksMap } from '../../components/map/GksMap';
+import { MEETING_POINT_COLOR } from '../map/mapModel';
 import { QueryState } from '../../components/QueryState';
 import { formatDateTime, fromLocalInput, toLocalInput } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
@@ -422,7 +423,20 @@ function MeetingPointDialog({ group, onClose, onSaved }: { group: GroupView; onC
       <DialogTitle id="mp-edit-title">Toplanma noktası</DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          <Alert severity="info">Harita üzerinde işaretleme bu sürümde yok; koordinatı elle girin. Adres metni otomatik bulunmaz.</Alert>
+          <GksMap
+            markers={latN !== undefined && lonN !== undefined && !Number.isNaN(latN) && !Number.isNaN(lonN)
+              ? [{ id: 'mp', lat: latN, lon: lonN, color: MEETING_POINT_COLOR, label: 'Toplanma noktası' }]
+              : []}
+            height={240}
+            ariaLabel="Toplanma noktası seçim haritası"
+            onPick={(pickedLat, pickedLon) => {
+              setLat(pickedLat.toFixed(6));
+              setLon(pickedLon.toFixed(6));
+            }}
+          />
+          <Typography variant="body2" color="text.secondary">
+            Haritaya tıklayın ya da koordinatı elle girin. Adres metni otomatik bulunmaz; açıklayıcı adresi siz yazın.
+          </Typography>
           <TextField
             label="Adres"
             value={address}

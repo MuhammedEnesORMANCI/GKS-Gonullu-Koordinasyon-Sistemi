@@ -140,6 +140,11 @@ data class OperationFormState(
 	val fieldErrors: Map<String, UiText> = emptyMap(),
 	val error: UiText? = null,
 	val savedId: String? = null,
+	/** ADR-025 bölge taslağı (metin; doğrulama `parseArea`). */
+	val areaLat: String = "",
+	val areaLon: String = "",
+	val areaRadius: String = "",
+	val areaErrors: Map<String, org.gks.android.ui.map.AreaError> = emptyMap(),
 )
 
 /** OR-01 (oluştur, yalnızca ADM) ve OR-02 (düzenle, ADM veya kendi operasyonunun KOR'u). */
@@ -170,6 +175,9 @@ class OperationFormViewModel(
 						name = result.value.name,
 						description = result.value.description.orEmpty(),
 						plannedEnd = result.value.plannedEndAt,
+						areaLat = result.value.area?.let { org.gks.android.ui.map.coord(it.lat) }.orEmpty(),
+						areaLon = result.value.area?.let { org.gks.android.ui.map.coord(it.lon) }.orEmpty(),
+						areaRadius = result.value.area?.radiusM?.toString().orEmpty(),
 					)
 					is ApiResult.Failure -> OperationFormState(error = result.error.toUiText(OPERATION_ERRORS))
 				}
@@ -179,6 +187,9 @@ class OperationFormViewModel(
 
 	fun edit(field: String, transform: OperationFormState.() -> OperationFormState) =
 		_state.update { it.transform().copy(fieldErrors = it.fieldErrors - field, error = null) }
+
+	fun editArea(lat: String, lon: String, radius: String) =
+		_state.update { it.copy(areaLat = lat, areaLon = lon, areaRadius = radius, areaErrors = emptyMap(), error = null) }
 
 	fun toggleCoordinator(id: String) = edit("coordinatorIds") {
 		copy(coordinatorIds = if (id in coordinatorIds) coordinatorIds - id else coordinatorIds + id)
@@ -199,11 +210,16 @@ class OperationFormViewModel(
 			if (operationId == null && s.coordinatorIds.isEmpty()) put("coordinatorIds", text(R.string.operation_coordinator_required))
 			if (operationId == null && s.coordinatorIds.size > COORDINATOR_MAX) put("coordinatorIds", text(R.string.operation_coordinator_max))
 		}
-		if (local.isNotEmpty()) {
-			_state.update { it.copy(fieldErrors = local) }
+		val area = org.gks.android.ui.map.parseArea(s.areaLat, s.areaLon, s.areaRadius)
+		if (local.isNotEmpty() || area.errors.isNotEmpty()) {
+			_state.update { it.copy(fieldErrors = local, areaErrors = area.errors) }
 			return
 		}
-		val draft = OperationDraft(s.name, s.description, plannedEndIso)
+		// Düzenlemede metne çevrilip geri okunan bölge değişmediyse özgün değer korunur (gereksiz PATCH yok).
+		val original = s.original?.area
+		val unchanged = original != null && area.area != null && org.gks.android.ui.map.coord(original.lat) == org.gks.android.ui.map.coord(area.area.lat) &&
+			org.gks.android.ui.map.coord(original.lon) == org.gks.android.ui.map.coord(area.area.lon) && original.radiusM == area.area.radiusM
+		val draft = OperationDraft(s.name, s.description, plannedEndIso, if (unchanged) original else area.area)
 		_state.update { it.copy(busy = true, error = null, fieldErrors = emptyMap()) }
 		viewModelScope.launch {
 			val result = if (s.original == null) repository.create(draft, s.coordinatorIds.toList()) else repository.update(s.original, draft)
@@ -213,7 +229,7 @@ class OperationFormViewModel(
 					onSaved(result.value.id)
 				}
 				is ApiResult.Failure -> {
-					val fields = result.error.fieldErrors(setOf("name", "description", "plannedEndAt", "coordinatorIds"))
+					val fields = result.error.fieldErrors(setOf("name", "description", "plannedEndAt", "coordinatorIds", "area.lat", "area.lon", "area.radiusM"))
 					_state.update { it.copy(busy = false, fieldErrors = fields, error = if (fields.isEmpty()) result.error.toUiText(OPERATION_ERRORS) else null) }
 				}
 			}

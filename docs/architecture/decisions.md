@@ -295,4 +295,19 @@
   10. Sistem mesajları (`SystemMessages.post`, ör. genel alarm metni) kanala `SYSTEM` türüyle yazılır, push gönderilmez.
   11. **Saklama:** operasyon kapanınca kanallar kapanır; `gks.messaging.retention-after-close` (P90D) sonra kanal ve mesajlar zamanlanmış görevle silinir.
 - **Sınırlar:** Ek dosya, birebir mesaj, mesaj düzenleme, okundu bilgisi (kimin okuduğu) yok. ADM tüm kanalları okur ama otomatik push almaz (yalnızca operasyonda KOR/katılımcıysa). Oran sınırı çoklu örnekte paylaşılmaz.
+
+## ADR-025 Harita: MapLibre + OpenStreetMap, operasyon bölgesi ve Operasyon Haritası
+
+- **Bağlam:** 16.11.2026: proje sahibi operasyonların, buluşma noktalarının ve (yetkiliye) gönüllü son konumlarının haritada gösterilmesini istedi. Tek seferlik indirme izni yalnızca MapLibre için verildi.
+- **Karar:**
+  1. **Kütüphaneler:** web `maplibre-gl` 6.18.0 (npm, sabit sürüm; bağımlılıklarıyla 25 paket), Android `org.maplibre.gl:android-sdk` 11.13.5 (Maven Central). Android 13.x serisi Kotlin 2.2 ile derlendiğinden projenin Kotlin 1.9.22 derleyicisi okuyamaz; Kotlin 2.0 ile derlenmiş en son seri (11.x) seçildi. Kotlin yükseltmesi ayrı bir karardır.
+  2. **Karo sunucusu yapılandırmadan:** web `VITE_MAP_TILE_URL` / `VITE_MAP_ATTRIBUTION`, Android `-Pgks.mapTileUrl`. Varsayılan `tile.openstreetmap.org` **yalnızca geliştirme ve test** içindir (OSMF karo kullanım politikası). **Üretimde kurumun kendi karo sunucusuna geçilmelidir** (ör. OpenMapTiles/planetiler ile üretilmiş karolar). Her haritanın altında "© OpenStreetMap katkıcıları" atfı görünür.
+  3. **Veri:** operasyon merkezi + isteğe bağlı yarıçap (`organization.operations.center_lat/center_lon/radius_m`, V18; yarıçap 50..200000 m). Grup buluşma noktası koordinatları V4'ten beri vardı; artık haritadan seçilebilir. Oluşturma (OR-01) ve kısmi güncelleme (OR-02, `area: null` siler) `area` alanını kabul eder; doğrulama alan adları `area.lat`, `area.lon`, `area.radiusM`.
+  4. **Operasyon Haritası** `GET /api/v1/map/operations?state=…` (varsayılan ACTIVE; PLANNED/SUSPENDED isteğe bağlı, kapalılar yok): ADM tümü, KOR yalnızca kurumsal (MFA'lı) oturumda koordine ettikleri; diğerleri `403`. Yanıt: ad, durum, bölge, katılımcı sayısı, buluşma noktaları, açık alarm kimliği ve sayıları. **Gönüllü konumu ve alarm metni yoktur.** `GET /api/v1/map/operations/{id}`: operasyon sayfası haritası (o operasyonun KOR'u veya ADM).
+  5. **Gönüllü son konumları** yalnızca operasyon sayfası haritasında ve kullanıcı "göster" seçince mevcut konum ucundan çekilir (LC-05); her görüntüleme ADR-020 gereği denetime yazılır. Tablo görünümü korunur.
+  6. **İşaret renkleri:** aktif lacivert, planlanan gri, askıda turuncu, açık alarmlı kırmızı; renk tek başına anlam taşımaz (etiket ve liste de var).
+  7. **Canlı:** web ve Android harita sorguları `operation.state.changed`, `alert.*` ve `resync` olaylarında yeniden çekilir.
+  8. **Haritasız yedek:** WebGL/GL yoksa (eski cihaz, test ortamı) ya da karolar yüklenemezse koordinatlar ve adres metin olarak görünür; Android'de "Yol tarifi" telefonun harita uygulamasını `geo:` adresiyle açar (ek bağımlılık yok, ağsız da çalışır). `geo:` adresindeki sayılar yerel ayardan bağımsız (`Locale.ROOT`) yazılır.
+  9. Halka açık site harita verisi göstermez ve harita uçlarını çağırmaz.
+- **Sınırlar:** Adres arama (geocoding) yok; açıklayıcı adresi kullanıcı yazar. Çevrimdışı karo önbelleği yok. Android'de harita etiketleri (yazı tipi/glyph gerektirir) yok; adlar liste ve özet kartında.
 

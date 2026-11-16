@@ -38,6 +38,10 @@ export const Q = {
   user: (id: string) => ['users', id] as const,
   audit: (f: AuditFilter = {}) => ['audit', f] as const,
   locations: (opId: string) => ['operations', opId, 'locations'] as const,
+  /** ADR-025: harita özeti; operasyon/alarm olaylarında yeniden çekilir. */
+  mapRoot: () => ['map'] as const,
+  mapOperations: (states: string[]) => ['map', 'operations', states] as const,
+  mapOperation: (opId: string) => ['map', 'operation', opId] as const,
   alertsRoot: () => ['alerts'] as const,
   alerts: (f: AlertFilter = {}) => ['alerts', 'list', f] as const,
   alert: (id: string) => ['alerts', id] as const,

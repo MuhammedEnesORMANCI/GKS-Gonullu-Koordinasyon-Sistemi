@@ -10,6 +10,9 @@ import org.gks.android.data.remote.GroupSummary
 import org.gks.android.data.remote.GroupUserRequest
 import org.gks.android.data.remote.GroupView
 import org.gks.android.data.remote.InvitationCreateRequest
+import org.gks.android.data.remote.LocationListView
+import org.gks.android.data.remote.MapOperationView
+import org.gks.android.data.remote.OperationArea
 import org.gks.android.data.remote.OperationCreateRequest
 import org.gks.android.data.remote.OperationStateRequest
 import org.gks.android.data.remote.OperationView
@@ -19,7 +22,7 @@ import org.gks.android.data.remote.RoleAssignment
 import org.gks.android.data.remote.RoleAssignmentCreateRequest
 
 /** Operasyon formu; `plannedEndAt` ISO-8601 (UTC) veya boş. Boş isteğe bağlı alanlar temizlenir (LD-52). */
-data class OperationDraft(val name: String, val description: String, val plannedEndAt: String?)
+data class OperationDraft(val name: String, val description: String, val plannedEndAt: String?, val area: OperationArea? = null)
 
 /**
  * ADM/KOR operasyon yönetimi (OR-01 – OR-06, AC-01 – AC-03). Web paneliyle aynı uçlar; Android'de yalnızca
@@ -43,6 +46,7 @@ class ManagementRepository(
 			description = draft.description.trim().ifEmpty { null },
 			plannedEndAt = draft.plannedEndAt,
 			coordinatorIds = coordinatorIds,
+			area = draft.area,
 		)
 		return keys.run("operation:create:${request.hashCode()}") { key -> caller.call { api.createOperation(key, request) } }
 	}
@@ -54,10 +58,26 @@ class ManagementRepository(
 			val description = draft.description.trim().ifEmpty { null }
 			if (description != current.description) put("description", description?.let(::JsonPrimitive) ?: JsonNull)
 			if (draft.plannedEndAt != current.plannedEndAt) put("plannedEndAt", draft.plannedEndAt?.let(::JsonPrimitive) ?: JsonNull)
+			if (draft.area != current.area) put("area", draft.area?.let { a ->
+				JsonObject(buildMap {
+					put("lat", JsonPrimitive(a.lat))
+					put("lon", JsonPrimitive(a.lon))
+					a.radiusM?.let { put("radiusM", JsonPrimitive(it)) }
+				})
+			} ?: JsonNull)
 		}
 		if (changes.isEmpty()) return ApiResult.Success(current)
 		return caller.call { api.updateOperation(current.id, JsonObject(changes)) }
 	}
+
+	/** ADR-025 harita. */
+	suspend fun mapOperations(includePlanned: Boolean): ApiResult<List<MapOperationView>> =
+		caller.call { api.mapOperations(if (includePlanned) listOf("ACTIVE", "PLANNED") else listOf("ACTIVE")) }
+
+	suspend fun mapOperation(id: String): ApiResult<MapOperationView> = caller.call { api.mapOperation(id) }
+
+	/** Son konumlar; her çağrı sunucuda denetime yazılır (yalnızca kullanıcı isteyince). */
+	suspend fun lastLocations(id: String): ApiResult<LocationListView> = caller.call { api.operationLocations(id) }
 
 	/** OR-03: hedef durum; geçiş kuralı ve yetki sunucuda (§7.2). */
 	suspend fun changeState(id: String, target: String): ApiResult<OperationView> =

@@ -14,11 +14,12 @@ import org.gks.backend.ApiException.FieldError;
 import tools.jackson.databind.JsonNode;
 
 /** Doğrulanmış {@code OperationCreateRequest} (§7.4): ad 3..120, açıklama ≤ 2000, planlanan bitiş gelecekte, 1..10 tekil KOR. */
-record OperationCreate(String name, String description, Instant plannedEndAt, List<UUID> coordinatorIds) {
+record OperationCreate(String name, String description, Instant plannedEndAt, List<UUID> coordinatorIds,
+		OperationArea area) {
 
 	static final int MAX_COORDINATORS = 10;
 
-	private static final Set<String> FIELDS = Set.of("name", "description", "plannedEndAt", "coordinatorIds");
+	private static final Set<String> FIELDS = Set.of("name", "description", "plannedEndAt", "coordinatorIds", "area");
 
 	static OperationCreate parse(JsonNode body, Instant now) {
 		if (body == null || !body.isObject()) {
@@ -42,10 +43,12 @@ record OperationCreate(String name, String description, Instant plannedEndAt, Li
 		Optional<Instant> plannedEndAt = body.has("plannedEndAt")
 				? OperationUpdate.plannedEndAt(body.get("plannedEndAt"), now, errors) : Optional.empty();
 		List<UUID> coordinators = coordinators(body.get("coordinatorIds"), errors);
+		Optional<OperationArea> area = body.has("area") ? OperationArea.parse(body.get("area"), errors) : Optional.empty();
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		return new OperationCreate(name, description.orElse(null), plannedEndAt.orElse(null), coordinators);
+		return new OperationCreate(name, description.orElse(null), plannedEndAt.orElse(null), coordinators,
+				area.orElse(null));
 	}
 
 	private static List<UUID> coordinators(JsonNode node, List<FieldError> errors) {

@@ -24,6 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import org.gks.android.R
 import org.gks.android.data.remote.GroupMember
 import org.gks.android.data.remote.MeetingPoint
@@ -41,8 +43,7 @@ import org.gks.android.ui.common.formatDateTime
 import org.gks.android.ui.common.groupRoleLabel
 import org.gks.android.ui.common.resolve
 import org.gks.android.ui.home.GroupSummaryCard
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import org.gks.android.ui.map.MeetingPointMap
 
 @Composable
 fun GroupsScreen(viewModel: GroupsViewModel, onOpenGroup: (String) -> Unit) {
@@ -130,7 +131,10 @@ internal fun MeetingPointCard(point: MeetingPoint?, canEdit: Boolean, busy: Bool
 			if (point == null || (point.address == null && point.lat == null)) {
 				Text(stringResource(R.string.meeting_point_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
 			} else {
-				Fact(R.string.meeting_point_address, point.address ?: "${point.lat}, ${point.lon}")
+				point.address?.let { Fact(R.string.meeting_point_address, it) }
+				if (point.lat != null && point.lon != null) {
+					MeetingPointMap(point.lat, point.lon, point.address ?: stringResource(R.string.meeting_point_title))
+				}
 				point.time?.let { Fact(R.string.meeting_point_time, formatDateTime(it)) }
 				point.description?.takeIf { it.isNotBlank() }?.let { Fact(R.string.meeting_point_description, it) }
 				point.updatedBy?.let {

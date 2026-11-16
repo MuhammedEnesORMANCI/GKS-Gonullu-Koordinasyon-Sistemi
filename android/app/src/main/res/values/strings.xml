@@ -592,4 +592,37 @@
 	<string name="message_delete">Sil</string>
 	<string name="message_new">Yeni mesaj</string>
 	<string name="quick_announcements">Duyurular</string>
+	<!-- Harita (ADR-025) -->
+	<string name="map_unavailable">Harita gösterilemiyor; bilgiler aşağıda metin olarak verilmiştir.</string>
+	<string name="map_pick_hint">Konum seçmek için haritaya dokunun.</string>
+	<string name="map_no_app">Yol tarifi için harita uygulaması bulunamadı.</string>
+	<string name="map_directions">Yol tarifi</string>
+	<string name="map_title">Operasyon Haritası</string>
+	<string name="map_operation_title">Harita</string>
+	<string name="map_include_planned">Planlananları da göster</string>
+	<string name="map_area">Operasyon bölgesi</string>
+	<string name="map_area_none">belirtilmemiş</string>
+	<string name="map_radius">yarıçap %1$d m</string>
+	<string name="map_meeting_point">Buluşma noktası: %1$s</string>
+	<string name="map_show_people">Gönüllülerin son konumlarını göster (görüntüleme denetim kaydına yazılır)</string>
+	<string name="map_people_count">Haritada %1$d kişinin son konumu var.</string>
+	<string name="map_participants">Katılımcı: %1$d</string>
+	<string name="map_open_alert">Açık alarm: yanıtlayan %1$d/%2$d, bekleyen %3$d, yardım isteyen %4$d</string>
+	<string name="map_alert_short">AÇIK ALARM</string>
+	<string name="map_no_alert">Açık alarm yok.</string>
+	<string name="map_go_operation">Operasyona git</string>
+	<string name="map_empty">Gösterilecek operasyon yok.</string>
+	<string name="map_no_location">Konum belirtilmemiş</string>
+	<string name="meeting_point_coords">Koordinat</string>
+	<string name="area_title">Operasyon bölgesi (isteğe bağlı)</string>
+	<string name="area_lat">Merkez enlem</string>
+	<string name="area_lon">Merkez boylam</string>
+	<string name="area_radius">Yarıçap (m)</string>
+	<string name="area_radius_help">İsteğe bağlı (50–200000 m)</string>
+	<string name="area_clear">Bölgeyi temizle</string>
+	<string name="area_err_both">Enlem ve boylam birlikte girilmelidir.</string>
+	<string name="area_err_lat">Enlem −90 ile 90 arasında olmalı.</string>
+	<string name="area_err_lon">Boylam −180 ile 180 arasında olmalı.</string>
+	<string name="area_err_radius">Yarıçap 50–200000 metre arasında tam sayı olmalı.</string>
+	<string name="area_err_radius_center">Yarıçap için önce merkez seçin.</string>
 </resources>

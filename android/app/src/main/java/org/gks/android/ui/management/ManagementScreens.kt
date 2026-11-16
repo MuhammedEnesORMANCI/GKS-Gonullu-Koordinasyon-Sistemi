@@ -46,8 +46,6 @@ import org.gks.android.data.remote.OperationView
 import org.gks.android.domain.ManagementAccess
 import org.gks.android.domain.nextOperationStates
 import org.gks.android.ui.common.Badge
-import org.gks.android.ui.common.StatusKind
-import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.DateTimeField
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
@@ -57,11 +55,14 @@ import org.gks.android.ui.common.LoadContent
 import org.gks.android.ui.common.LoadingView
 import org.gks.android.ui.common.MessageCard
 import org.gks.android.ui.common.SectionTitle
+import org.gks.android.ui.common.StatusBadge
+import org.gks.android.ui.common.StatusKind
 import org.gks.android.ui.common.TitleRow
 import org.gks.android.ui.common.formatDateTime
 import org.gks.android.ui.common.operationStateLabel
 import org.gks.android.ui.common.resolve
 import org.gks.android.ui.common.text
+import org.gks.android.ui.map.AreaFields
 
 // ---------------------------------------------------------------- liste
 
@@ -74,6 +75,7 @@ fun ManagementScreen(
 	onOpen: (String) -> Unit,
 	onCreate: () -> Unit,
 	onOrganizationAnnouncement: () -> Unit = {},
+	onMap: () -> Unit = {},
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val filter by viewModel.filter.collectAsStateWithLifecycle()
@@ -97,6 +99,7 @@ fun ManagementScreen(
 			if (access.canCreateOperation) {
 				Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.operation_create)) }
 			}
+			OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.map_title)) }
 			if (access.canAnnounceOrganization) {
 				OutlinedButton(onClick = onOrganizationAnnouncement, modifier = Modifier.fillMaxWidth()) {
 					Text(stringResource(R.string.announcements_organization_title))
@@ -161,6 +164,7 @@ fun OperationManageScreen(
 	onTasks: () -> Unit,
 	onChanged: () -> Unit,
 	onAnnouncements: () -> Unit = {},
+	mapSection: (@Composable () -> Unit)? = null,
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
@@ -197,6 +201,7 @@ fun OperationManageScreen(
 				}
 			}
 		}
+		mapSection?.let { section -> item(key = "map") { section() } }
 
 		val transitions = if (canManage) nextOperationStates(operation.state) else emptyList()
 		if (transitions.isNotEmpty()) {
@@ -390,6 +395,10 @@ fun OperationFormScreen(viewModel: OperationFormViewModel, editing: Boolean, onS
 				onChange = { viewModel.edit("plannedEndAt") { copy(plannedEnd = it) } },
 				supporting = R.string.operation_planned_end_help,
 				minDate = java.time.LocalDate.now(java.time.ZoneId.systemDefault()))
+
+			AreaFields(state.areaLat, state.areaLon, state.areaRadius, state.areaErrors, enabled) { la, lo, r ->
+				viewModel.editArea(la, lo, r)
+			}
 
 			if (creating) {
 				SectionTitle(R.string.operation_coordinators)

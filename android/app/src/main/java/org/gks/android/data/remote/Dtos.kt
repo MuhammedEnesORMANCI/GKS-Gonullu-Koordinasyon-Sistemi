@@ -233,7 +233,48 @@ data class OperationView(
 	/** Yalnızca yönetim izdüşümünde (ADM, kendi operasyonunun KOR'u; LD-56). */
 	val overdue: Boolean? = null,
 	val pendingAssignmentCount: Int? = null,
+	/** ADR-025: operasyon bölgesi. */
+	val area: OperationArea? = null,
 )
+
+/** ADR-025: merkez + isteğe bağlı yarıçap (metre). */
+@Serializable
+data class OperationArea(val lat: Double, val lon: Double, val radiusM: Int? = null)
+
+@Serializable
+data class MapMeetingPoint(val groupId: String, val groupName: String, val lat: Double, val lon: Double, val address: String? = null)
+
+@Serializable
+data class MapAlertCounts(val total: Int = 0, val responded: Int = 0, val pending: Int = 0, val needHelp: Int = 0)
+
+@Serializable
+data class MapAlert(val id: String, val sentAt: String? = null, val counts: MapAlertCounts = MapAlertCounts())
+
+/** ADR-025 `GET /map/operations`: gönüllü konumu ve alarm metni içermez. */
+@Serializable
+data class MapOperationView(
+	val id: String,
+	val name: String,
+	val state: String,
+	val area: OperationArea? = null,
+	val participantCount: Int = 0,
+	val meetingPoints: List<MapMeetingPoint> = emptyList(),
+	val openAlert: MapAlert? = null,
+)
+
+/** LC-05 son konum (yalnızca KOR/ADM; her görüntüleme denetime yazılır, ADR-020). */
+@Serializable
+data class LastLocation(
+	val user: UserRef,
+	val lat: Double,
+	val lon: Double,
+	val accuracy: Double? = null,
+	val measuredAt: String? = null,
+	val freshness: String? = null,
+)
+
+@Serializable
+data class LocationListView(val operationId: String, val generatedAt: String? = null, val items: List<LastLocation> = emptyList())
 
 /** OR-01 (`coordinatorIds` 1..10, tekil; boş isteğe bağlı alanlar gönderilmez). */
 @Serializable
@@ -242,6 +283,7 @@ data class OperationCreateRequest(
 	val description: String? = null,
 	val plannedEndAt: String? = null,
 	val coordinatorIds: List<String>,
+	val area: OperationArea? = null,
 )
 
 /** OR-03. */

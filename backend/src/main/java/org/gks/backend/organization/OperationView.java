@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 record OperationView(UUID id, String name, String description, OperationState state, Instant plannedEndAt,
 		Instant activatedAt, Instant closedAt, Instant createdAt, List<UserRef> coordinators, Boolean overdue,
-		Integer pendingAssignmentCount) {
+		Integer pendingAssignmentCount, OperationArea area) {
 
 	/** Kapanmamış operasyon için "planlanan bitiş + 2 sa" hatırlatma eşiği (§7.4 {@code overdue}). */
 	static final Duration OVERDUE_AFTER = Duration.ofHours(2);
@@ -31,14 +31,14 @@ record OperationView(UUID id, String name, String description, OperationState st
 				&& now.isAfter(operation.plannedEndAt().plus(OVERDUE_AFTER));
 		return new OperationView(operation.id(), operation.name(), operation.description(), operation.state(),
 				operation.plannedEndAt(), operation.activatedAt(), operation.closedAt(), operation.createdAt(),
-				coordinators, overdue, pendingAssignments);
+				coordinators, overdue, pendingAssignments, operation.area());
 	}
 
 	static OperationView participantView(Operation operation, List<UserRef> coordinators) {
 		List<UserRef> namesOnly = coordinators.stream().map(ref -> new UserRef(null, ref.displayName())).toList();
 		return new OperationView(operation.id(), operation.name(), operation.description(), operation.state(),
 				operation.plannedEndAt(), operation.activatedAt(), operation.closedAt(), operation.createdAt(),
-				namesOnly, null, null);
+				namesOnly, null, null, operation.area());
 	}
 
 }

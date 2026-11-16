@@ -21,6 +21,7 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import MapIcon from '@mui/icons-material/Map';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -108,6 +109,7 @@ const PAGE_TITLES: [string, string][] = [
   ['/panel/denetim', 'Denetim Kayıtları'],
   ['/panel/hesabim', 'Hesabım'],
   ['/panel/mesajlar/*', 'Mesajlar'],
+  ['/panel/harita', 'Operasyon Haritası'],
 ];
 
 export function panelPageTitle(pathname: string): string {
@@ -130,6 +132,7 @@ export function usePanelNav(opId: string | undefined): PanelNavGroup[] {
       items: [
         { label: 'Özet', to: '/panel', icon: <DashboardIcon />, show: true, exact: true },
         { label: 'Operasyonlar', to: '/panel/operasyonlar', icon: <WorkIcon />, show: canOperations, exact: true },
+        { label: 'Operasyon Haritası', to: '/panel/harita', icon: <MapIcon />, show: canOperations },
         { label: 'Acil Alarmlar', to: '/panel/alarmlar', icon: <CrisisAlertIcon />, show: canAlert },
         { label: 'Mesajlar', to: '/panel/mesajlar', icon: <ForumIcon />, show: canOperations },
         { label: 'Bildirimler', to: '/panel/bildirimler', icon: <NotificationsIcon />, show: true },

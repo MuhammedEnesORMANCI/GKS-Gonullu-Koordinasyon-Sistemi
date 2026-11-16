@@ -17,6 +17,7 @@ import { fromLocalInput } from '../../components/format';
 import { useServices } from '../../services/registry';
 import type { OperationCreateRequest, OperationView } from '../../services/types';
 import { DESCRIPTION_MAX, NAME_MAX, NAME_MIN } from './OperationDetailPage';
+import { AreaPicker, parseArea, type AreaDraft } from '../map/AreaPicker';
 
 /**
  * WEB-03 operasyon oluşturma (OR-01, yalnızca ADM). Kullanıcı listesi ucu (ID-19) henüz olmadığından koordinatör
@@ -37,6 +38,8 @@ export function OperationCreateDialog({
   const [description, setDescription] = useState('');
   const [plannedEnd, setPlannedEnd] = useState('');
   const [touched, setTouched] = useState(false);
+  const [areaValue, setAreaValue] = useState<AreaDraft>({ lat: '', lon: '', radius: '' });
+  const parsedArea = parseArea(areaValue);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
@@ -56,6 +59,7 @@ export function OperationCreateDialog({
   else if (trimmed.length > NAME_MAX) errors.name = `En fazla ${NAME_MAX} karakter.`;
   if (description.length > DESCRIPTION_MAX) errors.description = `En fazla ${DESCRIPTION_MAX} karakter.`;
   if (plannedEndAt && new Date(plannedEndAt).getTime() <= Date.now()) errors.plannedEndAt = 'Gelecekte bir zaman seçin.';
+  Object.assign(errors, parsedArea.errors);
   const shown = { ...(touched ? errors : {}), ...serverFields };
 
   function submit(event: FormEvent) {
@@ -68,6 +72,7 @@ export function OperationCreateDialog({
       ...(description.trim() ? { description: description.trim() } : {}),
       ...(plannedEndAt ? { plannedEndAt } : {}),
       coordinatorIds: [me.id],
+      ...(parsedArea.area ? { area: parsedArea.area } : {}),
     });
   }
 
@@ -116,6 +121,7 @@ export function OperationCreateDialog({
               helperText={shown.plannedEndAt ?? 'İsteğe bağlı'}
               InputLabelProps={{ shrink: true }}
             />
+            <AreaPicker value={areaValue} onChange={setAreaValue} serverErrors={serverFields} />
             <Stack spacing={0.5}>
               <Typography variant="subtitle2">Koordinatör</Typography>
               <Typography>{me?.displayName ?? '—'} (siz)</Typography>

@@ -276,6 +276,26 @@ export interface OperationView {
   activeSharingCount?: number;
   openAlertCount?: number;
   pendingAssignmentCount?: number;
+  /** ADR-025: operasyon bölgesi (merkez + isteğe bağlı yarıçap). */
+  area?: OperationArea;
+}
+
+/** ADR-025: merkez koordinatı ve isteğe bağlı yarıçap (metre, 50..200000). */
+export interface OperationArea {
+  lat: number;
+  lon: number;
+  radiusM?: number;
+}
+
+/** ADR-025 `GET /map/operations`: harita özeti (gönüllü konumu ve alarm metni yok). */
+export interface MapOperationView {
+  id: Uuid;
+  name: string;
+  state: OperationState;
+  area?: OperationArea;
+  participantCount: number;
+  meetingPoints: { groupId: Uuid; groupName: string; lat: number; lon: number; address?: string }[];
+  openAlert?: { id: Uuid; sentAt: DateTime; counts: AlertCounts };
 }
 
 /**
@@ -286,6 +306,7 @@ export interface OperationUpdateRequest {
   name?: string;
   description?: string | null;
   plannedEndAt?: DateTime | null;
+  area?: OperationArea | null;
 }
 
 /** OR-01 (yalnızca ADM): ad 3..120, açıklama ≤ 2000, planlanan bitiş gelecekte, 1..10 tekil koordinatör. */
@@ -294,6 +315,7 @@ export interface OperationCreateRequest {
   description?: string;
   plannedEndAt?: DateTime;
   coordinatorIds: Uuid[];
+  area?: OperationArea;
 }
 
 export interface OperationStateRequest {

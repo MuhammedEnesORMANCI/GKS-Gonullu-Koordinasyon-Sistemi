@@ -42,6 +42,22 @@ class JdbcOperations implements Operations {
 	}
 
 	@Override
+	public Map<UUID, AreaRef> areas(Collection<UUID> ids) {
+		Map<UUID, AreaRef> areas = new HashMap<>();
+		if (ids.isEmpty()) {
+			return areas;
+		}
+		jdbc.sql("""
+				select id, center_lat, center_lon, radius_m from organization.operations
+				 where id in (:ids) and center_lat is not null""")
+			.param("ids", ids)
+			.query((rs, row) -> areas.put(rs.getObject("id", UUID.class), new AreaRef(rs.getDouble("center_lat"),
+					rs.getDouble("center_lon"), (Integer) rs.getObject("radius_m"))))
+			.list();
+		return areas;
+	}
+
+	@Override
 	public Map<UUID, String> names(Collection<UUID> ids) {
 		Map<UUID, String> names = new HashMap<>();
 		if (ids.isEmpty()) {

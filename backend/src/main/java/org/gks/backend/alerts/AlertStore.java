@@ -84,6 +84,25 @@ class AlertStore {
 		static final Counts EMPTY = new Counts(0, 0, 0, 0, 0, 0);
 	}
 
+	/** ADR-025: harita için operasyon başına en son gönderilen açık alarm. */
+	record OpenAlertRef(UUID id, UUID operationId, Instant sentAt) {
+	}
+
+	Map<UUID, OpenAlertRef> latestOpenAlerts(Collection<UUID> operationIds) {
+		Map<UUID, OpenAlertRef> result = new HashMap<>();
+		if (operationIds.isEmpty()) {
+			return result;
+		}
+		jdbc.sql("""
+				select distinct on (operation_id) id, operation_id, sent_at from alerts.alerts
+				 where state = 'OPEN' and operation_id in (:ops) order by operation_id, sent_at desc""")
+			.param("ops", operationIds)
+			.query((rs, row) -> result.put(uuid(rs, "operation_id"), new OpenAlertRef(uuid(rs, "id"),
+					uuid(rs, "operation_id"), rs.getTimestamp("sent_at").toInstant())))
+			.list();
+		return result;
+	}
+
 	// ---- alarm ----
 
 	void insertDraft(UUID id, UUID operationId, String message, String requestedAction, String priority,

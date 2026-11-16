@@ -49,6 +49,21 @@ class JdbcGroupMembers implements GroupMembers {
 	}
 
 	@Override
+	public List<MeetingPointRef> meetingPoints(java.util.Collection<UUID> operationIds) {
+		if (operationIds.isEmpty()) {
+			return List.of();
+		}
+		return jdbc.sql("""
+				select id, operation_id, name, mp_lat, mp_lon, mp_address from groups.groups
+				 where operation_id in (:ops) and archived_at is null and mp_lat is not null order by name, id""")
+			.param("ops", operationIds)
+			.query((rs, row) -> new MeetingPointRef(rs.getObject("id", UUID.class),
+					rs.getObject("operation_id", UUID.class), rs.getString("name"), rs.getDouble("mp_lat"),
+					rs.getDouble("mp_lon"), rs.getString("mp_address")))
+			.list();
+	}
+
+	@Override
 	public List<GroupRef> groups(UUID operationId) {
 		return jdbc.sql("""
 				select id, operation_id, name from groups.groups

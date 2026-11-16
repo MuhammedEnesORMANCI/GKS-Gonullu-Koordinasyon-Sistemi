@@ -35,6 +35,10 @@ android {
 		buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 		// Acil alarm sesi (ADR-022): sürekli (ısrarlı) ses süresi ve sonrasındaki kısa hatırlatma aralığı, dakika.
 		// Değiştirmek için: -Pgks.alertInsistentMinutes=… / gradle.properties.
+		// ADR-025: harita karo adresi. Varsayılan OSM sunucusu yalnızca geliştirme/test içindir; üretimde
+		// -Pgks.mapTileUrl=https://karo.kurum.example/{z}/{x}/{y}.png verilmelidir.
+		buildConfigField("String", "MAP_TILE_URL",
+			"\"" + (providers.gradleProperty("gks.mapTileUrl").orNull ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png") + "\"")
 		buildConfigField("int", "ALERT_INSISTENT_MINUTES",
 			(providers.gradleProperty("gks.alertInsistentMinutes").orNull ?: "10"))
 		buildConfigField("int", "ALERT_REMINDER_MINUTES",
@@ -102,6 +106,7 @@ dependencies {
 	implementation(libs.retrofit)
 	implementation(libs.retrofit.kotlinx.serialization)
 	implementation(libs.okhttp)
+	implementation(libs.maplibre)
 	implementation(platform(libs.firebase.bom))
 	implementation(libs.firebase.messaging)
 	debugImplementation(libs.compose.ui.tooling)

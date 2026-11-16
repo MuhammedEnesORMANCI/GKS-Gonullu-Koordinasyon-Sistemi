@@ -30,6 +30,12 @@ public interface GroupMembers {
 	/** Operasyonun arşivlenmemiş gruplarındaki aktif liderler. */
 	List<UUID> leaders(UUID operationId);
 
+	/** ADR-025: koordinatlı buluşma noktaları (arşivlenmemiş gruplar). */
+	List<MeetingPointRef> meetingPoints(java.util.Collection<UUID> operationIds);
+
+	record MeetingPointRef(UUID groupId, UUID operationId, String groupName, double lat, double lon, String address) {
+	}
+
 	record GroupRef(UUID id, UUID operationId, String name) {
 	}
 

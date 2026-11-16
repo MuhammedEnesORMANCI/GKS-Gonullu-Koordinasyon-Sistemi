@@ -345,6 +345,17 @@ interface GksApi {
 	@POST("api/v1/operations/{id}/locations")
 	suspend fun sendLocation(@Path("id") operationId: String, @Body request: LocationMeasurementRequest): Response<Unit>
 
+	/** LC-05 son konumlar (KOR/ADM); görüntüleme denetime yazılır. */
+	@GET("api/v1/operations/{id}/locations")
+	suspend fun operationLocations(@Path("id") operationId: String): Response<LocationListView>
+
+	/** ADR-025 Operasyon Haritası: ADM tümü, KOR kendi operasyonları (varsayılan yalnızca ACTIVE). */
+	@GET("api/v1/map/operations")
+	suspend fun mapOperations(@Query("state") states: List<String>?): Response<List<MapOperationView>>
+
+	@GET("api/v1/map/operations/{id}")
+	suspend fun mapOperation(@Path("id") operationId: String): Response<MapOperationView>
+
 	/** LC-04. */
 	@GET("api/v1/me/location-sharing")
 	suspend fun myLocationSharings(): Response<List<LocationSharingView>>

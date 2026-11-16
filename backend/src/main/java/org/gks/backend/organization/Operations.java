@@ -26,7 +26,13 @@ public interface Operations {
 	/** Liste görünümleri için operasyon adları; bilinmeyen kimlikler sonuçta yer almaz. */
 	Map<UUID, String> names(Collection<UUID> ids);
 
+	/** ADR-025: operasyon bölgeleri (merkez + yarıçap); bölgesi olmayanlar sonuçta yer almaz. */
+	Map<UUID, AreaRef> areas(Collection<UUID> ids);
+
 	record OperationRef(UUID id, UUID organizationId, String name, OperationState state) {
+	}
+
+	record AreaRef(double lat, double lon, Integer radiusM) {
 	}
 
 }
