@@ -356,7 +356,14 @@ export function httpInvitationService(api: ApiClient): InvitationService {
   };
 }
 
-const LIVE_EVENTS = [
+/**
+ * `EventSource` yalnızca dinleyicisi kayıtlı adlı olayları iletir. RAPOR_7 madde 2: mesaj olayları bu listede
+ * yoktu; açık sohbet canlı güncellenmiyordu (örnek veri modu akışı atladığı için testler bunu görmedi).
+ */
+export const LIVE_EVENTS = [
+  'message.created',
+  'message.updated',
+  'channel.updated',
   'inbox.changed',
   'announcement.sent',
   'operation.state.changed',
@@ -412,7 +419,7 @@ export function httpMessagingService(api: ApiClient): MessagingService {
 
 export function httpRealtimeService(baseUrl: string = API_BASE): RealtimeService {
   return {
-    connect: (topics, onEvent, onClosed) => {
+    connect: (topics, onEvent, onClosed, onStatus) => {
       if (typeof EventSource === 'undefined') return () => undefined;
       const query = topics.length > 0 ? `?topics=${topics.map(p).join(',')}` : '';
       const source = new EventSource(`${baseUrl}/stream${query}`, { withCredentials: true });
@@ -429,7 +436,9 @@ export function httpRealtimeService(baseUrl: string = API_BASE): RealtimeService
           onEvent({ type, id: event.lastEventId || undefined, data });
         });
       }
+      source.onopen = () => onStatus?.(true);
       source.onerror = () => {
+        onStatus?.(false);
         if (source.readyState === EventSource.CLOSED && !closed) {
           closed = true;
           onClosed();
@@ -438,6 +447,7 @@ export function httpRealtimeService(baseUrl: string = API_BASE): RealtimeService
       return () => {
         closed = true;
         source.close();
+        onStatus?.(false);
       };
     },
   };

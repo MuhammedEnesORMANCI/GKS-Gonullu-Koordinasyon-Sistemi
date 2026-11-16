@@ -331,7 +331,13 @@ export interface RealtimeService {
    * RT-01 `GET /stream`. Akışı açar ve olayları iletir; dönen işlev akışı kapatır. Akış kalıcı olarak kapanırsa
    * (ör. yetkisiz, oturum süresi) `onClosed` çağrılır; yeniden bağlanma kararı çağırandadır.
    */
-  connect(topics: string[], onEvent: (event: LiveEvent) => void, onClosed: () => void): () => void;
+  connect(
+    topics: string[],
+    onEvent: (event: LiveEvent) => void,
+    onClosed: () => void,
+    /** Bağlantı açıldı (true) / koptu, yeniden deneniyor (false). Sohbet yoklama yedeğini bu yönetir. */
+    onStatus?: (connected: boolean) => void,
+  ): () => void;
 }
 
 /** Kamu duyuruları (ADR-023): halka açık site ve uygulama; iç duyurulardan ayrıdır. */

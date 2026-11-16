@@ -4,6 +4,7 @@ import { sessionEvents } from '../api/sessionEvents';
 import type { LiveEvent } from '../services/contracts';
 import { useServices } from '../services/registry';
 import type { MeContext } from '../services/types';
+import { setLiveConnected } from './liveStatus';
 import { Q } from './queryKeys';
 import { useSession } from './session';
 
@@ -115,7 +116,7 @@ export function useLiveUpdates(): void {
         void queryClient.invalidateQueries({ queryKey: Q.unreadCount() });
         setGeneration((g) => g + 1);
       }, LIVE_RECONNECT_MS);
-    });
+    }, setLiveConnected);
     return () => {
       close();
       if (timer) clearTimeout(timer);

@@ -41,6 +41,15 @@ describe('Mesajlar (ADR-024)', () => {
     await waitFor(() => expect(screen.getByText('Yeni gelen mesaj')).toBeInTheDocument());
   });
 
+  it('akış bağlanamazsa (vekil/tünel) açık sohbet yoklamayla birkaç saniyede güncellenir', async () => {
+    const realtime = { connect: () => () => undefined };   // hiç bağlanmayan akış
+    renderApp({ route: '/panel/mesajlar/0192f000-7b00-7000-8000-000000000003', persona: 'KOR', overrides: { realtime } });
+    await screen.findByText('Ekip hazır.');
+    mockStore.messages.push({ id: '0192f000-7c00-7000-8000-000000000098', channelId: '0192f000-7b00-7000-8000-000000000003', kind: 'USER',
+      senderId: MOCK_IDS.volunteer(3), body: 'Yoklamayla gelen mesaj', createdAt: new Date().toISOString() });
+    await waitFor(() => expect(screen.getByText('Yoklamayla gelen mesaj')).toBeInTheDocument(), { timeout: 8_000 });
+  }, 12_000);
+
   it('menüde Mesajlar yalnızca ADM/KOR; TEK görmez', async () => {
     const { unmount } = renderApp({ route: '/panel', persona: 'KOR' });
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Menüyü aç' }));

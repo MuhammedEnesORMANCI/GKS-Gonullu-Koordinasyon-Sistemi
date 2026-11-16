@@ -21,6 +21,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SendIcon from '@mui/icons-material/Send';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
+import { chatRefetchInterval, useLiveConnected } from '../../app/liveStatus';
 import { Q } from '../../app/queryKeys';
 import { PALETTE } from '../../app/theme';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -122,9 +123,12 @@ function ChatPanel({ channel }: { channel: ChannelView }) {
   const [key, setKey] = useState(newKey);
   const [hideTarget, setHideTarget] = useState<MessageView | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const live = useLiveConnected();
   const messages = useQuery({
     queryKey: Q.channelMessages(channel.id),
     queryFn: () => services.messaging.messages(channel.id, { limit: 50 }),
+    // RAPOR_7 madde 2: akış bağlı değilken açık sohbet yoklanır (yedek).
+    refetchInterval: chatRefetchInterval(live),
   });
   const items = useMemo(() => [...(messages.data?.items ?? [])].reverse(), [messages.data]);
   const latest = items.at(-1);

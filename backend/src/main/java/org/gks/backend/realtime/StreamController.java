@@ -73,8 +73,10 @@ class StreamController {
 						decision == Decision.CLIENT_NOT_ALLOWED ? Code.CLIENT_NOT_ALLOWED : Code.FORBIDDEN);
 			}
 		}
-		response.setHeader("Cache-Control", "no-store");
-		response.setHeader("X-Accel-Buffering", "no");   // ters vekil arabelleğe almasın
+		// RAPOR_7 madde 2: vekil/tünel (Cloudflare, nginx) akışı sıkıştırıp arabelleğe almasın; her olay
+		// SseEmitter.send ile ayrı ayrı flush edilir. no-transform sıkıştırmayı (gzip arabelleği) engeller.
+		response.setHeader("Cache-Control", "no-cache, no-transform");
+		response.setHeader("X-Accel-Buffering", "no");
 		// Tarayıcının yerel yeniden bağlanması başlığı gönderir; ikisi birden gelirse başlık esastır (BOŞLUK-20).
 		String lastEventId = lastEventIdHeader != null ? lastEventIdHeader : lastEventIdParam;
 		return hub.open(subject, sessionId, requested, lastEventId);

@@ -1325,11 +1325,13 @@ export function mockMessagingService(): MessagingService {
 
 export function mockRealtimeService(): RealtimeService {
   return {
-    connect: (topics, onEvent) => {
+    connect: (topics, onEvent, _onClosed, onStatus) => {
       const listener = { topics, onEvent };
       liveListeners.add(listener);
+      onStatus?.(true);
       return () => {
         liveListeners.delete(listener);
+        onStatus?.(false);
       };
     },
   };

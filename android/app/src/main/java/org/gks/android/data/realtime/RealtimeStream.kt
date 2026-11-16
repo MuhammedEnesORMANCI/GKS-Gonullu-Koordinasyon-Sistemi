@@ -90,7 +90,9 @@ class RealtimeStream(
 		val request = Request.Builder()
 			.url(baseUrl.trimEnd('/') + "/api/v1/stream")
 			.header("Accept", "text/event-stream")
-			.header("Cache-Control", "no-store")
+			.header("Cache-Control", "no-cache")
+			// RAPOR_7 madde 2: sıkıştırma istenmez; tünel/vekil gzip için olayları arabelleğe almasın.
+			.header("Accept-Encoding", "identity")
 			.apply { lastEventId?.let { header("Last-Event-ID", it) } }
 			.build()
 		val parser = SseParser()

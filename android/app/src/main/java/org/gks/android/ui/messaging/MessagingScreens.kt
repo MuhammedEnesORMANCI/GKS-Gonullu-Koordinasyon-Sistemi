@@ -46,9 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.gks.android.R
 import org.gks.android.data.ApiResult
@@ -114,6 +116,22 @@ fun ChannelsScreen(viewModel: ChannelsViewModel, onOpen: (String) -> Unit) {
 					}
 				}
 			}
+		}
+	}
+}
+
+/** Akış bağlı değilken açık sohbetin yoklama aralığı (RAPOR_7 madde 2). */
+const val CHAT_POLL_MILLIS = 5_000L
+
+/**
+ * Canlı akış (SSE) bağlı değilken [refresh] her [intervalMillis]'de çağrılır; bağlanınca yoklama durur (olaylar
+ * yeter). Tünel/vekil akışı geciktirirse ya da akış kopuk kalırsa yeni mesaj yine birkaç saniyede görünür.
+ */
+suspend fun pollWhileDisconnected(connected: StateFlow<Boolean>, intervalMillis: Long = CHAT_POLL_MILLIS, refresh: () -> Unit) {
+	connected.collectLatest { live ->
+		while (!live) {
+			delay(intervalMillis)
+			refresh()
 		}
 	}
 }

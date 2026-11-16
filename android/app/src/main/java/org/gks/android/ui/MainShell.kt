@@ -131,6 +131,7 @@ import org.gks.android.ui.messaging.ChannelsScreen
 import org.gks.android.ui.messaging.ChannelsViewModel
 import org.gks.android.ui.messaging.ChatScreen
 import org.gks.android.ui.messaging.ChatViewModel
+import org.gks.android.ui.messaging.pollWhileDisconnected
 import org.gks.android.ui.notifications.InboxScreen
 import org.gks.android.ui.notifications.InboxViewModel
 import org.gks.android.ui.notifications.NotificationDetailScreen
@@ -452,6 +453,8 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				val channelId = backStack.arguments?.getString("id").orEmpty()
 				val vm = containerViewModel(key = "chat-$channelId") { ChatViewModel(it.messagingRepository, channelId) }
 				LaunchedEffect(vm) { container.messagingEvents.collect { vm.refresh() } }
+				// RAPOR_7 madde 2: akış bağlı değilken açık sohbet yoklanır (yedek).
+				LaunchedEffect(vm) { pollWhileDisconnected(container.realtime.connected) { vm.refresh() } }
 				ChatScreen(vm, onOpened = { open ->
 					container.openChannel.value = open
 					if (open != null) container.messageNotifier.clear(open)
