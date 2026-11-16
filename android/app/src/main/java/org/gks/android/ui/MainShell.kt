@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -93,7 +94,9 @@ import org.gks.android.ui.management.TaskFormScreen
 import org.gks.android.ui.management.TaskFormViewModel
 import org.gks.android.ui.management.VolunteersScreen
 import org.gks.android.ui.management.VolunteersViewModel
+import org.gks.android.GksApplication
 import org.gks.android.ui.alerts.AlertDetailScreen
+import org.gks.android.ui.notify.NotificationPermissionPrompt
 import org.gks.android.ui.location.LocationSharingCard
 import org.gks.android.ui.location.LocationSharingViewModel
 import org.gks.android.ui.alerts.AlertDetailViewModel
@@ -239,6 +242,29 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			}
 		}
 	}
+
+	// RT-01 canlı akış (ADR-021): ekran görünürken açık; olay gelince sayaç, gelen kutusu ve alarm bandı yenilenir.
+	// Yoklama yedek olarak sürer. Akıştan gelen acil alarm ve duyuru yerel bildirim olarak da gösterilir.
+	val container = (LocalContext.current.applicationContext as GksApplication).container
+	LaunchedEffect(lifecycle) {
+		container.liveNotifier.start()
+		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+			container.realtime.acquire()
+			try {
+				container.realtime.events.collect { event ->
+					when (event.type) {
+						"inbox.changed", "resync" -> { unreadVm.refresh(); alertsVm.refresh() }
+						// Oturum sunucuda iptal edildi: bağlam yeniden okunur; 401 ile giriş ekranına dönülür.
+						"session.revoked" -> app.refreshContext()
+					}
+				}
+			}
+			finally {
+				container.realtime.release()
+			}
+		}
+	}
+	NotificationPermissionPrompt()
 
 	Scaffold(
 		topBar = {

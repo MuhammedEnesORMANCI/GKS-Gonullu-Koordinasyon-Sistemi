@@ -24,6 +24,7 @@
 | ADR-018 | Acil alarm: ADM tam yetki, FCM'siz iletim (gelen kutusu + SSE), alıcı durumunun anlamı | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 | ADR-019 | Konum: açık başlatma, yalnızca KOR görür, kapanış sonrası 30 gün saklama, harita sağlayıcısı sonra | Kabul edildi (proje sahibi kararı, 16.11.2026; ADM'nin konum görmemesi Claude'un güvenli seçimi, onay bekliyor) | MVP |
 | ADR-020 | Konumu ADM de görür; her görüntüleme ayrı denetim kaydı; ayrı DB kullanıcısı; kimlik olayları denetimde | Kabul edildi (proje sahibi kararları, 16.11.2026) | MVP |
+| ADR-021 | Android canlı akış (SSE, OkHttp) ve FCM'siz yerel bildirim; uygulama kapalıyken bildirim yok | Kabul edildi (proje sahibi isteği, 16.11.2026) | MVP |
 
 ---
 
@@ -231,3 +232,15 @@
   4. **Kimlik olayları** (`resource_type = SESSION`): `LOGIN_SUCCEEDED` (`mfa`), `LOGIN_FAILED` (`reason` hata kodu, `accountKnown`, MFA adımındaysa `stage=MFA`; tanınmayan e-postada aktör boş, e-posta yazılmaz), `LOGOUT`, `LOGOUT_ALL`, `MFA_ENROLLED` (ilk doğru kodla kurulum kalıcılaşınca), `REFRESH_TOKEN_REUSED` (dayanak `SYSTEM`, zincir iptaliyle aynı işlemde). MFA sıfırlama yönetici işlemi olarak zaten `MFA_RESET`. `audit_entries.ip` (inet) tüm HTTP kaynaklı kayıtlarda doldurulur. Parola, belirteç, bilet ve TOTP değeri yazılmaz.
   5. Giriş akışı bilinçli olarak işlemsizdir: kimlik kayıtları kendi kısa işleminde yazılır. Başarılı girişte kayıt yazılamazsa giriş başarısız olur; başarısız girişte kayıt yazılamazsa asıl hata kodu korunur (denetim hatası bastırılmış istisna olarak eklenir).
 - **Sonuçlar:** (+) her konum erişimi ayrı ve izlenebilir; (+) denetim kaydı uygulama hesabıyla değiştirilemez. (−) LOCATION_VIEWED hacmi artar (istemci en fazla 15 sn'de bir çeker). (−) Başarısız giriş seli denetim tablosunu büyütür (kilit ve hız sınırı mevcut). (−) Geçersiz/süresi dolmuş TOTP biletiyle yapılan istek kişiye bağlanamadığı için kaydedilmez. (−) IP, ters vekil arkasında `forward-headers-strategy` ayarı olmadan vekilin adresidir.
+
+
+## ADR-021 Android canlı akış (SSE) ve FCM'siz yerel bildirim (ara çözüm)
+
+- **Bağlam:** Android'de bildirim, duyuru ve alarmlar yalnızca yoklama ve elle yenileme ile geliyordu. FCM (Firebase) henüz yok; proje sahibi 16.11.2026'da yeni bağımlılık olmadan OkHttp ile SSE ve FCM gelene kadar yerel bildirim istedi.
+- **Karar:**
+  1. `data/realtime/RealtimeStream` + `SseParser`: OkHttp ile `GET /api/v1/stream` (yalnızca kullanıcının `user:{id}` konusu; gönüllü için yeterli). Her bağlantı yeni istektir: belirteç `AuthInterceptor`/`TokenAuthenticator`'dan gelir, sunucu yetkiyi her açılışta denetler. Kopunca (ağ, 30 dk sunucu sınırı, 45 sn sessizlik) `retry`/artan bekleme ile yeniden bağlanır ve `Last-Event-ID` gönderir. Oturum yoksa bağlanmaz.
+  2. Akış kullanım sayacıyla paylaşılır: ana ekran ön plandayken (`STARTED`) ve konum paylaşımı ön plan servisi çalışırken açıktır.
+  3. `inbox.changed`/`resync` → okunmamış sayısı, gelen kutusu ve alarm bandı yenilenir; `session.revoked` → bağlam yeniden okunur (oturum bitmişse giriş ekranı). Yoklama yedek olarak sürer.
+  4. `ui/notify/LiveNotifier`: `inbox.changed` gelince gelen kutusu okunur; yeni ve okunmamış **acil alarm** (gönderim/iptal: `alerts-critical`, yüksek önem, alarm kategorisi) ve **duyuru** (`announcements`) yerel bildirim olarak gösterilir. Akış başlarken mevcut kayıtlar taban alınır (eski kayıt bildirim üretmez).
+  5. Android 13+: giriş sonrası bir kez açıklamalı `POST_NOTIFICATIONS` izni; reddedilirse uygulama içi bant ve gelen kutusu çalışır.
+- **Sınır (önemli):** **Uygulama tamamen kapalıyken (ve konum servisi çalışmıyorken) bildirim gelmez**; arka plana alınmış uygulamada da ekran durduğu için akış kapanır. Kilitli/kapalı telefona güvenilir iletim için FCM gerekir (RAPOR_2 §3). Bildirime dokunmak uygulamayı açar (alarm bandı görünür); doğrudan alarm ekranına derin bağlantı yok.

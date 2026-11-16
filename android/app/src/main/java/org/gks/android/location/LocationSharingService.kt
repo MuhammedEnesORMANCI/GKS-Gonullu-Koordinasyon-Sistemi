@@ -42,6 +42,21 @@ class LocationSharingService : Service() {
 	private var listener: LocationListener? = null
 
 	private val repository: LocationRepository get() = (application as GksApplication).container.locationRepository
+	private var streaming = false
+
+	/** ADR-021: servis çalışırken canlı akış açık kalır; uygulama arka plandayken de alarm/duyuru bildirimi gelir. */
+	private fun holdStream(hold: Boolean) {
+		val container = (application as GksApplication).container
+		if (hold && !streaming) {
+			container.liveNotifier.start()
+			container.realtime.acquire()
+			streaming = true
+		}
+		else if (!hold && streaming) {
+			container.realtime.release()
+			streaming = false
+		}
+	}
 
 	override fun onBind(intent: Intent?): IBinder? = null
 
@@ -56,6 +71,7 @@ class LocationSharingService : Service() {
 			else -> if (operationId != null) operations += operationId
 		}
 		if (operations.isEmpty()) {
+			holdStream(false)
 			stopUpdates()
 			ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
 			stopSelf()
@@ -63,10 +79,12 @@ class LocationSharingService : Service() {
 		}
 		ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(), foregroundType())
 		startUpdates()
+		holdStream(true)
 		return START_NOT_STICKY   // süreç ölürse kullanıcı yeniden başlatır; sessizce paylaşım sürmez
 	}
 
 	override fun onDestroy() {
+		holdStream(false)
 		stopUpdates()
 		scope.cancel()
 		super.onDestroy()

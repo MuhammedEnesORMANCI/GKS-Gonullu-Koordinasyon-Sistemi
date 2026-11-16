@@ -25,6 +25,11 @@ import org.gks.android.data.session.SessionManager
 import org.gks.android.data.session.SessionStore
 import org.gks.android.data.session.TokenAuthenticator
 import org.gks.android.data.session.TokenRefresher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import org.gks.android.data.realtime.RealtimeStream
+import org.gks.android.ui.notify.LiveNotifier
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 
@@ -36,7 +41,17 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 
 	private val installationId = InstallationId(context)
 	private val caller = ApiCaller(GksJson)
-	private val api: GksApi by lazy { createApis(apiBaseUrl, GksJson, sessions).first }
+	private val http: Http by lazy { createHttp(apiBaseUrl, GksJson, sessions) }
+	private val api: GksApi get() = http.api
+
+	/** Uygulama ömrü boyunca süren işler (canlı akış, yerel bildirimler). */
+	private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+	/** RT-01 canlı akış (ekran ve konum servisi paylaşır). */
+	val realtime by lazy { RealtimeStream(http.client, apiBaseUrl, appScope, hasSession = { sessions.current() != null }) }
+
+	/** FCM gelene kadar ara çözüm: akıştan gelen acil alarm ve duyuruyu yerel bildirim olarak gösterir. */
+	val liveNotifier by lazy { LiveNotifier(context.applicationContext, realtime, notificationRepository, appScope) }
 
 	val authRepository by lazy { AuthRepository(api, sessions, installationId::get, caller) }
 	val invitationRepository by lazy { InvitationRepository(api, installationId::get, caller) }
@@ -56,8 +71,14 @@ val GksJson = Json {
 	explicitNulls = false
 }
 
+/** Oturumlu API, oturumlu HTTP istemcisi (SSE de kullanır) ve yenileme API'si. */
+class Http(val api: GksApi, val refreshApi: RefreshApi, val client: OkHttpClient)
+
 /** Oturumlu API ve ayrı (kimlik doğrulayıcısız) yenileme API'si. Testlerde de kullanılır. */
-fun createApis(baseUrl: String, json: Json, sessions: SessionManager): Pair<GksApi, RefreshApi> {
+fun createApis(baseUrl: String, json: Json, sessions: SessionManager): Pair<GksApi, RefreshApi> =
+	createHttp(baseUrl, json, sessions).let { it.api to it.refreshApi }
+
+fun createHttp(baseUrl: String, json: Json, sessions: SessionManager): Http {
 	val base = OkHttpClient.Builder()
 		.connectTimeout(10, TimeUnit.SECONDS)
 		.readTimeout(20, TimeUnit.SECONDS)
@@ -73,5 +94,5 @@ fun createApis(baseUrl: String, json: Json, sessions: SessionManager): Pair<GksA
 		.build()
 	val api = Retrofit.Builder().baseUrl(baseUrl).client(authed).addConverterFactory(converter).build()
 		.create(GksApi::class.java)
-	return api to refreshApi
+	return Http(api, refreshApi, authed)
 }

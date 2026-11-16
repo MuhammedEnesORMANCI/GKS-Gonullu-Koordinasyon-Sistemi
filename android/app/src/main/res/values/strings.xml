@@ -518,4 +518,12 @@
 	<string name="location_notification_title">Konum paylaşılıyor</string>
 	<string name="location_notification_body">Koordinatör son konumunuzu görüyor. Durdurmak için dokunun.</string>
 	<string name="location_channel">Konum paylaşımı</string>
+	<!-- Canlı akış ve yerel bildirimler (ADR-021) -->
+	<string name="channel_alerts">Acil alarmlar</string>
+	<string name="channel_alerts_description">Koordinatörden gelen acil alarmlar ve iptalleri (yüksek öncelik)</string>
+	<string name="channel_announcements">Duyurular</string>
+	<string name="notification_permission_title">Bildirim izni</string>
+	<string name="notification_permission_body">Acil alarm ve duyuruları bildirim olarak görmek için izin verin. Uygulama tamamen kapalıyken bildirim gelmez (telefon bildirimi henüz bağlı değil).</string>
+	<string name="notification_permission_allow">İzin ver</string>
+	<string name="notification_permission_later">Daha sonra</string>
 </resources>
