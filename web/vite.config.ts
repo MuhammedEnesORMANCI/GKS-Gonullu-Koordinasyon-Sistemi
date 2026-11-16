@@ -38,5 +38,9 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     restoreMocks: true,
+    // Panel kabuğu (ADR-023) sonrası jsdom'da yoğun yazma testleri ~3 kat yavaşladı (user-event her işlemde
+    // getComputedStyle ile pointer-events denetler; maliyet belgedeki stil kuralı sayısıyla artar). Gerçek tarayıcıda
+    // bu maliyet yok; RAPOR_5'te not edildi.
+    testTimeout: 15_000,
   },
 });

@@ -583,3 +583,17 @@ export interface PublicAnnouncement {
   publishedAt: string;
 }
 
+export type PublicAnnouncementState = 'DRAFT' | 'PUBLISHED';
+
+/** ADM yönetim görünümü (`/public-announcements`). */
+export interface PublicAnnouncementAdminView {
+  id: Uuid;
+  title: string;
+  body: string;
+  state: PublicAnnouncementState;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+}
+

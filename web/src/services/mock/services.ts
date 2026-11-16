@@ -41,7 +41,7 @@ import type {
   UserSummary,
   Uuid,
 } from '../types';
-import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockPersona } from './store';
+import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockPersona, type MockPublicAnnouncement } from './store';
 
 /**
  * `mock` uygulamaları: sözleşmedeki kuralları (durum geçişleri, lider zorunluluğu, kapasite, sürüm)
@@ -292,7 +292,7 @@ export function mockMeContextService(): MeContextService {
           grantedBy,
           grantedAt: '2026-01-01T00:00:00Z',
         });
-        permissions.organization = ['operation.create', 'operation.manage', 'invitation.create', 'role.assign', 'account.disable', 'session.revoke', 'user.status.view', 'audit.view', 'mfa.reset', 'password.reset', 'announcement.send.organization'];
+        permissions.organization = ['operation.create', 'operation.manage', 'invitation.create', 'role.assign', 'account.disable', 'session.revoke', 'user.status.view', 'audit.view', 'mfa.reset', 'password.reset', 'announcement.send.organization', 'public_announcement.manage'];
         for (const op of mockStore.operations.values()) permissions.operations[op.id] = [...ADM_OPERATIONAL_PERMS];   // ADR-015
       } else if (persona === 'KOR') {
         for (const op of visibleOps.filter((o) => isCoordinatorOf(o.id))) {
@@ -1141,7 +1141,62 @@ export function mockPublicAnnouncementService(): PublicAnnouncementService {
       const items = all.slice(start, start + limit).map(({ id, title, body, publishedAt }) => ({ id, title, body, publishedAt: publishedAt! }));
       return respond({ items, nextCursor: start + limit < all.length ? String(start + limit) : undefined });
     },
+    list: async () => {
+      if (!canManagePublic()) return fail(403, 'FORBIDDEN');
+      const items = [...mockStore.publicAnnouncements].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((a) => ({ ...a }));
+      return respond({ items });
+    },
+    create: async ({ title, body }) => {
+      if (!canManagePublic()) return fail(403, 'FORBIDDEN');
+      const errors = publicContentErrors(title, body);
+      if (errors.length) return fail(400, 'VALIDATION_FAILED', undefined, errors);
+      const now = nowIso();
+      const created = { id: nextId('7a00'), title: title.trim(), body: body.trim(), state: 'DRAFT' as const, version: 1, createdAt: now, updatedAt: now };
+      mockStore.publicAnnouncements.push(created);
+      return respond({ ...created });
+    },
+    update: async (id, { title, body, version }) => {
+      const a = { row: await lockPublic(id, version) };
+      const errors = publicContentErrors(title, body);
+      if (errors.length) return fail(400, 'VALIDATION_FAILED', undefined, errors);
+      Object.assign(a.row, { title: title.trim(), body: body.trim(), version: a.row.version + 1, updatedAt: nowIso() });
+      return respond({ ...a.row });
+    },
+    publish: async (id, version) => {
+      const a = { row: await lockPublic(id, version) };
+      if (a.row.state === 'PUBLISHED') return fail(409, 'INVALID_STATE_TRANSITION');
+      const now = nowIso();
+      Object.assign(a.row, { state: 'PUBLISHED', publishedAt: now, version: a.row.version + 1, updatedAt: now });
+      return respond({ ...a.row });
+    },
+    unpublish: async (id, version) => {
+      const a = { row: await lockPublic(id, version) };
+      if (a.row.state === 'DRAFT') return fail(409, 'INVALID_STATE_TRANSITION');
+      Object.assign(a.row, { state: 'DRAFT', publishedAt: undefined, version: a.row.version + 1, updatedAt: nowIso() });
+      return respond({ ...a.row });
+    },
   };
+}
+
+function canManagePublic(): boolean {
+  return mockStore.orgRoles.some((r) => r.userId === PERSONA_USER[mockStore.persona] && r.role === 'ADM' && !r.revokedAt);
+}
+
+function publicContentErrors(title: string, body: string) {
+  const errors: { field: string; code: string; message: string }[] = [];
+  if (title.trim().length < 3) errors.push({ field: 'title', code: 'TOO_SHORT', message: 'Başlık en az 3 karakter olmalıdır' });
+  if (title.trim().length > 160) errors.push({ field: 'title', code: 'TOO_LONG', message: 'Başlık en fazla 160 karakter olabilir' });
+  if (!body.trim()) errors.push({ field: 'body', code: 'REQUIRED', message: 'Metin zorunludur' });
+  if (body.trim().length > 5000) errors.push({ field: 'body', code: 'TOO_LONG', message: 'Metin en fazla 5000 karakter olabilir' });
+  return errors;
+}
+
+async function lockPublic(id: string, version: number): Promise<MockPublicAnnouncement> {
+  if (!canManagePublic()) return fail(403, 'FORBIDDEN');
+  const row = mockStore.publicAnnouncements.find((a) => a.id === id);
+  if (!row) return fail(404, 'NOT_FOUND');
+  if (row.version !== version) return fail(409, 'VERSION_CONFLICT', { currentVersion: row.version });
+  return row;
 }
 
 export function mockRealtimeService(): RealtimeService {

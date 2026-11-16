@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -12,12 +14,15 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CrisisAlertIcon from '@mui/icons-material/CrisisAlert';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { shouldRetryIdempotentMutation } from '../../app/queryClient';
 import { Q } from '../../app/queryKeys';
 import { usePermissions } from '../../app/session';
 import { useIntentKey } from '../../app/useIntentKey';
+import { PALETTE } from '../../app/theme';
+import { StatusChip } from '../../components/panel/StatusChip';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader } from '../../components/PageHeader';
@@ -57,7 +62,7 @@ function AlertTable({ items, showOperation }: { items: AlertSummary[]; showOpera
               </TableCell>
               {showOperation && <TableCell>{a.operationName ?? '—'}</TableCell>}
               <TableCell>
-                <Chip size="small" color={ALERT_STATE_COLOR[a.state]} label={ALERT_STATE_LABEL[a.state]} />
+                <StatusChip kind="alert" value={a.state} />
               </TableCell>
               <TableCell>{a.state === 'DRAFT' ? '—' : countsLabel(a.counts)}</TableCell>
               <TableCell>{a.counts.needHelp > 0 ? <Chip size="small" color="error" label={a.counts.needHelp} /> : '0'}</TableCell>
@@ -152,11 +157,11 @@ export function OpenAlertsPage() {
 
 function CountChips({ counts }: { counts: AlertCounts }) {
   return (
-    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Alarm özeti">
-      <Chip label={`Yanıtladı: ${counts.responded}`} color="success" variant="outlined" />
-      <Chip label={`Bekliyor: ${counts.pending}`} variant="outlined" />
-      <Chip label={`Yanıtsız: ${counts.unanswered}`} color="warning" variant="outlined" />
-      <Chip label={`Gönderilemedi: ${counts.failed}`} variant="outlined" />
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Alarm özeti" sx={{ '& .MuiChip-root': { fontSize: '1rem', height: 34 } }}>
+      <Chip label={`Yanıtladı: ${counts.responded}`} color="success" />
+      <Chip label={`Bekliyor: ${counts.pending}`} variant="outlined" sx={{ bgcolor: 'background.paper' }} />
+      <Chip label={`Yanıtsız: ${counts.unanswered}`} color="warning" />
+      <Chip label={`Gönderilemedi: ${counts.failed}`} variant="outlined" sx={{ bgcolor: 'background.paper' }} />
       <Chip label={`Yardım gerekiyor: ${counts.needHelp}`} color="error" />
     </Stack>
   );
@@ -225,17 +230,31 @@ export function AlertDetailPage() {
       <QueryState isPending={alert.isPending} error={alert.error} onRetry={() => void alert.refetch()}>
         {() => (
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip color={ALERT_STATE_COLOR[a!.state]} label={ALERT_STATE_LABEL[a!.state]} />
-              <Typography color="text.secondary">
-                <RouterLink to={`/panel/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
-                {a!.sentAt ? ` · ${formatDateTime(a!.sentAt)} · ${a!.sentBy?.displayName ?? ''}` : ''}
-              </Typography>
-            </Stack>
-            <Typography variant="h6" component="p">
-              {a!.message}
-            </Typography>
-            {a!.requestedAction && <Typography>İstenen eylem: {a!.requestedAction}</Typography>}
+            <Card
+              sx={{
+                borderLeft: `8px solid ${a!.state === 'OPEN' ? PALETTE.danger : a!.state === 'CLOSED' ? PALETTE.success : PALETTE.border}`,
+                bgcolor: a!.state === 'OPEN' ? PALETTE.dangerSoft : 'background.paper',
+              }}
+              aria-label="Alarm durumu"
+            >
+              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <CrisisAlertIcon sx={{ fontSize: 40, color: a!.state === 'OPEN' ? PALETTE.danger : 'text.secondary' }} aria-hidden />
+                    <Chip color={ALERT_STATE_COLOR[a!.state]} label={ALERT_STATE_LABEL[a!.state]} sx={{ fontSize: '1rem', height: 34 }} />
+                    <Typography color="text.secondary">
+                      <RouterLink to={`/panel/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
+                      {a!.sentAt ? ` · ${formatDateTime(a!.sentAt)} · ${a!.sentBy?.displayName ?? ''}` : ''}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="h4" component="p" sx={{ fontWeight: 800 }}>
+                    {a!.message}
+                  </Typography>
+                  {a!.requestedAction && <Typography sx={{ fontSize: '1.125rem' }}>İstenen eylem: {a!.requestedAction}</Typography>}
+                  {a!.state !== 'DRAFT' && <CountChips counts={a!.counts} />}
+                </Stack>
+              </CardContent>
+            </Card>
             {a!.state === 'CANCELLED' && (
               <Alert severity="info">
                 {formatDateTime(a!.cancelledAt)} tarihinde {a!.cancelledBy?.displayName ?? ''} tarafından iptal edildi. Alıcılara
@@ -253,15 +272,14 @@ export function AlertDetailPage() {
               </Alert>
             )}
             <PushStatusNotice status={push.data} />
-            {a!.state !== 'DRAFT' && <CountChips counts={a!.counts} />}
             {canManage && (
-              <Stack direction="row" spacing={1}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                 {a!.state === 'OPEN' && (
                   <>
-                    <Button color="error" variant="outlined" onClick={() => setConfirm('cancel')}>
+                    <Button color="error" variant="contained" size="large" onClick={() => setConfirm('cancel')}>
                       İptal et
                     </Button>
-                    <Button variant="outlined" onClick={() => setConfirm('close')}>
+                    <Button variant="contained" size="large" onClick={() => setConfirm('close')}>
                       Kapat
                     </Button>
                     <Button

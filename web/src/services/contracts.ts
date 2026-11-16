@@ -9,6 +9,7 @@ import type {
   AlertView,
   Freshness,
   PublicAnnouncement,
+  PublicAnnouncementAdminView,
   LocationListView,
   AuditEntryView,
   AnnouncementCreateRequest,
@@ -328,6 +329,12 @@ export interface RealtimeService {
 export interface PublicAnnouncementService {
   /** Kimlik doğrulamasız, yalnızca yayındakiler, yeniden eskiye. */
   listPublished(page?: PageRequest): Promise<Page<PublicAnnouncement>>;
+  /** ADM: taslak ve yayındakiler (güncellenme sırasıyla). */
+  list(page?: PageRequest): Promise<Page<PublicAnnouncementAdminView>>;
+  create(content: { title: string; body: string }): Promise<PublicAnnouncementAdminView>;
+  update(id: Uuid, content: { title: string; body: string; version: number }): Promise<PublicAnnouncementAdminView>;
+  publish(id: Uuid, version: number): Promise<PublicAnnouncementAdminView>;
+  unpublish(id: Uuid, version: number): Promise<PublicAnnouncementAdminView>;
 }
 
 export interface Services {

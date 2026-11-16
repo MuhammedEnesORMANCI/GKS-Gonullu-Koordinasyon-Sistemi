@@ -19,7 +19,8 @@ import { usePermissions } from '../../app/session';
 import { OperationCreateDialog } from './OperationCreateDialog';
 import { PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
-import { OPERATION_STATE_COLOR, OPERATION_STATE_LABEL, formatDateTime, isClosedState } from '../../components/format';
+import { OPERATION_STATE_LABEL, formatDateTime, isClosedState } from '../../components/format';
+import { StatusChip } from '../../components/panel/StatusChip';
 import { useIsMock, useServices } from '../../services/registry';
 import type { OperationState } from '../../services/types';
 
@@ -139,7 +140,7 @@ export function OperationListPage() {
                           <RouterLink to={`/panel/operasyonlar/${op.id}`}>{op.name}</RouterLink>
                         </TableCell>
                         <TableCell>
-                          <Chip size="small" label={OPERATION_STATE_LABEL[op.state]} color={OPERATION_STATE_COLOR[op.state]} />
+                          <StatusChip kind="operation" value={op.state} />
                         </TableCell>
                         <TableCell>{op.coordinators.map((c) => c.displayName).join(', ') || '—'}</TableCell>
                         <TableCell>

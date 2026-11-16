@@ -22,7 +22,7 @@ describe('uygulama kabuğu ve rol tabanlı menü', () => {
     renderApp({ route: '/panel', persona: 'TEK' });
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
-    expect(within(nav).getByText('Panel')).toBeInTheDocument();
+    expect(within(nav).getByText('Özet')).toBeInTheDocument();
     expect(within(nav).queryByText('Operasyonlar')).not.toBeInTheDocument();
   });
 

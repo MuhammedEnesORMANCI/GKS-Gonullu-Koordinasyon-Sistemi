@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,9 +19,8 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
+import { StatusChip } from '../../components/panel/StatusChip';
 import {
-  OPERATION_STATE_COLOR,
-  OPERATION_STATE_LABEL,
   formatDateTime,
   fromLocalInput,
   isClosedState,
@@ -128,7 +126,7 @@ export function OperationDetailPage() {
               <Stack spacing={1}>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="subtitle2">Durum:</Typography>
-                  <Chip label={OPERATION_STATE_LABEL[op!.state]} color={OPERATION_STATE_COLOR[op!.state]} size="small" />
+                  <StatusChip kind="operation" value={op!.state} />
                 </Stack>
                 <Typography>
                   <strong>Açıklama:</strong> {op!.description || '—'}

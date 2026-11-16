@@ -45,6 +45,7 @@ import type {
   Page,
   ParticipantView,
   PublicAnnouncement,
+  PublicAnnouncementAdminView,
   RoleAssignmentView,
   TaskSummary,
   UserDetail,
@@ -372,6 +373,12 @@ export function httpPublicAnnouncementService(api: ApiClient): PublicAnnouncemen
   return {
     listPublished: (page = {}) =>
       api.get<Page<PublicAnnouncement>>('/public/announcements', { query: { limit: page.limit, cursor: page.cursor } }),
+    list: (page = {}) =>
+      api.get<Page<PublicAnnouncementAdminView>>('/public-announcements', { query: { limit: page.limit, cursor: page.cursor } }),
+    create: (content) => api.post<PublicAnnouncementAdminView>('/public-announcements', content),
+    update: (id, content) => api.patch<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}`, content),
+    publish: (id, version) => api.post<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}/publish`, { version }),
+    unpublish: (id, version) => api.post<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}/unpublish`, { version }),
   };
 }
 
