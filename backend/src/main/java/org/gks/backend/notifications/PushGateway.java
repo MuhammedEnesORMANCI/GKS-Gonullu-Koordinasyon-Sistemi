@@ -15,9 +15,13 @@ public interface PushGateway {
 	/** Ağ çağrısı; veritabanı işlemi dışında yapılır (LD-40 kira deseni). */
 	Result send(Message message);
 
-	/** communication.md §1.5: data mesajı; yalnızca kimlikler ve kısa metin. */
+	/**
+	 * communication.md §1.5: yalnızca <b>data</b> mesajı (bildirimi uygulama kendisi oluşturur, ADR-022); kimlikler ve
+	 * kısa metin. {@code notificationId}: SSE ile gelen aynı olayın tekilleştirme anahtarı; {@code inboxItemId}: alıcının
+	 * gelen kutusu kaydı (bildirime dokununca açılan ayrıntı).
+	 */
 	record Message(UUID deliveryId, String token, String type, String collapseKey, Priority priority, String title,
-			String sourceType, UUID sourceId) {
+			String sourceType, UUID sourceId, String kind, UUID notificationId, String body, UUID inboxItemId) {
 		@Override
 		public String toString() {
 			return "PushMessage[delivery=" + deliveryId + ", type=" + type + "]";   // belirteç günlüğe yazılmaz
@@ -40,6 +44,7 @@ public interface PushGateway {
 			return new Result(Outcome.TRANSIENT_FAILURE, null, errorCode);
 		}
 
+		/** {@code errorCode}: {@code UNREGISTERED} (uygulama kaldırıldı / belirteç düştü) veya {@code INVALID_ARGUMENT}. */
 		public static Result invalidToken(String errorCode) {
 			return new Result(Outcome.INVALID_TOKEN, null, errorCode);
 		}

@@ -14,8 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 /**
- * notifications modülünün push cihaz dizini ({@code identity.devices}, DB §3.3). Cihaz kaydı (ID-26) FCM ile
- * birlikte gelecek; o zamana kadar tablo boş kalır ve push kuyruğuna satır girmez.
+ * notifications modülünün push cihaz dizini ({@code identity.devices}, DB §3.3). Kayıt ID-26 ({@link DeviceController}).
  */
 @Component
 class JdbcPushDevices implements NotificationDirectories.PushDevices {

@@ -62,16 +62,17 @@ Modül sınırları `backend/src/test/java/org/gks/backend/ModularityTests.java`
 | ADM tüm operasyonlarda yönetim (ADR-015) | ✅ | ✅ | ✅ (izinlerden kendiliğinden) |
 | Grup (GR-01…08) | ✅ | ✅ | ✅ gönüllü/lider ekranları + KOR grup yönetimi |
 | Görev (TK-01…12) | ✅ | ✅ | ✅ gönüllü kabul/ret + KOR görev yönetimi |
-| Bildirim gelen kutusu (NT-04/05/07/08) | ✅ | ✅ zil rozeti, `/bildirimler` | ✅ sekme, rozet, 30 sn yoklama |
+| Bildirim gelen kutusu (NT-04/05/07/08) | ✅ | ✅ zil rozeti, `/bildirimler` | ✅ sekme, rozet, SSE + 30 sn yoklama yedeği |
+| FCM push + cihaz kaydı (ID-26, ADR-022) | ✅ `identity/DeviceController`, `notifications/FcmPushGateway` | – | ✅ `alarm/` (`Alarms`, `AlarmPolicy`, `GksMessagingService`, `DeviceRegistrar`) |
 | Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ✅ operasyon/grup/kişi hedefi, önizleme, >50 onay, geçmiş, kurum duyurusu |
 | Denetim kaydı (AU-01, ADR-016) | ✅ `audit/` (V12) | ✅ `/denetim` salt-okur | – |
-| Gerçek zamanlı akış (RT-01, ADR-017) | ✅ `realtime/` | ✅ `app/live.ts` | – (yoklama) |
+| Gerçek zamanlı akış (RT-01, ADR-017) | ✅ `realtime/` | ✅ `app/live.ts` | ✅ `data/realtime/` (ADR-021) |
 | Acil alarm (AL-01, 03–16, ADR-018) | ✅ `alerts/` (V13) | ✅ `/operasyonlar/:id/alarmlar`, `/alarmlar/:id`, `/alarmlar` | ✅ gönüllü: alarm bandı + yanıt ekranı (`ui/alerts/`) |
 | Konum (LC-01…05, ADR-019) | ✅ `location/` (V14) | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi (`location/`, `ui/location/`) |
 
 ### 3.2 Planlanan / yok
 
-Harita (sağlayıcı arayüzü hazır), cihaz kaydı (ID-26), FCM push (alarm için zorunlu), Android SSE, alarm taslak düzenleme (AL-02), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
+Harita (sağlayıcı arayüzü hazır), alarm taslak düzenleme (AL-02), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
 
 ### 3.3 Gerçek cihazda/kullanıcıyla doğrulanmamış
 
@@ -184,6 +185,7 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 - `data/session/`: `KeystoreSessionStore`, `SessionManager`, `TokenRefresher` (tek uçuşlu yenileme), `AuthInterceptors.kt` (Bearer + 401 işleme).
 - `data/ApiCall.kt`: `ApiResult`, `ApiError`, `ApiCaller.call/allPages`, `IdempotencyKeys` (ağ hatasında aynı anahtar).
 - Depolar: `AuthRepository`, `InvitationRepository`, `VolunteerRepository`, `NotificationRepository`, `ManagementRepository` (operasyon, koordinatör, gönüllü/davet, grup), `TaskManagementRepository`, `AnnouncementRepository` (16.11).
+- `alarm/` (ADR-022): `Alarms` (tek giriş `onIncoming`: FCM ve SSE; `notificationId` ile tekilleştirme; kanal `alerts-critical-v2`; ısrarlı ses/hatırlatma `AlarmManager`; yanıt düğmeleri; `reconcile`), `AlarmPolicy` (saf durum makinesi, birim testli), `Incoming`/`RecentIds`, `AlarmActionReceiver`, `GksMessagingService`, `DeviceRegistrar` (`PUT /devices/{installationId}`). İzin ekranı/durumu `ui/notify/AlarmPermissions.kt`. Bildirime dokunma → `MainActivity.handleOpen` → `AppContainer.pendingOpen` → `MainShell` gezinmesi.
 - `domain/`: `HomeModel.kt`, `RolePanels.kt`, `ProfileChanges.kt`, `ManagementAccess.kt` (Yönetim sekmesi ve düğme görünürlüğü; `canAnnounce`, `canAnnounceOrganization`), `AnnouncementForm.kt` (hedef, kişi arama, doğrulama).
 
 **Navigasyon:** `ui/MainActivity.kt` (giriş/kayıt/MFA/bağlam yükleme durumları, `ui/AppViewModel.kt`) → `ui/MainShell.kt` (alt navigasyon + NavHost).
@@ -251,11 +253,11 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ## 11. Eksikler ve yol haritası (öncelik sırası)
 
-Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, web rol atama, kullanıcı yönetimi, sayfalama birleştirme; sabah: **denetim kaydı (ADR-016), SSE (ADR-017), acil alarm (ADR-018), konum (ADR-019)**.
+Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, web rol atama, kullanıcı yönetimi, sayfalama birleştirme; sabah: **denetim kaydı (ADR-016), SSE (ADR-017), acil alarm (ADR-018), konum (ADR-019)**; öğleden sonra: ADR-020 (ADM konum, `gks_app` DB rolü, kimlik denetimi), Android SSE (ADR-021); akşam: **FCM + acil alarm bildirimi (ADR-022)**.
 
-1. **FCM push + cihaz kaydı (ID-26)** — acil alarmın kilitli telefona ulaşması için zorunlu. `notifications/PushGateway.java`, `DeliveryWorker.java` hazır; `gks.notifications.push.provider=none`. Firebase projesi ve bağımlılıklar gerekir (`.claude-runs/RAPOR_2.md` §3). FCM gelince: alarm alıcıları `QUEUED` doğup işçiyle ilerler, hatırlatmalar yeniden iletim yapar, `deliveryDelayed` hesaplanır.
+1. **FCM gerçek cihaz doğrulaması** — kod tamam (ADR-022, 16.11 akşam); MANUEL_TEST §11 sonuçlarına göre düzeltme. Kalan: `deliveryDelayed` push teslim durumundan hesaplanmıyor, alarm hatırlatmaları push'u yeniden göndermiyor, `REUSE_DETECTED` cihazı kapatmıyor.
 2. **Harita** — sağlayıcı kararı ve bağımlılık; web `features/location/mapProvider.ts` arayüzü hazır.
-3. **Android SSE** — ertelendi; FCM sonrası değerlendirilmeli.
+3. ~~Android SSE~~ — tamamlandı (ADR-021).
 4. Alarm kalanları: AL-02, `alert:{id}` konusu ve 1 sn birleştirme, KOR/ADM için Android alarm yönetimi.
 5. Konum kalanları: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma; `OPERATION_SUSPENDED` (G).
 6. Denetim kalanları: kimlik olayları (giriş/çıkış/MFA); ayrı yalnızca `SELECT/INSERT` DB rolü.
@@ -298,4 +300,4 @@ Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, we
 
 16.11 sabahı tamamlananlar ve commit'ler: denetim `5fd8771`, SSE `2b800a1`, acil alarm `9a79e24`, konum `0f51d86` (ayrıntı `.claude-runs/RAPOR_2.md`).
 
-Sıradaki işler proje sahibinin kararına bağlıdır (RAPOR_2 §5): FCM (Firebase projesi ve `google-services.json`), harita sağlayıcısı, ADM'nin konum görmesi, denetim DB rolü. Karar gelmeden bunlara başlanmaz; FCM ve harita yeni bağımlılık ve internetten indirme gerektirir.
+Sonraki oturumlar: RAPOR_3 (ADR-020/021) ve RAPOR_4 (ADR-022, FCM). Firebase: `android/app/google-services.json` git dışıdır, asla commit edilmez; sunucu anahtarı yalnızca `.env`'deki `GKS_FIREBASE_CREDENTIALS_FILE` yolundan okunur, dosya açılmaz. Sıradaki iş proje sahibinin MANUEL_TEST §11 sonuçlarına ve harita sağlayıcısı kararına bağlıdır. Yeni bağımlılık/indirme yalnızca açık izinle.

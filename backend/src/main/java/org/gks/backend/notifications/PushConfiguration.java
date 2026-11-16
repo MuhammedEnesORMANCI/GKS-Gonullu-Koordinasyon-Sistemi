@@ -5,19 +5,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Push sağlayıcısı seçimi ({@code gks.notifications.push.provider}). Bu sürümde yalnızca {@code none}: Firebase
- * projesi henüz yok. FCM eklendiğinde ({@code fcm}) aynı {@link PushGateway} arayüzüyle buraya bağlanır; teslim
- * kuyruğu, işçi ve gelen kutusu değişmez. Bilinmeyen değer açılışta hata verir (sessizce "kapalı" sayılmaz).
+ * Push sağlayıcısı seçimi ({@code gks.notifications.push.provider}): {@code none} (push kapalı, yalnızca gelen kutusu
+ * ve SSE) veya {@code fcm} (ADR-022; hizmet hesabı anahtarının yolu {@code GKS_FIREBASE_CREDENTIALS_FILE}). Bilinmeyen
+ * değer veya okunamayan anahtar dosyası açılışta hata verir (sessizce "kapalı" sayılmaz).
  */
 @Configuration(proxyBeanMethods = false)
 class PushConfiguration {
 
 	@Bean
-	PushGateway pushGateway(@Value("${gks.notifications.push.provider:none}") String provider) {
+	PushGateway pushGateway(@Value("${gks.notifications.push.provider:none}") String provider,
+			@Value("${gks.notifications.push.fcm.credentials-file:}") String credentialsFile) {
 		return switch (provider) {
 			case "none" -> DisabledPushGateway.INSTANCE;
-			default -> throw new IllegalStateException("Desteklenmeyen push sağlayıcısı: " + provider
-					+ " (bu sürümde yalnızca 'none'; FCM ayrı aşamada eklenecek)");
+			case "fcm" -> FcmPushGateway.fromCredentialsFile(credentialsFile);
+			default -> throw new IllegalStateException("Desteklenmeyen push sağlayıcısı: " + provider + " (none | fcm)");
 		};
 	}
 

@@ -19,7 +19,11 @@ import org.gks.android.ui.common.toUiText
  * Açık alarmlarım (AL-08; AND-03 alarm bandı). FCM yokken ön plandayken yoklanır. Yoklamada ilk kez görülen
  * (`SENT`) alarm için bir kez "alındı" sinyali gider (AL-13; otomatik tekrar yok, LD-10).
  */
-class OpenAlertsViewModel(private val repository: AlertRepository) : ViewModel() {
+class OpenAlertsViewModel(
+	private val repository: AlertRepository,
+	/** ADR-022: alarm bildirimlerinin sunucuyla eşitlenmesi (çevrimdışıyken kaçan kapanış/iptal). */
+	private val reconcile: suspend (List<MyAlertView>) -> Unit = {},
+) : ViewModel() {
 
 	private val _alerts = MutableStateFlow<List<MyAlertView>>(emptyList())
 	val alerts: StateFlow<List<MyAlertView>> = _alerts.asStateFlow()
@@ -29,6 +33,7 @@ class OpenAlertsViewModel(private val repository: AlertRepository) : ViewModel()
 		viewModelScope.launch {
 			val result = repository.openAlerts() as? ApiResult.Success ?: return@launch   // hata listeyi silmez
 			_alerts.value = result.value
+			reconcile(result.value)
 			result.value.filter { it.recipient.state == "SENT" && signalled.add(it.recipient.id) }
 				.forEach { repository.markDelivered(it.recipient.id) }
 		}
@@ -40,7 +45,22 @@ class OpenAlertsViewModel(private val repository: AlertRepository) : ViewModel()
 }
 
 /** AL-07 + AL-14 (açılışta "görüldü") + AL-15 (yanıt ve değişikliği). */
-class AlertDetailViewModel(private val repository: AlertRepository, private val alertId: String) : LoadViewModel<MyAlertView>() {
+class AlertDetailViewModel(
+	private val repository: AlertRepository,
+	private val alertId: String,
+	private val alarms: org.gks.android.alarm.Alarms? = null,
+) : LoadViewModel<MyAlertView>() {
+
+	private val _sounding = MutableStateFlow(alarms?.isSounding(alertId) == true)
+	/** Alarm sesi çalıyor mu (uygulamayı açmak sesi durdurmaz; "Sesi sustur" ile durur). */
+	val sounding: StateFlow<Boolean> = _sounding.asStateFlow()
+
+	fun mute() {
+		viewModelScope.launch {
+			alarms?.mute(alertId)
+			_sounding.value = false
+		}
+	}
 
 	private val _action = MutableStateFlow(ActionState())
 	val action: StateFlow<ActionState> = _action.asStateFlow()
@@ -63,7 +83,11 @@ class AlertDetailViewModel(private val repository: AlertRepository, private val 
 		_action.value = ActionState(busy = true)
 		viewModelScope.launch {
 			_action.value = when (val result = repository.respond(recipientId, option)) {
-				is ApiResult.Success -> ActionState(notice = text(R.string.alert_response_sent))
+				is ApiResult.Success -> {
+					alarms?.responded(alertId, option)   // ses durur, bildirim "Yanıtınız iletildi" olur
+					_sounding.value = false
+					ActionState(notice = text(R.string.alert_response_sent))
+				}
 				is ApiResult.Failure -> ActionState(error = result.error.toUiText(ERRORS))
 			}
 			load()

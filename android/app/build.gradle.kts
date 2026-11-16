@@ -4,6 +4,8 @@ plugins {
 	alias(libs.plugins.android.application)
 	alias(libs.plugins.kotlin.android)
 	alias(libs.plugins.kotlin.serialization)
+	// FCM (ADR-022): android/app/google-services.json gerekir (depoya girmez, .gitignore).
+	alias(libs.plugins.google.services)
 }
 
 /**
@@ -31,6 +33,12 @@ android {
 		versionCode = 1
 		versionName = "0.1.0"
 		buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+		// Acil alarm sesi (ADR-022): sürekli (ısrarlı) ses süresi ve sonrasındaki kısa hatırlatma aralığı, dakika.
+		// Değiştirmek için: -Pgks.alertInsistentMinutes=… / gradle.properties.
+		buildConfigField("int", "ALERT_INSISTENT_MINUTES",
+			(providers.gradleProperty("gks.alertInsistentMinutes").orNull ?: "10"))
+		buildConfigField("int", "ALERT_REMINDER_MINUTES",
+			(providers.gradleProperty("gks.alertReminderMinutes").orNull ?: "3"))
 	}
 
 	buildTypes {
@@ -82,6 +90,8 @@ dependencies {
 	implementation(libs.retrofit)
 	implementation(libs.retrofit.kotlinx.serialization)
 	implementation(libs.okhttp)
+	implementation(platform(libs.firebase.bom))
+	implementation(libs.firebase.messaging)
 	debugImplementation(libs.compose.ui.tooling)
 
 	testImplementation(libs.junit)

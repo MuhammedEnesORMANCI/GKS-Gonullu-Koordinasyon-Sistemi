@@ -441,6 +441,8 @@ data class InboxItem(
 	val readAt: String? = null,
 	val link: InboxLink? = null,
 	val operationId: String? = null,
+	/** Olayın kimliği: FCM ve SSE ile gelen aynı bildirimin tekilleştirme anahtarı (ADR-022). */
+	val notificationId: String? = null,
 )
 
 /** İstemci rotaya çevirir: `TASK`, `GROUP`, `INVITATION`, `OPERATION`, `ANNOUNCEMENT`. */
@@ -557,3 +559,14 @@ data class LocationSharingView(
 
 @Serializable
 data class LocationMeasurementRequest(val lat: Double, val lon: Double, val accuracy: Double, val measuredAt: String)
+
+// ---------------------------------------------------------------- cihaz kaydı (ID-26, ADR-022)
+
+/** `fcmToken` metne dönüşmez. */
+@Serializable
+data class DeviceRegisterRequest(val fcmToken: String, val appVersion: String) {
+	override fun toString() = "DeviceRegisterRequest[***]"
+}
+
+@Serializable
+data class DeviceView(val installationId: String, val active: Boolean, val registeredAt: String? = null, val lastSeenAt: String? = null)

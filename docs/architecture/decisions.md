@@ -244,3 +244,23 @@
   4. `ui/notify/LiveNotifier`: `inbox.changed` gelince gelen kutusu okunur; yeni ve okunmamış **acil alarm** (gönderim/iptal: `alerts-critical`, yüksek önem, alarm kategorisi) ve **duyuru** (`announcements`) yerel bildirim olarak gösterilir. Akış başlarken mevcut kayıtlar taban alınır (eski kayıt bildirim üretmez).
   5. Android 13+: giriş sonrası bir kez açıklamalı `POST_NOTIFICATIONS` izni; reddedilirse uygulama içi bant ve gelen kutusu çalışır.
 - **Sınır (önemli):** **Uygulama tamamen kapalıyken (ve konum servisi çalışmıyorken) bildirim gelmez**; arka plana alınmış uygulamada da ekran durduğu için akış kapanır. Kilitli/kapalı telefona güvenilir iletim için FCM gerekir (RAPOR_2 §3). Bildirime dokunmak uygulamayı açar (alarm bandı görünür); doğrudan alarm ekranına derin bağlantı yok.
+
+## ADR-022 FCM push ve acil alarm bildirimi (kilitli/kapalı telefon)
+
+- **Bağlam:** ADR-021'deki SSE + yerel bildirim yalnızca uygulama açıkken çalışır. Proje sahibi 16.11.2026'da Firebase projesini kurdu (`android/app/google-services.json`, git dışı; hizmet hesabı anahtarı makinede, yol `.env`'den) ve acil alarm için ayrıntılı davranış istedi.
+- **Karar (backend):**
+  1. Cihaz kaydı `PUT /api/v1/devices/{installationId}` (yalnızca Android oturumu): belirteç yenilemede de aynı uç; aynı belirteç başka kayıttaysa o kayıt (`TOKEN_REPLACED`), aynı kurulum başka kullanıcıdaysa o kayıt (`USER_SWITCH`) kapatılır; cihaz oturum ailesine bağlanır, çıkışta kapanır. Yanıtta belirteç dönmez.
+  2. `gks.notifications.push.provider=fcm` (`GKS_PUSH_PROVIDER`), anahtar yolu `GKS_FIREBASE_CREDENTIALS_FILE`. Anahtar içeriği hiçbir hata/günlük mesajına yazılmaz.
+  3. Yalnızca **data** mesajı: alarm `priority=HIGH`, TTL 1 sa, alarm başına collapse key; duyuru `NORMAL`, TTL 1 gün. Yük: `type, kind, notificationId, inboxItemId, sourceType, sourceId, title, body(≤1000), priority`. Not: başlık/metin Google üzerinden geçer (çevrimdışı gösterim için bilinçli tercih).
+  4. FCM `UNREGISTERED`/`INVALID_ARGUMENT`/`SENDER_ID_MISMATCH` → cihaz kapatılır (`FCM_UNREGISTERED`/`FCM_INVALID_TOKEN`); `UNAVAILABLE/INTERNAL/QUOTA_EXCEEDED` → yeniden deneme; diğerleri reddedildi. Gönderim işlem dışında `DeliveryWorker` ile yapılır: hata alarmı/duyuruyu geri almaz, gelen kutusu + SSE ile iletim sürer, hata teslim satırına ve günlüğe yazılır.
+- **Karar (Android):**
+  1. `GksMessagingService` ve `LiveNotifier` (SSE) aynı `alarm/Alarms.onIncoming` girişine gider; tekilleştirme anahtarı `notificationId` (son 300 kimlik kalıcı). Aynı olay iki yoldan gelse de bir bildirim.
+  2. Kanal `alerts-critical-v2` (USAGE_ALARM sesi, titreşim, DND'yi geçme isteği, kilit ekranında PRIVATE); eski `alerts-critical` silinir. Duyurular `announcements` (normal).
+  3. Alarm bildirimi: süren (ongoing), aynı alarm = aynı bildirim kimliği; kilit ekranında yalnızca "ACİL ALARM" (public sürüm); yanıt düğmeleri (Aldım / Yardıma ihtiyacım var / Yoldayım) doğrudan backend'e yanıt gönderir. `FLAG_INSISTENT` ile yanıt verilene kadar sürekli ses; `ALERT_INSISTENT_MINUTES` (varsayılan 10) sonra sürekli ses durur, yanıt yoksa `ALERT_REMINDER_MINUTES` (varsayılan 3) aralıkla kısa hatırlatma (`AlarmManager`). Süreler `-Pgks.alertInsistentMinutes/-Pgks.alertReminderMinutes` ile ayarlanır.
+  4. Yanıt (bildirimden veya ekrandan) ya da uygulamadaki "Alarm sesini sustur" sesi keser; uygulamayı açmak tek başına kesmez. Yanıttan sonra bildirim "Yanıtınız iletildi" olur ve alarm çözülene kadar kalır; kaydırılırsa (Android 14+) yeniden gösterilir.
+  5. İptal/kapatma (FCM veya SSE) aynı bildirimi "Alarm iptal edildi"/"Acil durum sona erdi" yapar, sesi keser, kaydırılabilir kılar. Uygulama açılınca/bağlantı dönünce açık alarm listesi sunucudan okunur ve yerel durumla uzlaştırılır (`Alarms.reconcile`).
+  6. Bildirime dokunma: alarm → alarm ekranı (kilit ekranında da), duyuru → duyuru ayrıntısı. Tam ekran izni varsa alarm kilit ekranında açılır.
+  7. Android 14+: tam ekran (`USE_FULL_SCREEN_INTENT`) ve DND erişimi için bir kez açıklama; reddedilse de uygulama çalışır, durum "Hesap" sekmesinde görünür.
+  8. Gönderen alıcı değildir (K-07), kendi telefonunda ses çalmaz.
+- **Sınırlar:** `REUSE_DETECTED` ile iptal edilen oturum cihazı kapatmaz (bir sonraki girişte yeniden kayıt olur). Tek FCM projesi; iOS yok. Bildirimden yanıt ağ yoksa başarısız olur ve kullanıcıya bildirilir.
+

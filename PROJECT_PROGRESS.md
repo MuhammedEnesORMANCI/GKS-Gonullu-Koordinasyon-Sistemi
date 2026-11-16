@@ -1,6 +1,6 @@
 # GKS — Proje İlerleme Durumu
 
-> Son güncelleme: 16.11.2026 (gece oturumu). Bir sonraki oturum bu dosyadan başlamalı; ayrıntılı kararlar `docs/architecture/design/team/TASKS.md` (LD-xx) ve `docs/architecture/decisions.md` (ADR-xx) dosyalarındadır.
+> Son güncelleme: 16.11.2026 (akşam: FCM + acil alarm bildirimi, ADR-022). Bir sonraki oturum bu dosyadan başlamalı; ayrıntılı kararlar `docs/architecture/design/team/TASKS.md` (LD-xx) ve `docs/architecture/decisions.md` (ADR-xx) dosyalarındadır.
 
 ## 1. Ortam ve çalışma kuralları
 
@@ -9,7 +9,8 @@
 | Backend | `backend/` — `./gradlew bootRun` (Spring Boot 4, Java 21, Gradle 9.8.2) | `.env` kök dizinden okunur; Postgres + Mailpit `compose.yaml` ile (Docker) |
 | Web | `web/` — `npm run dev` (Vite, 5173) | Testler: `npx vitest run --maxWorkers=1 --minWorkers=1`, `npx tsc -b`, `npx eslint src` |
 | Android | `android/` — `JAVA_HOME=<JDK17> ./gradlew assembleDebug testDebugUnitTest` | Studio Hedgehog uyumlu: AGP 8.2.2, Gradle 8.5, Kotlin 1.9.22, SDK 34, Compose BOM 2024.02.00 (material3 1.2.0). `local.properties` → `gks.apiBaseUrl` |
-| Veritabanı | Flyway, son sürüm **V11** (16.11 gecesinde şema değişikliği yapılmadı) | Veriler silinmez; yeni şema değişikliği V12'den başlar |
+| Veritabanı | Flyway, son sürüm **V15** (ayrı uygulama kullanıcısı `gks_app`, ADR-020) | Veriler silinmez; yeni şema değişikliği V16'dan başlar. `bootRun` `local` profiliyle `gks_app` ile bağlanır, Flyway sahibi `POSTGRES_USER` |
+| Firebase | `android/app/google-services.json` (git dışı); hizmet hesabı anahtarı `.env` → `GKS_FIREBASE_CREDENTIALS_FILE`, `GKS_PUSH_PROVIDER=fcm` | Anahtar dosyası açılmaz/okunmaz; içerik günlüğe yazılmaz |
 
 **Bellek kuralı (zorunlu):** Backend testleri paket paket, `--max-workers=1 --tests "<paket>.*"`. Aynı anda tek bootRun. Çalışan bootRun varken backend testleri `--no-daemon` ile çalıştırılır (`gradlew --stop` aynı Gradle sürümündeki bootRun daemon'ını da kapatır). Android Gradle daemon'u iş bitince `./gradlew --stop` (farklı Gradle sürümü, bootRun'a dokunmaz).
 
@@ -31,26 +32,26 @@
 | Gönüllü yönetimi (OR-06, ID-12…14) | ✅ | ✅ | ✅ `VolunteersScreen.kt` | Katılımcı listesi, operasyona davet, bekleyen davetler, iptal |
 | Grup (GR-01…08) | ✅ | ✅ | ✅ gönüllü/lider ekranları + yönetim `GroupManagementScreens.kt` | Oluştur, ad/açıklama, üye ekle/çıkar, lider, toplanma noktası. Yönetim: operasyonun KOR'u ve (ADR-015) ADM |
 | Görev (TK-01…12) | ✅ | ✅ | ✅ gönüllü kabul/ret + yönetim `TaskManagementScreens.kt` | Oluştur/düzenle (version, tarih-saat seçici), yayımla, durum, atama ekle/kaldır, geçmiş |
-| Bildirim gelen kutusu (V10, NT-04/05/07/08) | ✅ | ✅ | ✅ | FCM yok: `gks.notifications.push.provider=none` (LD-60) |
+| Bildirim gelen kutusu (V10, NT-04/05/07/08) | ✅ | ✅ | ✅ | LD-60; push sağlayıcısı `gks.notifications.push.provider` (`none`/`fcm`) |
+| **FCM push + cihaz kaydı (ID-26, ADR-022, 16.11 akşam)** | ✅ `PUT /devices/{installationId}`, `FcmPushGateway` | – | ✅ `alarm/` paketi | Yalnızca data mesajı; geçersiz belirteç kapatılır; gönderim hatası geri almaz. Android: tekilleştirme (`notificationId`), ısrarlı alarm sesi + hatırlatma, bildirimden yanıt, iptal/kapanışta güncelleme, kilit ekranında gizli içerik, Android 14+ izin açıklaması |
+| **Android SSE + yerel bildirim (ADR-021)** | – | – | ✅ `data/realtime/` | Uygulama açıkken; FCM ile aynı girişe gider |
 | Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ✅ (16.11) `AnnouncementScreens.kt` | Android: operasyonun tamamı / gruplar / kişiler, önizleme, >50 onay, geçmiş, ayrıntı; ADM'ye "Kurum duyurusu" |
 | Android yönetim oturumu (ADR-014, V11) | ✅ | – | ✅ MFA ekranı, ekran kilidi şartı | ADM/KOR mobilde TOTP + 12 sa mutlak oturum; TEK/UYM web'de (LD-61) |
 | Android tarih-saat seçici (16.11) | – | – | ✅ `ui/common/DateTimeField.kt` | Yerel saatle seçim, UTC ISO gönderim; görev ve operasyon formları |
 | Sayfalama yardımcısı (16.11) | ✅ `PageCursor` | – | – | tasks/groups/rol atamaları birleştirildi; imleç biçimleri `CursorFormat` ile korundu |
 | **Denetim kaydı (V12, ADR-016, 16.11)** | ✅ `audit/` | ✅ `/denetim` | – | Aynı işlemde eşzamanlı yazım (yazılamazsa işlem geri alınır), `actor_basis` (KOR/ADM/…), tetikleyiciyle yalnızca ekleme; AU-01 süzgeçli okuma (ADM, UYM) |
-| **Gerçek zamanlı SSE (RT-01, ADR-017, 16.11)** | ✅ `realtime/` | ✅ gelen kutusu, duyuru, alarm, konum canlı | – (ertelendi) | Bağlantı başına yetki, işlem sonrası yayın, `Last-Event-ID`/`resync`, rol kaldırmada `subscription.revoked`, oturum iptalinde `session.revoked`; tek örnek |
+| **Gerçek zamanlı SSE (RT-01, ADR-017, 16.11)** | ✅ `realtime/` | ✅ gelen kutusu, duyuru, alarm, konum canlı | ✅ (ADR-021) | Bağlantı başına yetki, işlem sonrası yayın, `Last-Event-ID`/`resync`, rol kaldırmada `subscription.revoked`, oturum iptalinde `session.revoked`; tek örnek |
 | **Acil alarm (V13, ADR-018, 16.11)** | ✅ `alerts/` AL-01, 03–16 | ✅ WEB-09/10, `/alarmlar` | ✅ gönüllü: alarm bandı, yanıt ekranı | Taslak → alıcı listeli onay → gönderim; iptal/düzeltme/kapatma/yeniden gönderim; hatırlatma sayacı; operasyon kapanışında kapanır. **İletim gelen kutusu + SSE; FCM yok** |
 | **Konum (V14, ADR-019, 16.11)** | ✅ `location/` LC-01…05 | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi | Yalnızca aktif operasyonda açık başlatma; yalnızca KOR görür; 5 dk pencerede tek denetim kaydı; kapanıştan 30 gün sonra silinir; **harita yok** (sağlayıcı arayüzü hazır) |
 
 ## 3. Eksik modüller (önem sırasına göre)
 
-1. **FCM push + cihaz kaydı (ID-26)** — acil alarmın telefon kilitliyken/uygulama kapalıyken ulaşması için **zorunlu**. Firebase projesi, `google-services.json`, Firebase bağımlılıkları ve sunucu hizmet hesabı gerekir (`.claude-runs/RAPOR_2.md` §3).
-2. **Harita** — konum şu an tablo; sağlayıcı kararı (OSM/Leaflet, Google, MapLibre) ve bağımlılık gerekir. Bağlanma noktası: web `features/location/mapProvider.ts`.
-3. **Android SSE** — ertelendi (Android yoklama ile çalışıyor: alarm 15 sn, bildirim 30 sn).
-4. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM'siz her zaman `false`; KOR/ADM için Android alarm yönetim ekranı yok (web'de).
-5. Konum: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma nedenleri üretilmiyor; harita yok.
-6. Denetim: kimlik olayları (giriş, çıkış, MFA doğrulama) kaydedilmiyor; yalnızca `SELECT/INSERT` yetkili ayrı DB rolü yok (tetikleyici tablo sahibince kaldırılabilir).
-7. Küçük kalanlar: Android'de kullanıcı yönetimi ekranı yok (yalnızca web); grup toplanma noktası saati Android'de hâlâ metin alanı.
-
+1. **Harita** — konum şu an tablo; sağlayıcı kararı (OSM/Leaflet, Google, MapLibre) ve bağımlılık gerekir. Bağlanma noktası: web `features/location/mapProvider.ts`.
+2. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM varken de hâlâ `false` (push teslim durumundan hesaplanmıyor); alarm hatırlatmaları (AL) push'u yeniden tetiklemiyor; KOR/ADM için Android alarm yönetim ekranı yok (web'de).
+3. FCM kalanları: `REUSE_DETECTED` ile iptal edilen oturum cihazı kapatmıyor; FCM gerçek cihazda henüz denenmedi (MANUEL_TEST §11).
+4. Konum: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma nedenleri üretilmiyor.
+5. Küçük kalanlar: Android'de kullanıcı yönetimi ekranı yok (yalnızca web); grup toplanma noktası saati Android'de hâlâ metin alanı.
+
 ## 4. Önemli kararlar (yeni oturum için)
 
 - **ADR-015 / LD-62 (16.11):** ADM, KOR ataması olmadan tüm operasyonlarda görev, grup/üyelik, toplanma noktası, operasyon duyurusu (ve zaten olan operasyon yönetimi, davet, koordinatör atama) yetkisine sahip. Tek kural `access/Grants.coordinates`. 16.11 sabahından itibaren `alert.*` dahil (ADR-018), yalnızca `location.view` hariç (`EffectivePermissions.ADM_OPERATION`, ADR-019). `/me/context` ADM'ye tüm operasyonlar için bu seti döndürür; istemciler buna göre açılır.
@@ -63,30 +64,30 @@
 - **ADR-019 (konum):** yalnızca KOR görür (ADM görmez — proje sahibinin onayı bekleniyor); saklama `gks.location.retention-after-close` (varsayılan `P30D`).
 - **`OperationClosed`** (organization): kapanış işleminde eşzamanlı yayımlanır; alerts (açık alarmları kapatır) ve location (paylaşımı durdurur, saklamayı başlatır) dinler.
 
-## 5. Test durumu (16.11.2026 sabah, son çalıştırmalar)
-
-| Paket | Sonuç |
-|---|---|
-| Backend access | 37/37 |
-| Backend identity | 128/128 |
-| Backend notifications | 19/19 |
-| Backend organization | 54/54 |
-| Backend tasks | 115/115 |
-| Backend groups | 62/62 |
-| Backend audit | 5/5 |
-| Backend realtime | 5/5 |
-| Backend alerts | 6/6 |
-| Backend location | 4/4 |
-| Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **481/481** (bu oturum başı 461) |
-| Web | tsc + eslint temiz, vitest **131/131** (bu oturum başı 118) |
-| Android | **80/80**, `assembleDebug` başarılı (bu oturum başı 73) |
-
-Denenmeyenler: Android uygulaması cihazda/emülatörde açılmadı (alarm bandı, alarm ekranı, konum izin akışı ve ön plan servisi yalnızca derleme + birim testleriyle doğrulandı; gerçek GPS ölçümü yok). Web'in yeni ekranları (`/denetim`, `/alarmlar`, `/operasyonlar/:id/alarmlar`, `/operasyonlar/:id/konum`) ve SSE akışı tarayıcıda gerçek backend'le denenmedi (mock + birim testleri; SSE backend'de MockMvc ile test edildi). Vite geliştirme vekilinin SSE'yi arabelleğe almadan ilettiği doğrulanmadı.
+## 5. Test durumu (16.11.2026 akşam, tek seferde tam çalıştırma s31-b + Android s30-a1)
+
+| Paket | Sonuç |
+|---|---|
+| Backend access | 37/37 |
+| Backend identity | 131/131 |
+| Backend notifications | 24/24 |
+| Backend organization | 54/54 |
+| Backend tasks | 115/115 |
+| Backend groups | 62/62 |
+| Backend audit | 6/6 |
+| Backend realtime | 5/5 |
+| Backend alerts | 6/6 |
+| Backend location | 4/4 |
+| Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
+| **Backend toplam** | **490/490** |
+| Web | tsc + eslint temiz, vitest **133/133** |
+| Android | **88/88**, `assembleDebug` başarılı (Firebase ile) |
+
+Denenmeyenler (FCM): telefon bu oturumun sonunda bağlı değildi; FCM ile kilitli/kapalı telefona alarm, bildirimden yanıt ve izin ekranları gerçek cihazda denenmedi (MANUEL_TEST §11). Proje sahibi 16.11'de doğruladı: web girişi, alarm (aktif operasyonda), duyurular; telefonda uygulama açıkken SSE ve yerel bildirim. Harita ve gerçek GPS ölçümü denenmedi.
 
 ## 6. Sonraki oturumda başlangıç adımları
 
-1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V12–V14 ilk açılışta uygulanır (yeni tablolar; mevcut veri değişmez).
-2. `.claude-runs/RAPOR_2.md` §5'teki kararları oku (ADM konum, FCM, harita, denetim DB rolü).
+1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V15'e kadar uygulanmış olmalı. FCM için `.env`: `GKS_PUSH_PROVIDER=fcm`, `GKS_FIREBASE_CREDENTIALS_FILE=<yol>`.
+2. `.claude-runs/RAPOR_4.md` ve MANUEL_TEST §11 sonuçlarını oku.
 3. Kod yerleri: backend `backend/src/main/java/org/gks/backend/<modül>/`; Android `android/app/src/main/java/org/gks/android/` (`data/*Repository.kt`, `ui/alerts/`, `ui/location/`, `location/LocationSharingService.kt`); web `web/src/features/<ekran>/`, servisler `web/src/services/`, canlı akış `web/src/app/live.ts`.
 4. Yeni yönetim işlemi: yetki `access/` arayüzü, denetim `AuditTrail.record`, canlı güncelleme `RealtimeBus.publish`; web'de yeni servis için http + mock + `config/services.ts` anahtarı ve `screens.test.tsx` anahtar listesi.

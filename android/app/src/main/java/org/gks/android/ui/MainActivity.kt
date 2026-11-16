@@ -1,6 +1,9 @@
 package org.gks.android.ui
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import org.gks.android.alarm.Alarms
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -38,6 +41,21 @@ import org.gks.android.ui.theme.GksTheme
 
 class MainActivity : ComponentActivity() {
 
+	override fun onNewIntent(intent: Intent) {
+		super.onNewIntent(intent)
+		handleOpen(intent)
+	}
+
+	/** Bildirimden gelen hedef (ADR-022); alarmda kilit ekranının üstünde açılır (tam ekran bildirim). */
+	private fun handleOpen(intent: Intent?) {
+		val target = intent?.getStringExtra(Alarms.EXTRA_OPEN) ?: return
+		container.pendingOpen.value = target
+		if (target.startsWith("alert:") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+			setShowWhenLocked(true)
+			setTurnScreenOn(true)
+		}
+	}
+
 	private val container: AppContainer get() = (application as GksApplication).container
 
 	private val viewModel: AppViewModel by viewModels {
@@ -46,6 +64,7 @@ class MainActivity : ComponentActivity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		handleOpen(intent)
 		// Sunucu adresi yalnızca geliştirme derlemesinde gösterilir (emülatör / gerçek cihaz ayarını görmek için).
 		val serverLabel = if (BuildConfig.DEBUG) BuildConfig.API_BASE_URL else null
 		setContent {

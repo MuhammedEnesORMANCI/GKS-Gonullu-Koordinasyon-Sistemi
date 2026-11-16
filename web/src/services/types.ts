@@ -195,6 +195,8 @@ export interface InboxItem {
   readAt?: string;
   link?: { type: 'TASK' | 'GROUP' | 'INVITATION' | 'OPERATION' | 'ANNOUNCEMENT' | 'ALERT'; id: Uuid };
   operationId?: Uuid;
+  /** Olayın kimliği; aynı olay FCM ve SSE ile gelirse tekilleştirme anahtarı (ADR-022). */
+  notificationId?: Uuid;
 }
 
 /** NT-01 `AnnouncementTargetRequest`: KOR → `operationId` (+ isteğe bağlı grup/kişi), ADM → `organization`. */

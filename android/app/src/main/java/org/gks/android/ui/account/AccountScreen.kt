@@ -41,6 +41,7 @@ fun AccountScreen(
 	// Sekmeye her girişte (ayrıntı ekranından dönüş dahil) güncel profil okunur.
 	LaunchedEffect(Unit) { viewModel.load() }
 	LoadContent(state, onRetry = viewModel::load) { profile ->
+		item { org.gks.android.ui.notify.AlarmPermissionStatus() }
 		item {
 			ElevatedCard(Modifier.fillMaxWidth()) {
 				Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

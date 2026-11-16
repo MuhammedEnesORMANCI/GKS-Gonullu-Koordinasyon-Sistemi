@@ -2,6 +2,8 @@
 .env
 *.pem
 *-service-account*.json
+# Firebase istemci yapılandırması (proje sahibi kararı, 16.11.2026): depoya girmez, her geliştirici kendi kopyasını koyar.
+android/app/google-services.json
 
 # Claude Code yerel ayarları
 .claude/settings.local.json

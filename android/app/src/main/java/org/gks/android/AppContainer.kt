@@ -29,6 +29,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.gks.android.data.realtime.RealtimeStream
+import org.gks.android.alarm.Alarms
+import org.gks.android.alarm.DeviceRegistrar
 import org.gks.android.ui.notify.LiveNotifier
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
@@ -50,8 +52,17 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	/** RT-01 canlı akış (ekran ve konum servisi paylaşır). */
 	val realtime by lazy { RealtimeStream(http.client, apiBaseUrl, appScope, hasSession = { sessions.current() != null }) }
 
-	/** FCM gelene kadar ara çözüm: akıştan gelen acil alarm ve duyuruyu yerel bildirim olarak gösterir. */
-	val liveNotifier by lazy { LiveNotifier(context.applicationContext, realtime, notificationRepository, appScope) }
+	/** Acil alarm ve duyuru bildirimleri (FCM + SSE, olay kimliğiyle tekil; ADR-022). */
+	val alarms by lazy { Alarms(context.applicationContext, alertRepository) }
+
+	/** SSE yolu: akıştan gelen yeni gelen kutusu kayıtlarını [alarms]'a verir (FCM yolu `GksMessagingService`). */
+	val liveNotifier by lazy { LiveNotifier(context.applicationContext, realtime, notificationRepository, alarms, appScope) }
+
+	/** ID-26: FCM belirtecinin sunucuya kaydı. */
+	val devices by lazy { DeviceRegistrar(api, caller, sessions, installationId::get) }
+
+	/** Bildirime dokununca açılacak ekran (`alert:{id}`, `inbox:{id}`); ana ekran tüketir. */
+	val pendingOpen = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
 	val authRepository by lazy { AuthRepository(api, sessions, installationId::get, caller) }
 	val invitationRepository by lazy { InvitationRepository(api, installationId::get, caller) }

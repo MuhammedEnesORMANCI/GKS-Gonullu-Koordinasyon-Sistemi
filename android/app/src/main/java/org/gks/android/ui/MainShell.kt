@@ -96,6 +96,7 @@ import org.gks.android.ui.management.VolunteersScreen
 import org.gks.android.ui.management.VolunteersViewModel
 import org.gks.android.GksApplication
 import org.gks.android.ui.alerts.AlertDetailScreen
+import org.gks.android.ui.notify.AlarmPermissionPrompt
 import org.gks.android.ui.notify.NotificationPermissionPrompt
 import org.gks.android.ui.location.LocationSharingCard
 import org.gks.android.ui.location.LocationSharingViewModel
@@ -232,7 +233,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 	}
 
 	// Açık alarmlar (AL-08): FCM yokken ön plandayken yoklanır (ADR-018).
-	val alertsVm = containerViewModel { OpenAlertsViewModel(it.alertRepository) }
+	val alertsVm = containerViewModel { c -> OpenAlertsViewModel(c.alertRepository) { open -> c.alarms.reconcile(open) } }
 	val openAlerts by alertsVm.alerts.collectAsStateWithLifecycle()
 	LaunchedEffect(lifecycle) {
 		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -265,6 +266,11 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 		}
 	}
 	NotificationPermissionPrompt()
+	AlarmPermissionPrompt()
+	// ADR-022: FCM belirteci bu oturuma kaydedilir (girişten sonra / açılışta; belirteç yenilenince servis de yapar).
+	LaunchedEffect(main.context.user.id) { container.devices.sync() }
+	// Bildirime dokunma: ilgili ekran (alarm → alarm ekranı, duyuru → gelen kutusu ayrıntısı).
+	val pendingOpen by container.pendingOpen.collectAsStateWithLifecycle()
 
 	Scaffold(
 		topBar = {
@@ -291,6 +297,15 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 		Column(Modifier.padding(padding)) {
 		// AND-03: açık alarm bandı her ekranın üstünde (alarm ekranının kendisinde gösterilmez).
 		if (route != Routes.ALERT) OpenAlertsBand(openAlerts) { nav.navigate(Routes.alert(it)) }
+		LaunchedEffect(pendingOpen) {
+			val target = pendingOpen ?: return@LaunchedEffect
+			container.pendingOpen.value = null
+			when {
+				target.startsWith("alert:") -> nav.navigate(Routes.alert(target.removePrefix("alert:")))
+				target.startsWith("inbox:") -> nav.navigate(Routes.notification(target.removePrefix("inbox:")))
+				target == "inbox" -> nav.navigate(Tab.NOTIFICATIONS.route)
+			}
+		}
 		NavHost(nav, startDestination = Tab.HOME.route, modifier = Modifier.weight(1f)) {
 			composable(Tab.HOME.route) {
 				val vm = containerViewModel { HomeViewModel(it.volunteerRepository, it.invitationRepository) }
@@ -538,7 +553,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			composable(Routes.ALERT) { backStack ->
 				val id = backStack.arguments?.getString("id").orEmpty()
 				AlertDetailScreen(
-					containerViewModel(key = "alert-$id") { AlertDetailViewModel(it.alertRepository, id) },
+					containerViewModel(key = "alert-$id") { AlertDetailViewModel(it.alertRepository, id, it.alarms) },
 					onResponded = alertsVm::refresh,
 				)
 			}

@@ -154,8 +154,8 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 | S5 | A gon1 uygulama açık; W'den görev ata / duyuru gönder | Bildirim sekmesi rozeti **yenilemeden** artar | [ ] |
 | S6 | A: uçak modunu 30 sn aç-kapa | Yeniden bağlanır; arada gönderilen duyuru da gelir (Last-Event-ID) | [ ] |
 | S7 | A (Android 13+): ilk girişte bildirim izni açıklaması → "Daha sonra" | Uygulama çalışır; bildirim gelmez ama bant/gelen kutusu güncellenir | [ ] |
-| S8 | A: Ayarlar → Uygulamalar → GKS → Bildirimler | "Acil alarmlar" (yüksek önem) ve "Duyurular" kanalları var | [ ] |
-| S9 | A: uygulama arka planda, konum servisi **kapalı**; duyuru gönder | Bildirim **gelmez** (beklenen); uygulama açılınca gelen kutusunda | [ ] |
+| S8 | A: Ayarlar → Uygulamalar → GKS → Bildirimler | "Acil alarmlar" (yüksek önem) ve "Duyurular" kanalları var; eski aynı adlı ikinci kanal yok | [ ] |
+| S9 | A: uygulama arka planda/kapalı; duyuru gönder | FCM ile normal öncelikli duyuru bildirimi gelir (§11) | [ ] |
 
 ## 10. Denetim kayıtları (W `/denetim`, ADM ve UYM)
 
@@ -169,6 +169,31 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 | AU6 | Sayfada düzenleme/silme | Hiçbir kayıtta düzenle/sil düğmesi yok | [ ] |
 | AU7 | UYM ile aynı sayfa | Okunur; başka menü yok | [ ] |
 
+## 11. FCM ve acil alarm bildirimi (ADR-022)
+
+Ön koşul: `.env` içinde `GKS_PUSH_PROVIDER=fcm` ve `GKS_FIREBASE_CREDENTIALS_FILE=C:\GKS-sirlar\firebase-admin.json`, backend yeniden başlatıldı. Alarm KOR1/ADM ile web'den aktif operasyonda gönderilir; alıcı gon1 (A). Gönderilen alarm her senaryoda yeni olmalı.
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| F1 | A: gon1 giriş yapar | Backend günlüğünde hata yok; DB `identity.devices` satırı etkin (belirteç belgeye yazılmaz) | [ ] |
+| F2 | A (Android 14+): ilk açılışta "Acil alarm izinleri" açıklaması | "Ayarları aç" tam ekran iznine götürür; "Daha sonra" ile uygulama çalışır; bir daha sorulmaz | [ ] |
+| F3 | A: Hesap sekmesi → "Acil alarm izinleri" | Bildirimler / Tam ekran alarm / Rahatsız Etmeyin durumları doğru; "Ayarlar" ilgili ekranı açar; dönünce durum yenilenir | [ ] |
+| F4 | **Uygulama kapalı** (son uygulamalardan kaydır), alarm gönder | Birkaç saniyede alarm bildirimi, sürekli alarm sesi + titreşim | [ ] |
+| F5 | **Kilitli telefon**, alarm gönder | Ekran açılır; tam ekran izni varsa alarm ekranı kilit ekranında; kilit ekranında yalnızca "ACİL ALARM" (ayrıntı gizli) | [ ] |
+| F6 | **Sessiz mod** (zil sessiz), alarm gönder | Ses alarm ses düzeyinden çalar | [ ] |
+| F7 | **Rahatsız Etmeyin** açık; DND izni verilmiş / verilmemiş | Verilmişse ses çalar; verilmemişse bildirim yine gelir (sessiz olabilir) | [ ] |
+| F8 | Alarm çalarken uygulamayı aç | Ses **durmaz**; alarm ekranında "Alarm sesini sustur" düğmesi sesi keser | [ ] |
+| F9 | **Bildirimden yanıt**: "Yardıma ihtiyacım var" | Ses durur; bildirim "Yanıtınız iletildi: …" olur ve kalır; web'de gon1 yanıtı görünür | [ ] |
+| F10 | F9 sonrası bildirimi kaydır (Android 14+) | Alarm açık olduğu sürece bildirim geri gelir | [ ] |
+| F11 | Yanıt verme, 10 dk bekle | Sürekli ses durur; birkaç dakikada bir kısa hatırlatma | [ ] |
+| F12 | **Alarmın kapatılması**: KOR1 web'de alarmı kapatır / başka alarmı iptal eder | Aynı bildirim "Acil durum sona erdi" / "Alarm iptal edildi" olur, ses durur, kaydırılabilir | [ ] |
+| F13 | Telefon uçak modundayken alarm iptal edilir; uçak modunu kapat, uygulamayı aç | Bildirim "sona erdi/iptal" durumuna geçer, ses durur | [ ] |
+| F14 | **Çift bildirim olmaması**: uygulama açıkken (SSE + FCM ikisi de gelir) alarm ve duyuru gönder | Her olay için **tek** bildirim | [ ] |
+| F15 | Bildirime dokun: alarm / duyuru | Alarm → alarm ekranı; duyuru → duyuru ayrıntısı | [ ] |
+| F16 | Gönderen KOR1'in telefonu (A, aynı operasyonda) | Kendi gönderdiği alarm için ses çalmaz | [ ] |
+| F17 | gon1 çıkış yapar, alarm gönder | gon1 telefonuna bildirim gelmez | [ ] |
+| F18 | Uygulama kapalı, duyuru gönder | Normal öncelikli duyuru bildirimi; ses alarm sesi değil | [ ] |
+
 ---
 
-**Bilinen sınırlar (hata değil):** FCM yok — uygulama kapalıyken alarm/duyuru bildirimi gelmez; harita yok (tablo); alarm hatırlatmaları yalnızca sayaç ilerletir; Android'de alarm oluşturma/izleme ekranı yok (web'de). Kökte duran `android/app/google-services.json` henüz kullanılmıyor ve commit edilmedi.
+**Bilinen sınırlar (hata değil):** harita yok (tablo); Android'de alarm oluşturma/izleme ekranı yok (web'de). `android/app/google-services.json` git dışıdır (`.gitignore`); FCM yükünde alarm başlığı/metni Google üzerinden geçer.

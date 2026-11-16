@@ -523,7 +523,25 @@
 	<string name="channel_alerts_description">Koordinatörden gelen acil alarmlar ve iptalleri (yüksek öncelik)</string>
 	<string name="channel_announcements">Duyurular</string>
 	<string name="notification_permission_title">Bildirim izni</string>
-	<string name="notification_permission_body">Acil alarm ve duyuruları bildirim olarak görmek için izin verin. Uygulama tamamen kapalıyken bildirim gelmez (telefon bildirimi henüz bağlı değil).</string>
+	<string name="notification_permission_body">Acil alarm ve duyuruları bildirim olarak görmek için izin verin. Acil alarmlar telefon kilitliyken ve uygulama kapalıyken de gelir.</string>
 	<string name="notification_permission_allow">İzin ver</string>
 	<string name="notification_permission_later">Daha sonra</string>
+	<!-- Acil alarm bildirimi (ADR-022) -->
+	<string name="alarm_public_title">ACİL ALARM</string>
+	<string name="alarm_public_text">Ayrıntı için kilidi açın</string>
+	<string name="alarm_responded_text">Yanıtınız iletildi: %1$s. Alarm sona erene kadar bu bildirim kalır.</string>
+	<string name="alarm_response_failed">Yanıt gönderilemedi; uygulamadan yeniden deneyin.</string>
+	<string name="alarm_cancelled_title">Alarm iptal edildi</string>
+	<string name="alarm_closed_title">Acil durum sona erdi</string>
+	<string name="alarm_mute">Alarm sesini sustur</string>
+	<string name="alarm_permissions_title">Acil alarm izinleri</string>
+	<string name="alarm_permissions_body">Telefon kilitliyken acil alarmın tam ekran açılması ve Rahatsız Etmeyin modunda da duyulması için iki izin gerekir. Ayarlar ekranında GKS için izin verin. Vermezseniz alarm yine bildirim olarak gelir.</string>
+	<string name="alarm_permissions_open">Ayarları aç</string>
+	<string name="alarm_permissions_settings">Ayarlar</string>
+	<string name="alarm_permission_notifications">Bildirimler</string>
+	<string name="alarm_permission_full_screen">Tam ekran alarm</string>
+	<string name="alarm_permission_dnd">Rahatsız Etmeyin\'i geçme</string>
+	<string name="alarm_permission_on">açık</string>
+	<string name="alarm_permission_off">kapalı</string>
+	<string name="alarm_permissions_note">Uygulama kapalıyken ve telefon kilitliyken de acil alarm gelir (FCM). Alarm sesi sessiz modda da çalar (alarm ses düzeyi).</string>
 </resources>

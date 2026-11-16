@@ -325,6 +325,12 @@ interface GksApi {
 	@GET("api/v1/me/location-sharing")
 	suspend fun myLocationSharings(): Response<List<LocationSharingView>>
 
+	// ------------------------------------------------------------ cihaz (ID-26)
+
+	/** FCM belirtecini kaydeder / yeniler; kayıt bu oturuma bağlanır (çıkışta sunucu pasifleştirir). */
+	@PUT("api/v1/devices/{installationId}")
+	suspend fun registerDevice(@Path("installationId") installationId: String, @Body request: DeviceRegisterRequest): Response<DeviceView>
+
 	// ------------------------------------------------------------ acil alarm (alıcı)
 
 	/** AL-08: alıcısı olunan alarmlar (varsayılan `OPEN`); `state` virgüllü. */

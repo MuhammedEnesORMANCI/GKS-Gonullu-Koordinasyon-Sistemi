@@ -98,7 +98,9 @@ class DeliveryWorker {
 			case SENT -> store.markSent(delivery.id(), result.messageId(), now);
 			case TRANSIENT_FAILURE -> {
 				if (delivery.sendTries() >= MAX_TRIES) {
+					// İş kaydı (alarm, duyuru) etkilenmez: gelen kutusu ve SSE teslimi sürer (ADR-022).
 					store.markFailed(delivery.id(), result.errorCode(), now);
+					log.warn("Push teslimi {} denemeden sonra başarısız: {}", MAX_TRIES, result.errorCode());
 				}
 				else {
 					store.retryAt(delivery.id(), result.errorCode(), now.plus(BACKOFF_BASE.multipliedBy(1L << delivery.sendTries())));
@@ -106,9 +108,14 @@ class DeliveryWorker {
 			}
 			case INVALID_TOKEN -> {
 				store.markFailed(delivery.id(), result.errorCode(), now);
-				devices.deactivate(delivery.deviceId(), "FCM_INVALID_TOKEN");
+				// ADR-022: FCM'nin geçersiz dediği belirteç otomatik pasifleşir; o cihaza bir daha gönderilmez.
+				devices.deactivate(delivery.deviceId(), "UNREGISTERED".equals(result.errorCode()) ? "FCM_UNREGISTERED" : "FCM_INVALID_TOKEN");
+				log.info("Push belirteci geçersiz ({}); cihaz pasifleştirildi", result.errorCode());
 			}
-			case REJECTED -> store.markFailed(delivery.id(), result.errorCode(), now);
+			case REJECTED -> {
+				store.markFailed(delivery.id(), result.errorCode(), now);
+				log.warn("Push teslimi reddedildi: {}", result.errorCode());
+			}
 		}
 	}
 
@@ -124,7 +131,8 @@ class DeliveryWorker {
 		String collapseKey = d.sourceId() == null ? null : d.sourceType().toLowerCase(Locale.ROOT) + ":" + d.sourceId();
 		PushGateway.Priority priority = "NORMAL".equals(d.priority()) || "LOW".equals(d.priority())
 				? PushGateway.Priority.NORMAL : PushGateway.Priority.HIGH;
-		return new PushGateway.Message(d.id(), token, type, collapseKey, priority, d.title(), d.sourceType(), d.sourceId());
+		return new PushGateway.Message(d.id(), token, type, collapseKey, priority, d.title(), d.sourceType(), d.sourceId(),
+				d.kind(), d.notificationId(), d.body(), d.inboxItemId());
 	}
 
 }

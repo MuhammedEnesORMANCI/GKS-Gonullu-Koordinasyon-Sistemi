@@ -187,7 +187,7 @@ class NotificationStore {
 	// ---------------------------------------------------------------- teslim işçisi (LD-40 kira deseni)
 
 	record LeasedDelivery(UUID id, UUID deviceId, int sendTries, String category, String kind, String priority,
-			String title, String sourceType, UUID sourceId) {
+			String title, String sourceType, UUID sourceId, UUID notificationId, String body, UUID inboxItemId) {
 	}
 
 	/**
@@ -207,12 +207,16 @@ class NotificationStore {
 				   set available_at = :leaseUntil, send_tries = d.send_tries + 1
 				  from picked, notifications.notifications n
 				 where d.id = picked.id and n.id = d.notification_id
-				returning d.id, d.device_id, d.send_tries, n.category, n.kind, n.priority, n.title, n.source_type, n.source_id""")
+				returning d.id, d.device_id, d.send_tries, n.category, n.kind, n.priority, n.title, n.source_type, n.source_id,
+				          n.id as notification_id, n.body,
+				          (select i.id from notifications.deliveries i
+				            where i.notification_id = n.id and i.user_id = d.user_id and i.channel = 'IN_APP') as inbox_item_id""")
 			.param("queue", queueClass).param("now", Timestamp.from(now))
 			.param("leaseUntil", Timestamp.from(now.plus(lease))).param("limit", limit)
 			.query((rs, row) -> new LeasedDelivery(rs.getObject("id", UUID.class), rs.getObject("device_id", UUID.class),
 					rs.getInt("send_tries"), rs.getString("category"), rs.getString("kind"), rs.getString("priority"),
-					rs.getString("title"), rs.getString("source_type"), rs.getObject("source_id", UUID.class)))
+					rs.getString("title"), rs.getString("source_type"), rs.getObject("source_id", UUID.class),
+					rs.getObject("notification_id", UUID.class), rs.getString("body"), rs.getObject("inbox_item_id", UUID.class)))
 			.list();
 	}
 

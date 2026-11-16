@@ -89,7 +89,7 @@ class RealtimeStreamTest {
 			InboxItem(id, category, kind, "HIGH", "Başlık", "Metin", "2026-11-16T09:00:00Z", if (read) "2026-11-16T09:01:00Z" else null)
 		val items = listOf(item("a", "ALERT", "ALERT_SENT"), item("b", "ANNOUNCEMENT", "ANNOUNCEMENT"), item("c", "TASK", "TASK_ASSIGNED"),
 			item("d", "ANNOUNCEMENT", "ANNOUNCEMENT", read = true), item("e", "ALERT", "ALERT_CLOSED"))
-		assertEquals(listOf("a", "e"), LiveNotifier.selectNew(items, setOf("b")).map { it.id })
+		assertEquals(listOf("a", "b", "e"), LiveNotifier.selectNew(items).map { it.id })
 		assertTrue(LiveNotifier.isUrgent(items[0]))
 		assertFalse(LiveNotifier.isUrgent(items[4]))
 		assertFalse(LiveNotifier.isUrgent(items[1]))

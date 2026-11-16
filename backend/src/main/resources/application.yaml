@@ -69,9 +69,12 @@ gks:
       mail-from: ${GKS_MAIL_FROM:gks@localhost}
   notifications:
     push:
-      # Push sağlayıcısı (ADR-004): bu sürümde yalnızca 'none' — Firebase projesi yok; PUSH teslim satırı oluşmaz,
-      # uygulama içi (IN_APP) bildirim çalışır. FCM ayrı aşamada 'fcm' değeriyle eklenecek.
+      # Push sağlayıcısı (ADR-004, ADR-022): 'none' → PUSH teslim satırı oluşmaz, gelen kutusu ve SSE çalışır;
+      # 'fcm' → yüksek öncelikli data mesajı (alarm) ve normal öncelikli (duyuru).
       provider: ${GKS_PUSH_PROVIDER:none}
+      fcm:
+        # ADR-022: Firebase hizmet hesabı anahtarının dosya YOLU (içerik değil; depo dışında, .env'den).
+        credentials-file: ${GKS_FIREBASE_CREDENTIALS_FILE:}
   idempotency:
     # İstek özeti için HMAC-SHA-256 anahtarı (Base64, en az 256 bit); sürümlüdür (backend-api-design.md §3.6, LD-42).
     # Depoya ve veritabanına yazılmaz; ortam değişkeninden / sır deposundan gelir. Örnek: openssl rand -base64 32

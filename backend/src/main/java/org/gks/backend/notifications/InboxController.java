@@ -54,7 +54,7 @@ class InboxController {
 	/** §11.3 {@code NotificationInboxItem}; {@code id} IN_APP teslim kaydının kimliğidir. */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	record InboxItem(UUID id, String category, String kind, String priority, String title, String body,
-			Instant createdAt, Instant readAt, Link link, UUID operationId) {
+			Instant createdAt, Instant readAt, Link link, UUID operationId, UUID notificationId) {
 	}
 
 	/** İstemci rotaya çevirir: {@code TASK}, {@code GROUP}, {@code INVITATION}, {@code OPERATION}, {@code ANNOUNCEMENT}. */
@@ -124,7 +124,7 @@ class InboxController {
 		Link link = row.sourceType() != null ? new Link(row.sourceType(), row.sourceId())
 				: "ANNOUNCEMENT".equals(row.category()) ? new Link("ANNOUNCEMENT", row.notificationId()) : null;
 		return new InboxItem(row.id(), row.category(), row.kind(), row.priority(), row.title(), row.body(),
-				row.createdAt(), row.readAt(), link, row.operationId());
+				row.createdAt(), row.readAt(), link, row.operationId(), row.notificationId());
 	}
 
 	private static boolean bool(String field, String value, List<FieldError> errors) {

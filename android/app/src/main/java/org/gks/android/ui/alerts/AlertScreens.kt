@@ -66,6 +66,7 @@ fun OpenAlertsBand(alerts: List<MyAlertView>, onOpen: (String) -> Unit) {
 fun AlertDetailScreen(viewModel: AlertDetailViewModel, onResponded: () -> Unit) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
+	val sounding by viewModel.sounding.collectAsStateWithLifecycle()
 	// Yanıt iletilince alarm bandı tazelenir.
 	LaunchedEffect(action.notice) { if (action.notice != null) onResponded() }
 	LoadContent(state, onRetry = viewModel::load) { alert ->
@@ -76,6 +77,13 @@ fun AlertDetailScreen(viewModel: AlertDetailViewModel, onResponded: () -> Unit) 
 				Text(alert.message, style = MaterialTheme.typography.headlineSmall)
 				alert.requestedAction?.let { Text(stringResource(R.string.alert_requested_action, it)) }
 				alert.sentAt?.let { Text(formatDateTime(it), style = MaterialTheme.typography.bodySmall) }
+			}
+		}
+		if (sounding && alert.state == "OPEN") {
+			item {
+				OutlinedButton(onClick = viewModel::mute, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+					Text(stringResource(R.string.alarm_mute))
+				}
 			}
 		}
 		action.notice?.let { item { MessageCard(it.resolve(), error = false) } }

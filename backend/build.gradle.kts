@@ -33,6 +33,11 @@ dependencies {
 	// Argon2id parola özeti (Spring Security Argon2PasswordEncoder bu sağlayıcıyı ister).
 	implementation("org.bouncycastle:bcprov-jdk18on:1.81")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	// FCM gönderimi (ADR-022). Firestore/Storage istemcileri kullanılmıyor; bağımlılık ağacını küçültmek için hariç.
+	implementation("com.google.firebase:firebase-admin:9.4.3") {
+		exclude(group = "com.google.cloud", module = "google-cloud-firestore")
+		exclude(group = "com.google.cloud", module = "google-cloud-storage")
+	}
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")
