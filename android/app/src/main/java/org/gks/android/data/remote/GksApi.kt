@@ -95,6 +95,10 @@ interface GksApi {
 	@GET("api/v1/me/notifications")
 	suspend fun inbox(@Query("cursor") cursor: String?, @Query("limit") limit: Int = INBOX_PAGE): Response<Page<InboxItem>>
 
+	/** ADR-023: kamu duyuruları (kimlik doğrulamasız uç; yalnızca yayındakiler). */
+	@GET("api/v1/public/announcements")
+	suspend fun publicAnnouncements(@Query("limit") limit: Int, @Query("cursor") cursor: String? = null): Response<Page<PublicAnnouncement>>
+
 	/** NT-07 (LD-60): ayrıntı; okundu işaretlemez. */
 	@GET("api/v1/me/notifications/{id}")
 	suspend fun inboxItem(@Path("id") id: String): Response<InboxItem>

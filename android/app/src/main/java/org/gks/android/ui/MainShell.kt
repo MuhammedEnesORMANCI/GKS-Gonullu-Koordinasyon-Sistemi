@@ -1,5 +1,19 @@
 package org.gks.android.ui
 
+import androidx.annotation.DrawableRes
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
+import org.gks.android.ui.guide.GuideRoutes
+import org.gks.android.ui.guide.guideGraph
+import org.gks.android.ui.guide.guideIcon
+import org.gks.android.ui.home.HomeLanding
+import org.gks.android.ui.home.QuickLink
+import org.gks.android.ui.announcements.PublicAnnouncementsScreen
+import org.gks.android.ui.announcements.PublicAnnouncementsViewModel
+import org.gks.android.ui.theme.GksPalette
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,15 +127,25 @@ import org.gks.android.ui.tasks.TaskDetailViewModel
 import org.gks.android.ui.tasks.TasksScreen
 import org.gks.android.ui.tasks.TasksViewModel
 
-/** Alt navigasyon sekmeleri. */
-enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector) {
+/**
+ * Üst düzey ekranlar. Alt gezinme (ADR-023): Ana Sayfa, Rehberler, Duyurular, (Yönetim), Hesap. Görevler, Grubum ve
+ * Bildirimler ana sayfadaki Hızlı Erişim'den ve üst çubuktaki bildirim zilinden açılır.
+ */
+enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, @DrawableRes val drawable: Int? = null) {
 	HOME("home", R.string.tab_home, Icons.Filled.Home),
+	GUIDES(GuideRoutes.LIST, R.string.tab_guides, Icons.Filled.Info, R.drawable.ic_tab_guide),
+	ANNOUNCEMENTS("announcements", R.string.tab_announcements, Icons.Filled.Notifications, R.drawable.ic_tab_megaphone),
 	TASKS("tasks", R.string.tab_tasks, Icons.AutoMirrored.Filled.List),
 	GROUPS("groups", R.string.tab_groups, Icons.Filled.Face),
 	MANAGEMENT("management", R.string.tab_management, Icons.Filled.Settings),
 	NOTIFICATIONS("notifications", R.string.tab_notifications, Icons.Filled.Notifications),
 	ACCOUNT("account", R.string.tab_account, Icons.Filled.Person),
 }
+
+/** Alt gezinme sekmeleri; Yönetim yalnızca MFA'lı yönetim oturumunda (ADR-014). */
+fun bottomTabs(management: Boolean): List<Tab> =
+	if (management) listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.MANAGEMENT, Tab.ACCOUNT)
+	else listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.ACCOUNT)
 
 private object Routes {
 	const val TASK = "task/{id}"
@@ -186,6 +210,8 @@ private object Routes {
 		OPERATION_ANNOUNCEMENTS -> R.string.announcements_title
 		ORGANIZATION_ANNOUNCEMENTS -> R.string.announcements_organization_title
 		MANAGED_ANNOUNCEMENT -> R.string.announcement_detail_title
+		GuideRoutes.HAZARD, GuideRoutes.SECTION -> R.string.tab_guides
+		GuideRoutes.EMERGENCY -> R.string.guide_what_to_do
 		else -> Tab.entries.firstOrNull { it.route == route }?.label ?: R.string.app_name
 	}
 }
@@ -207,11 +233,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 
 	// ADR-014: Yönetim sekmesi yalnızca sunucunun bu oturuma kurumsal izin verdiği MFA'lı yönetim oturumunda görünür.
 	val management = main.context.managementAccess()
-	val tabs = if (management != null) {
-		listOf(Tab.HOME, Tab.TASKS, Tab.MANAGEMENT, Tab.NOTIFICATIONS, Tab.ACCOUNT)
-	} else {
-		listOf(Tab.HOME, Tab.TASKS, Tab.GROUPS, Tab.NOTIFICATIONS, Tab.ACCOUNT)
-	}
+	val tabs = bottomTabs(management != null)
 	val nav = rememberNavController()
 	val entry by nav.currentBackStackEntryAsState()
 	val route = entry?.destination?.route
@@ -276,6 +298,12 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 		topBar = {
 			TopAppBar(
 				title = { Text(stringResource(Routes.title(route))) },
+				colors = TopAppBarDefaults.topAppBarColors(
+					containerColor = GksPalette.Navy,
+					titleContentColor = Color.White,
+					navigationIconContentColor = Color.White,
+					actionIconContentColor = Color.White,
+				),
 				navigationIcon = {
 					if (!topLevel) {
 						IconButton(onClick = { nav.popBackStack() }) {
@@ -285,6 +313,13 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				},
 				actions = {
 					if (topLevel) {
+						IconButton(onClick = { nav.navigate(Tab.NOTIFICATIONS.route) }) {
+							val label = if (unread > 0) stringResource(R.string.inbox_unread_count, unread) else stringResource(R.string.tab_notifications)
+							BadgedBox(
+								badge = { if (unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } },
+								modifier = Modifier.semantics { contentDescription = label },
+							) { Icon(Icons.Filled.Notifications, contentDescription = null) }
+						}
 						IconButton(onClick = { app.refreshContext(); unreadVm.refresh(); alertsVm.refresh(); refreshTick++ }) {
 							Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh))
 						}
@@ -310,6 +345,16 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			composable(Tab.HOME.route) {
 				val vm = containerViewModel { HomeViewModel(it.volunteerRepository, it.invitationRepository) }
 				RefreshOn(refreshTick, vm::load)
+				val sectionIcons = container.guideContent.guide.sections.map { it to guideIcon(it.icon) }
+				val quickLinks = buildList {
+					add(QuickLink(stringResource(R.string.quick_my_tasks), rememberVectorPainter(Icons.AutoMirrored.Filled.List)) { nav.navigate(Tab.TASKS.route) })
+					if (management == null) add(QuickLink(stringResource(R.string.quick_my_group), rememberVectorPainter(Icons.Filled.Face)) { nav.navigate(Tab.GROUPS.route) })
+					add(QuickLink(stringResource(R.string.quick_notifications), rememberVectorPainter(Icons.Filled.Notifications), unread) { nav.navigate(Tab.NOTIFICATIONS.route) })
+					for ((section, icon) in sectionIcons) {
+						add(QuickLink(section.title, icon) { nav.navigate(GuideRoutes.section(section.id)) })
+					}
+					if (management != null) add(QuickLink(stringResource(R.string.quick_management), rememberVectorPainter(Icons.Filled.Settings)) { nav.navigate(Tab.MANAGEMENT.route) })
+				}
 				HomeTab(
 					context = main.context,
 					contextRefreshing = main.refreshing,
@@ -318,7 +363,21 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 					onContextChanged = app::refreshContext,
 					onOpenOperation = { nav.navigate(Routes.operation(it)) },
 					onOpenGroup = { nav.navigate(Routes.group(it)) },
+					top = {
+						HomeLanding(
+							hazards = container.guideContent.hazards.hazards,
+							onHazard = { nav.navigate(GuideRoutes.hazard(it)) },
+							onEmergency = { nav.navigate(GuideRoutes.EMERGENCY) },
+							quickLinks = quickLinks,
+						)
+					},
 				)
+			}
+			guideGraph(container.guideContent, nav, includeList = true)
+			composable(Tab.ANNOUNCEMENTS.route) {
+				val vm = containerViewModel { PublicAnnouncementsViewModel(it.publicAnnouncementRepository) }
+				RefreshOn(refreshTick, vm::load)
+				PublicAnnouncementsScreen(vm, onOpenInbox = { nav.navigate(Tab.NOTIFICATIONS.route) })
 			}
 			composable(Tab.TASKS.route) {
 				val vm = containerViewModel { TasksViewModel(it.volunteerRepository) }
@@ -589,6 +648,8 @@ private fun BottomBar(nav: NavHostController, route: String?, unread: Int, tabs:
 							modifier = Modifier.semantics { contentDescription = label }) {
 							Icon(tab.icon, contentDescription = null)
 						}
+					} else if (tab.drawable != null) {
+						Icon(painterResource(tab.drawable), contentDescription = null)
 					} else {
 						Icon(tab.icon, contentDescription = null)
 					}

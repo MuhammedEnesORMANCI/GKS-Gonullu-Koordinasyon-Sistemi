@@ -75,6 +75,18 @@ android {
 	}
 }
 
+
+// ADR-023: halka açık sitenin içerik dosyaları (web/src/content/*.json) uygulamaya gömülür; rehberler internetsiz
+// çalışır ve web ile aynı kaynaktan üretilir. Dosyalar assets/guide/ altına kopyalanır.
+val guideAssetsDir = layout.buildDirectory.dir("generated/guideAssets")
+val copyGuideContent by tasks.registering(Copy::class) {
+	description = "Web içerik dosyalarını Android assets/guide altına kopyalar."
+	from(rootProject.file("../web/src/content")) { include("*.json") }
+	into(guideAssetsDir.map { it.dir("guide") })
+}
+android.sourceSets.getByName("main").assets.srcDir(guideAssetsDir)
+tasks.named("preBuild") { dependsOn(copyGuideContent) }
+
 dependencies {
 	implementation(libs.androidx.core.ktx)
 	implementation(libs.androidx.activity.compose)

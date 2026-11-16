@@ -17,6 +17,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.gks.android.R
 import org.gks.android.data.remote.MeContext
 import org.gks.android.ui.common.Badge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.LoadContent
@@ -46,7 +48,7 @@ fun OperationDetailScreen(
 
 		item {
 			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-				TitleRow(operation.name) { Badge(operationStateLabel(operation.state)) }
+				TitleRow(operation.name) { StatusBadge(StatusKind.OPERATION, operation.state) }
 				if (myRoles.isNotEmpty()) {
 					Text(
 						stringResource(R.string.home_my_roles, myRoles.map { roleLabel(it) }.joinToString(", ")),

@@ -33,6 +33,8 @@ import org.gks.android.data.remote.TaskSummary
 import org.gks.android.data.remote.TaskView
 import org.gks.android.data.remote.TimeWindow
 import org.gks.android.ui.common.Badge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.LoadContent
@@ -84,7 +86,7 @@ fun TaskCard(task: TaskSummary, assignment: MyAssignmentRef?, showOperation: Boo
 				Text(task.operationName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 			}
 			Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-				Badge(taskStateLabel(task.state))
+				StatusBadge(StatusKind.TASK, task.state)
 				assignment?.let { AssignmentBadge(it) }
 			}
 			timeWindowText(task.timeWindow)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -158,7 +160,7 @@ private fun TaskHeader(task: TaskView) {
 		Text(task.title, style = MaterialTheme.typography.headlineSmall)
 		Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 			PriorityBadge(task.priority)
-			Badge(taskStateLabel(task.state))
+			StatusBadge(StatusKind.TASK, task.state)
 		}
 	}
 }

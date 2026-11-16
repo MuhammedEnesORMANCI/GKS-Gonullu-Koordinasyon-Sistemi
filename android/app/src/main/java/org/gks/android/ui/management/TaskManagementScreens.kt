@@ -61,6 +61,8 @@ import org.gks.android.data.remote.TaskSummary
 import org.gks.android.data.remote.TaskView
 import org.gks.android.ui.account.fieldErrors
 import org.gks.android.ui.common.ActionState
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.Badge
 import org.gks.android.ui.common.DateTimeField
 import org.gks.android.ui.common.DateTimes
@@ -127,7 +129,7 @@ fun OperationTasksScreen(viewModel: OperationTasksViewModel, canManageTasks: Boo
 				ElevatedCard(onClick = { onOpen(task.id) }, modifier = Modifier.fillMaxWidth()) {
 					Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
 						TitleRow(task.title) { PriorityBadge(task.priority) }
-						Badge(taskStateLabel(task.state))
+						StatusBadge(StatusKind.TASK, task.state)
 						Counts(task.acceptedCount, task.capacity, task.pendingCount, task.overdueCount)
 					}
 				}
@@ -438,7 +440,7 @@ fun ManagedTaskScreen(viewModel: ManagedTaskViewModel, canManageTasks: Boolean, 
 		item {
 			Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 				TitleRow(task.title) { PriorityBadge(task.priority) }
-				Badge(taskStateLabel(task.state))
+				StatusBadge(StatusKind.TASK, task.state)
 				Counts(task.acceptedCount, task.capacity, task.pendingCount, task.overdueCount)
 			}
 		}

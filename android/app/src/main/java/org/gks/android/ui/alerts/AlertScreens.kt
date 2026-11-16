@@ -42,13 +42,14 @@ fun responseLabelRes(option: String): Int = when (option) {
 @Composable
 fun OpenAlertsBand(alerts: List<MyAlertView>, onOpen: (String) -> Unit) {
 	if (alerts.isEmpty()) return
-	Surface(color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Assertive }) {
+	// ADR-023: açık acil alarm varsa her ekranın en üstünde kırmızı bant.
+	Surface(color = MaterialTheme.colorScheme.error, modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Assertive }) {
 		Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
 			alerts.forEach { alert ->
 				val answered = alert.recipient.responseOption != null
 				Button(
 					onClick = { onOpen(alert.id) },
-					colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+					colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onError, contentColor = MaterialTheme.colorScheme.error),
 					modifier = Modifier.fillMaxWidth(),
 				) {
 					Text(

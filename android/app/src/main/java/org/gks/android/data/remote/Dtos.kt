@@ -570,3 +570,8 @@ data class DeviceRegisterRequest(val fcmToken: String, val appVersion: String) {
 
 @Serializable
 data class DeviceView(val installationId: String, val active: Boolean, val registeredAt: String? = null, val lastSeenAt: String? = null)
+
+/** ADR-023: kamu duyurusu (halka açık; iç duyurulardan ayrı). */
+@Serializable
+data class PublicAnnouncement(val id: String, val title: String, val body: String, val publishedAt: String)
+

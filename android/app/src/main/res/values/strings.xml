@@ -544,4 +544,25 @@
 	<string name="alarm_permission_on">açık</string>
 	<string name="alarm_permission_off">kapalı</string>
 	<string name="alarm_permissions_note">Uygulama kapalıyken ve telefon kilitliyken de acil alarm gelir (FCM). Alarm sesi sessiz modda da çalar (alarm ses düzeyi).</string>
+	<!-- Tasarım: ana sayfa, rehberler, kamu duyuruları (ADR-023) -->
+	<string name="tab_guides">Rehberler</string>
+	<string name="tab_announcements">Duyurular</string>
+	<string name="guide_what_to_do">Afet Anında Ne Yapmalı?</string>
+	<string name="guide_hazards">Afet Türleri</string>
+	<string name="guide_before">Öncesinde</string>
+	<string name="guide_during">Sırasında</string>
+	<string name="guide_after">Sonrasında</string>
+	<string name="guide_preparedness">Hazırlık</string>
+	<string name="guide_not_found">İçerik bulunamadı.</string>
+	<string name="guide_offline_note">Bu rehber uygulamaya gömülüdür, internetsiz çalışır. Bilgiler genel kabul görmüş temel önerilerdir; afet anında yetkililerin talimatlarına uyun. Acil durumda 112.</string>
+	<string name="guide_title_offline">Afet Rehberi</string>
+	<string name="login_open_guide">Afet Rehberi (internetsiz)</string>
+	<string name="home_quick_access">Hızlı Erişim</string>
+	<string name="quick_my_tasks">Görevlerim</string>
+	<string name="quick_my_group">Grubum</string>
+	<string name="quick_notifications">Bildirimlerim</string>
+	<string name="quick_management">Yönetim</string>
+	<string name="announcements_my_inbox">Bildirimlerim (operasyon duyuruları dahil)</string>
+	<string name="public_announcements_title">Kamu duyuruları</string>
+	<string name="public_announcements_empty">Şu an yayında duyuru bulunmuyor.</string>
 </resources>

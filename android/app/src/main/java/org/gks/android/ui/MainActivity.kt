@@ -1,5 +1,10 @@
 package org.gks.android.ui
 
+import org.gks.android.ui.guide.GuideHost
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -16,7 +21,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -81,6 +85,12 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(viewModel: AppViewModel, container: AppContainer, serverLabel: String?) {
 	val screen by viewModel.screen.collectAsStateWithLifecycle()
 	val form by viewModel.form.collectAsStateWithLifecycle()
+	// ADR-023: internetsiz rehber girişten önce de açılabilir (oturum ve ağ gerekmez).
+	var guideOpen by rememberSaveable { mutableStateOf(false) }
+	if (guideOpen && screen !is Screen.Main) {
+		GuideHost(container.guideContent, onClose = { guideOpen = false })
+		return
+	}
 	when (val current = screen) {
 		Screen.Starting -> Unit
 		is Screen.Login -> LoginScreen(
@@ -91,6 +101,7 @@ private fun AppRoot(viewModel: AppViewModel, container: AppContainer, serverLabe
 			onPasswordChange = viewModel::onPasswordChange,
 			onSubmit = viewModel::login,
 			onRegister = viewModel::openRegistration,
+			onOpenGuide = { guideOpen = true },
 		)
 		Screen.Register -> {
 			val registration: RegistrationViewModel = viewModel(

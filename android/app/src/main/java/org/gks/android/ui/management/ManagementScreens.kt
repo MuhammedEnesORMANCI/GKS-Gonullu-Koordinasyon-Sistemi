@@ -46,6 +46,8 @@ import org.gks.android.data.remote.OperationView
 import org.gks.android.domain.ManagementAccess
 import org.gks.android.domain.nextOperationStates
 import org.gks.android.ui.common.Badge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.DateTimeField
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
@@ -126,7 +128,7 @@ private fun filterLabel(filter: OperationFilter) = when (filter) {
 private fun OperationRow(operation: OperationView, onClick: () -> Unit) {
 	ElevatedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
 		Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-			TitleRow(operation.name) { Badge(operationStateLabel(operation.state)) }
+			TitleRow(operation.name) { StatusBadge(StatusKind.OPERATION, operation.state) }
 			if (operation.coordinators.isNotEmpty()) {
 				Text(stringResource(R.string.operation_coordinators_line, operation.coordinators.joinToString(", ") { it.displayName }),
 					style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -171,7 +173,7 @@ fun OperationManageScreen(
 		val canManage = access.canManage(operation.id)
 		item {
 			Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-				TitleRow(operation.name) { Badge(operationStateLabel(operation.state)) }
+				TitleRow(operation.name) { StatusBadge(StatusKind.OPERATION, operation.state) }
 				OperationSignals(operation)
 			}
 		}

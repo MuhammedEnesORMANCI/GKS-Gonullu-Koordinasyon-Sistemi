@@ -1,5 +1,7 @@
 package org.gks.android
 
+import org.gks.android.data.guide.GuideContent
+import org.gks.android.data.PublicAnnouncementRepository
 import android.content.Context
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -68,6 +70,9 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val invitationRepository by lazy { InvitationRepository(api, installationId::get, caller) }
 	val volunteerRepository by lazy { VolunteerRepository(api, caller) }
 	val notificationRepository by lazy { NotificationRepository(api, caller) }
+	val publicAnnouncementRepository by lazy { PublicAnnouncementRepository(api, caller) }
+	/** ADR-023: gömülü (internetsiz) rehber içeriği; web/src/content ile aynı dosyalar. */
+	val guideContent by lazy { GuideContent.load(context.applicationContext.assets) }
 	val alertRepository by lazy { AlertRepository(api, caller) }
 	val locationRepository by lazy { LocationRepository(api, caller) }
 	val managementRepository by lazy { ManagementRepository(api, caller) }

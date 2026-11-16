@@ -1,5 +1,11 @@
 package org.gks.android.ui.login
 
+import org.gks.android.ui.theme.GksPalette
+import org.gks.android.ui.theme.BrandLogo
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +55,7 @@ fun LoginScreen(
 	onPasswordChange: (String) -> Unit,
 	onSubmit: () -> Unit,
 	onRegister: () -> Unit,
+	onOpenGuide: () -> Unit = {},
 ) {
 	var passwordVisible by rememberSaveable { mutableStateOf(false) }
 	Column(
@@ -61,6 +68,20 @@ fun LoginScreen(
 		verticalArrangement = Arrangement.Center,
 	) {
 		Column(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
+			// ADR-023: lacivert başlık (logo + kurum), turuncu internetsiz rehber düğmesi.
+			Column(
+				Modifier
+					.fillMaxWidth()
+					.background(GksPalette.Navy, RoundedCornerShape(20.dp))
+					.padding(20.dp),
+				verticalArrangement = Arrangement.spacedBy(10.dp),
+			) {
+				BrandLogo(height = 48.dp, onDark = true)
+				Text(stringResource(R.string.brand_organization), color = Color.White, style = MaterialTheme.typography.bodySmall)
+			}
+			Spacer(Modifier.height(12.dp))
+			EmergencyGuideButton(onOpenGuide)
+			Spacer(Modifier.height(24.dp))
 			Text(stringResource(R.string.login_title), style = MaterialTheme.typography.headlineSmall)
 			Spacer(Modifier.height(4.dp))
 			Text(
@@ -134,5 +155,17 @@ fun LoginScreen(
 				)
 			}
 		}
+	}
+}
+
+/** Girişten önce internetsiz rehber (afette hesap ya da ağ olmayabilir). */
+@Composable
+private fun EmergencyGuideButton(onClick: () -> Unit) {
+	Button(
+		onClick = onClick,
+		colors = ButtonDefaults.buttonColors(containerColor = GksPalette.Orange, contentColor = Color.White),
+		modifier = Modifier.fillMaxWidth().height(56.dp),
+	) {
+		Text(stringResource(R.string.login_open_guide), style = MaterialTheme.typography.titleMedium)
 	}
 }

@@ -34,6 +34,8 @@ import org.gks.android.domain.HomeKind
 import org.gks.android.domain.PrimaryRole
 import org.gks.android.domain.toHomeModel
 import org.gks.android.ui.common.Badge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.InfoCard
 import org.gks.android.ui.common.Load
 import org.gks.android.ui.common.MessageCard
@@ -55,6 +57,7 @@ fun HomeTab(
 	onContextChanged: () -> Unit,
 	onOpenOperation: (String) -> Unit,
 	onOpenGroup: (String) -> Unit,
+	top: @Composable () -> Unit = {},
 ) {
 	val model = context.toHomeModel()
 	val groups by viewModel.state.collectAsStateWithLifecycle()
@@ -63,6 +66,7 @@ fun HomeTab(
 	Column(Modifier.fillMaxSize()) {
 		if (contextRefreshing || (groups as? Load.Ready)?.refreshing == true) LinearProgressIndicator(Modifier.fillMaxWidth())
 		LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
+			item { top() }
 			item { Greeting(model.displayName, model.kind, model.primaryRole) }
 			contextError?.let { item { MessageCard(it.resolve(), error = true) } }
 			action.notice?.let { item { MessageCard(it.resolve(), error = false) } }
@@ -135,7 +139,7 @@ private fun LazyListScope.groupSection(groups: Load<List<GroupSummary>>, onRetry
 fun OperationCard(operation: MyOperation, onClick: () -> Unit) {
 	ElevatedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
 		Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-			TitleRow(operation.name) { Badge(operationStateLabel(operation.state)) }
+			TitleRow(operation.name) { StatusBadge(StatusKind.OPERATION, operation.state) }
 			if (operation.myRoles.isNotEmpty()) {
 				Text(
 					stringResource(R.string.home_my_roles, operation.myRoles.map { roleLabel(it) }.joinToString(", ")),
