@@ -175,6 +175,7 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 
 | # | Adımlar | Beklenen | ✓ |
 |---|---|---|---|
+| F0 | Backend açılışı; `curl localhost:8080/actuator/health` | Günlükte "FCM push etkin"; `components.push.status` = `UP`. Anahtar yolu yanlışsa backend yine açılır, günlükte "FCM başlatılamadı…", durum `DEGRADED` | [ ] |
 | F1 | A: gon1 giriş yapar | Backend günlüğünde hata yok; DB `identity.devices` satırı etkin (belirteç belgeye yazılmaz) | [ ] |
 | F2 | A (Android 14+): ilk açılışta "Acil alarm izinleri" açıklaması | "Ayarları aç" tam ekran iznine götürür; "Daha sonra" ile uygulama çalışır; bir daha sorulmaz | [ ] |
 | F3 | A: Hesap sekmesi → "Acil alarm izinleri" | Bildirimler / Tam ekran alarm / Rahatsız Etmeyin durumları doğru; "Ayarlar" ilgili ekranı açar; dönünce durum yenilenir | [ ] |

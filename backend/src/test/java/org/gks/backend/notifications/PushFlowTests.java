@@ -5,6 +5,7 @@ import static org.gks.backend.TestSessions.authenticate;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -39,7 +40,9 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @Import({ TestcontainersConfiguration.class, PushFlowTests.FakeFcm.class })
 @SpringBootTest(properties = { "gks.notifications.worker.critical-delay=PT1H", "gks.notifications.worker.standard-delay=PT1H",
-		"gks.alerts.reminder-interval=PT1H" })
+		"gks.alerts.reminder-interval=PT1H",
+		// FCM istenir ama anahtar yok: uygulama yine açılmalı, push sağlık bileşeni DEGRADED (sahte geçit @Primary).
+		"gks.notifications.push.provider=fcm", "gks.notifications.push.fcm.credentials-file=build/olmayan-firebase.json" })
 @AutoConfigureMockMvc
 class PushFlowTests {
 
@@ -105,6 +108,14 @@ class PushFlowTests {
 		role(volunteer, "GON", "OPERATION", operationId);
 		volunteerToken = sessions.android(volunteer);
 		installation = "kurulum-" + UUID.randomUUID().toString().substring(0, 8);
+	}
+
+	@Test
+	void failedFcmStartupDoesNotCrashAndHealthShowsDegradedPush() throws Exception {
+		mvc.perform(get("/actuator/health"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("UP"))
+			.andExpect(jsonPath("$.components.push.status").value("DEGRADED"));
 	}
 
 	@Test

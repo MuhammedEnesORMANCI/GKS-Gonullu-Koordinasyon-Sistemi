@@ -38,6 +38,10 @@ dependencies {
 		exclude(group = "com.google.cloud", module = "google-cloud-firestore")
 		exclude(group = "com.google.cloud", module = "google-cloud-storage")
 	}
+	// firebase-admin'in ApiClientUtils sınıfı JacksonFactory'ye bağlı ama bu paketi POM'unda bildirmiyor; yalnızca
+	// yukarıda hariç tutulan firestore/storage üzerinden geliyordu. Eksikse JVM ApiClientUtils'i doğrularken
+	// NoClassDefFoundError verir (16.11.2026 açılış hatası; FcmStartupTests yakalar). Sürüm google-http-client ile aynı.
+	implementation("com.google.http-client:google-http-client-jackson2:1.45.3")
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")

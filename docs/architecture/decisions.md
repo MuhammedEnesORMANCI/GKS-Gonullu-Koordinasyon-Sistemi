@@ -262,5 +262,6 @@
   6. Bildirime dokunma: alarm → alarm ekranı (kilit ekranında da), duyuru → duyuru ayrıntısı. Tam ekran izni varsa alarm kilit ekranında açılır.
   7. Android 14+: tam ekran (`USE_FULL_SCREEN_INTENT`) ve DND erişimi için bir kez açıklama; reddedilse de uygulama çalışır, durum "Hesap" sekmesinde görünür.
   8. Gönderen alıcı değildir (K-07), kendi telefonunda ses çalmaz.
+- **Başlatma dayanıklılığı (16.11.2026 düzeltmesi):** FCM başlatılamazsa (okunamayan anahtar, eksik sınıf, bilinmeyen sağlayıcı) uygulama çökmez: hata günlüğe yazılır, push `none` gibi kapalıya düşer. `/actuator/health` → `components.push.status`: `UP` (FCM etkin), `DISABLED` (yapılandırmada kapalı), `DEGRADED` (istendi ama başlatılamadı); son ikisi genel durumu `UP`'tan düşürmez. `firebase-admin` 9.4.3, `ApiClientUtils` içinde `JacksonFactory`'ye bağlıdır ama `google-http-client-jackson2`'yi bildirmez (yalnızca firestore/storage ile gelir); bu paket açıkça eklidir. Gerçek başlatma yolu `FcmStartupTests` ile sahte hizmet hesabı üzerinden ağsız test edilir.
 - **Sınırlar:** `REUSE_DETECTED` ile iptal edilen oturum cihazı kapatmaz (bir sonraki girişte yeniden kayıt olur). Tek FCM projesi; iOS yok. Bildirimden yanıt ağ yoksa başarısız olur ve kullanıcıya bildirilir.
 

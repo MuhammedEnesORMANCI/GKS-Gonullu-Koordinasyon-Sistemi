@@ -105,6 +105,12 @@ management:
       show-details: never
       probes:
         enabled: true
+      # push bileşeni (ADR-022): DISABLED/DEGRADED genel durumu UP'tan düşürmez, 200 döner.
+      status:
+        order: down,out-of-service,up,degraded,disabled,unknown
+        http-mapping:
+          degraded: 200
+          disabled: 200
   health:
     mail:
       # Davet e-postası en iyi çabayla gönderilir (InvitationMailer); SMTP kesintisi uygulamayı DOWN göstermez.
