@@ -11,6 +11,7 @@ import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.gks.backend.RealtimeBus;
 import org.gks.backend.Ids;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -38,7 +39,10 @@ class RefreshTokens {
 
 	private final JdbcClient jdbc;
 
-	RefreshTokens(JdbcClient jdbc) {
+	private final RealtimeBus realtime;
+
+	RefreshTokens(JdbcClient jdbc, RealtimeBus realtime) {
+		this.realtime = realtime;
 		this.jdbc = jdbc;
 	}
 
@@ -159,6 +163,7 @@ class RefreshTokens {
 				update identity.refresh_tokens set revoked_at = :now, revoke_reason = :reason
 				 where family_id = :family and revoked_at is null""")
 			.param("family", sessionId).param("reason", reason).param("now", java.sql.Timestamp.from(now)).update();
+		realtime.sessionsEnded(null, sessionId, null);   // açık SSE akışı session.revoked ile kapanır
 	}
 
 	/** Kullanıcının tüm oturumları; {@code exceptSession} varsa o oturum korunur (ID-08). */
@@ -168,6 +173,7 @@ class RefreshTokens {
 				 where user_id = :userId and revoked_at is null and (cast(:except as uuid) is null or family_id <> :except)""")
 			.param("userId", userId).param("except", exceptSession).param("reason", reason)
 			.param("now", java.sql.Timestamp.from(now)).update();
+		realtime.sessionsEnded(userId, null, exceptSession);
 	}
 
 	/** Çıkışta oturumun cihazı pasifleşir; o kuruluma bildirim gitmez (DB §3.3, §3.4 {@code device_id}). */

@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import java.util.Map;
+import org.gks.backend.RealtimeBus;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -41,8 +43,10 @@ class InboxController {
 
 	private final NotificationStore store;
 	private final Clock clock;
+	private final RealtimeBus realtime;
 
-	InboxController(NotificationStore store, Clock clock) {
+	InboxController(NotificationStore store, Clock clock, RealtimeBus realtime) {
+		this.realtime = realtime;
 		this.store = store;
 		this.clock = clock;
 	}
@@ -99,9 +103,12 @@ class InboxController {
 	@PostMapping("/{id}/read")
 	@Transactional
 	ResponseEntity<Void> read(@PathVariable UUID id, Authentication authentication) {
-		if (!store.markRead(Subject.from(authentication).userId(), id, clock.instant())) {
+		UUID userId = Subject.from(authentication).userId();
+		if (!store.markRead(userId, id, clock.instant())) {
 			throw ApiException.of(Code.NOT_FOUND);
 		}
+		// Diğer sekme/oturumların okunmamış sayısı güncellensin.
+		realtime.publish(RealtimeBus.userTopic(userId), "inbox.changed", null, Map.of("change", "READ", "itemId", id));
 		return ResponseEntity.noContent().build();
 	}
 

@@ -24,6 +24,7 @@ import { Link as RouterLink, Outlet, matchPath, useLocation, useNavigate } from 
 import { MockBadge } from '../components/MockBadge';
 import { OPERATION_STATE_LABEL } from '../components/format';
 import { useIsMock, useServices } from '../services/registry';
+import { useLiveUpdates } from './live';
 import { Q } from './queryKeys';
 import { usePermissions, useSession } from './session';
 
@@ -85,7 +86,10 @@ export function AppShell() {
     (ctxPerms.organization.includes('announcement.send.organization') ||
       Object.values(ctxPerms.operations).some((list) => list.includes('announcement.send.group')));
 
-  // Okunmamış bildirim sayısı (NT-08): push yok, sekme görünürken düzenli yoklama.
+  // RT-01: gelen kutusu ve duyurular canlı yenilenir.
+  useLiveUpdates();
+
+  // Okunmamış bildirim sayısı (NT-08): akış olaylarıyla anında, kopuklukta yedek olarak düzenli yoklama.
   const unread = useQuery({
     queryKey: Q.unreadCount(),
     queryFn: () => services.notifications.unreadCount(),

@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.RealtimeBus;
 import org.gks.backend.access.ActingBasis;
 import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
@@ -52,11 +53,13 @@ class AnnouncementService {
 	private final NotificationStore store;
 	private final Idempotency idempotency;
 	private final AuditTrail audit;
+	private final RealtimeBus realtime;
 	private final ActingBasis acting;
 
 	AnnouncementService(AnnouncementAccess access, Participation participation, GroupAudience groups,
 			AccessDirectory.Users users, AccessDirectory.Scopes scopes, Notifier notifier, NotificationStore store,
-			Idempotency idempotency, AuditTrail audit, ActingBasis acting) {
+			Idempotency idempotency, AuditTrail audit, ActingBasis acting, RealtimeBus realtime) {
+		this.realtime = realtime;
 		this.audit = audit;
 		this.acting = acting;
 		this.access = access;
@@ -132,6 +135,9 @@ class AnnouncementService {
 				: acting.operation(subject, audience.operationId()), subject.client(), "ANNOUNCEMENT_SENT", "NOTIFICATION", id,
 				audience.operationId(), Map.of("target", targetKind, "recipientCount", audience.recipients().size(),
 						"userCount", target.userIds().size(), "groupCount", target.groupIds().size()));
+		// RT-01: gönderen kapsamındaki duyuru geçmişi canlı yenilenir (organization: ADM; operation:{id}: KOR/ADM).
+		realtime.publish(target.organization() ? RealtimeBus.ORGANIZATION_TOPIC : RealtimeBus.operationTopic(audience.operationId()),
+				"announcement.sent", audience.operationId(), Map.of("announcementId", id, "recipientCount", audience.recipients().size()));
 		return idempotency.complete(idem, 202, view(store.announcement(id).orElseThrow(), true), RESOURCE, id);
 	}
 

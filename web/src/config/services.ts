@@ -19,6 +19,7 @@
  *   - roleAssignments AC-01 – AC-03 (rol atama ekranı, yalnızca ADM)
  *   - users         ID-19 – ID-25 (kullanıcı ve hesap yönetimi)
  *   - audit         AU-01 (denetim kayıtları, salt-okur)
+ *   - realtime      RT-01 (SSE: gelen kutusu ve duyuruların canlı yenilenmesi)
  *
  * `npm run dev:mock` (Vite `--mode mock`) veya `VITE_SERVICE_PRESET=mock` ile tüm kaynaklar örnek veriye geçer
  * (backend olmadan tutarlı tanıtım).
@@ -39,7 +40,8 @@ export type ServiceResource =
   | 'announcements'
   | 'roleAssignments'
   | 'users'
-  | 'audit';
+  | 'audit'
+  | 'realtime';
 
 export type ServiceConfig = Record<ServiceResource, ServiceMode>;
 
@@ -57,6 +59,7 @@ export const CONTRACT_PRESET: ServiceConfig = {
   roleAssignments: 'http',
   users: 'http',
   audit: 'http',
+  realtime: 'http',
 };
 
 export const MOCK_PRESET: ServiceConfig = {
@@ -73,6 +76,7 @@ export const MOCK_PRESET: ServiceConfig = {
   roleAssignments: 'mock',
   users: 'mock',
   audit: 'mock',
+  realtime: 'mock',
 };
 
 function selectPreset(): ServiceConfig {

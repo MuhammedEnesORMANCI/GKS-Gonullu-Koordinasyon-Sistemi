@@ -249,6 +249,29 @@ export interface TaskService {
   removeAssignment(taskId: Uuid, assignmentId: Uuid): Promise<void>;
 }
 
+/** RT-01 olay türleri (§12.2); veri yalnızca kimlik, durum ve zaman taşır. */
+export type LiveEventType =
+  | 'inbox.changed'
+  | 'announcement.sent'
+  | 'operation.state.changed'
+  | 'subscription.revoked'
+  | 'session.revoked'
+  | 'resync';
+
+export interface LiveEvent {
+  type: LiveEventType;
+  id?: string;
+  data: Record<string, unknown>;
+}
+
+export interface RealtimeService {
+  /**
+   * RT-01 `GET /stream`. Akışı açar ve olayları iletir; dönen işlev akışı kapatır. Akış kalıcı olarak kapanırsa
+   * (ör. yetkisiz, oturum süresi) `onClosed` çağrılır; yeniden bağlanma kararı çağırandadır.
+   */
+  connect(topics: string[], onEvent: (event: LiveEvent) => void, onClosed: () => void): () => void;
+}
+
 export interface Services {
   auth: AuthService;
   account: AccountService;
@@ -264,4 +287,5 @@ export interface Services {
   roleAssignments: RoleAssignmentService;
   users: UserAdminService;
   audit: AuditService;
+  realtime: RealtimeService;
 }

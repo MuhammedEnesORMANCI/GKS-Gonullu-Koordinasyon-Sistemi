@@ -6,6 +6,7 @@ import {
   httpAccountService,
   httpAnnouncementService,
   httpAuditService,
+  httpRealtimeService,
   httpAuthService,
   httpGroupService,
   httpInvitationService,
@@ -22,6 +23,7 @@ import {
   mockAccountService,
   mockAnnouncementService,
   mockAuditService,
+  mockRealtimeService,
   mockAuthService,
   mockGroupService,
   mockInvitationService,
@@ -54,6 +56,7 @@ export function createServices(config: ServiceConfig, api: ApiClient = apiClient
     roleAssignments: pick('roleAssignments', () => httpRoleAssignmentService(api), mockRoleAssignmentService),
     users: pick('users', () => httpUserAdminService(api), mockUserAdminService),
     audit: pick('audit', () => httpAuditService(api), mockAuditService),
+    realtime: pick('realtime', () => httpRealtimeService(), mockRealtimeService),
   };
 }
 

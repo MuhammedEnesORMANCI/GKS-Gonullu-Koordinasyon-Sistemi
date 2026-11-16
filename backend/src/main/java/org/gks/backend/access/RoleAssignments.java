@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.RealtimeBus;
 import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
@@ -36,9 +37,11 @@ public class RoleAssignments {
 	private final ApplicationEventPublisher events;
 	private final Clock clock;
 	private final AuditTrail audit;
+	private final RealtimeBus realtime;
 
 	RoleAssignments(RoleAssignmentStore store, AccessDirectory.Users users, AccessDirectory.Scopes scopes,
-			ApplicationEventPublisher events, Clock clock, AuditTrail audit) {
+			ApplicationEventPublisher events, Clock clock, AuditTrail audit, RealtimeBus realtime) {
+		this.realtime = realtime;
 		this.store = store;
 		this.users = users;
 		this.scopes = scopes;
@@ -194,6 +197,8 @@ public class RoleAssignments {
 		audit.record(subject.userId(), "ADM", subject.client(), "ROLE_REVOKED", "ROLE_ASSIGNMENT", assignmentId,
 				row.scopeType() == ScopeType.OPERATION ? row.scopeId() : null, Map.of("userId", row.userId(),
 						"role", row.role().name(), "scopeType", row.scopeType().name(), "scopeId", row.scopeId()));
+		realtime.accessChanged(row.userId(), row.scopeType() == ScopeType.OPERATION ? row.scopeId() : null,
+				"PERMISSION_REVOKED");   // açık akışlarda yetkisi düşen konu çıkarılır (T-ROLE-01)
 		if (row.role() == Role.GON) {
 			events.publishEvent(new ParticipationRevoked(row.scopeId(), row.userId(), subject.userId(), now));
 		}

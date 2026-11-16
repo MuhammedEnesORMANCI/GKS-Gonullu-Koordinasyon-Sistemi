@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.gks.backend.RealtimeBus;
 import org.gks.backend.access.ActingBasis;
 import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
@@ -51,11 +52,13 @@ class OperationService {
 	private final JdbcClient jdbc;
 	private final Clock clock;
 	private final AuditTrail audit;
+	private final RealtimeBus realtime;
 	private final ActingBasis acting;
 
 	OperationService(OperationRepository operations, OperationAccess access, RoleAssignments roles, UserDirectory users,
 			ParticipantDetails.Groups groups, ParticipantDetails.Assignments assignments, Idempotency idempotency,
-			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting) {
+			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting, RealtimeBus realtime) {
+		this.realtime = realtime;
 		this.audit = audit;
 		this.acting = acting;
 		this.operations = operations;
@@ -201,6 +204,10 @@ class OperationService {
 		// Kapanış zinciri (§7.3, OperationStateChanged → outbox) tüketen modüllerle birlikte eklenecek.
 		audit.record(subject.userId(), acting.operation(subject, id), subject.client(), "OPERATION_STATE_CHANGED", "OPERATION",
 				id, id, Map.of("from", current.name(), "to", target.name()));
+		realtime.publish(RealtimeBus.operationTopic(id), "operation.state.changed", id, Map.of("state", target.name()));
+		if (closing) {
+			realtime.accessChanged(null, id, "OPERATION_CLOSED");   // operation:{id} abonelikleri düşer (§7.3)
+		}
 		return views(List.of(load(id)), subject).getFirst();
 	}
 

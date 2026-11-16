@@ -1,5 +1,6 @@
 package org.gks.backend;
 
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 import java.util.Set;
 
@@ -60,6 +61,8 @@ class SecurityConfiguration {
 				.requestMatchers(HttpMethod.POST, "/api/v1/invitations/lookup", "/api/v1/invitations/accept")
 				.permitAll()                                                           // ID-15/16 (davet kodu, LD-37)
 				.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+				// RT-01: SSE akışının tamamlanma dağıtımı; ilk (REQUEST) dağıtım kimlik ve yetki denetiminden geçmiştir.
+				.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
 				.anyRequest().authenticated())
 			.exceptionHandling(errors -> errors
 				// Belirteç reddedildiyse nedeni (süresi dolmuş, oturum iptal, hesap devre dışı) yanıta yansır.

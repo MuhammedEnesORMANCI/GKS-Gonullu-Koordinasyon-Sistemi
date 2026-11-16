@@ -1,4 +1,4 @@
-import type { ApiClient } from '../api/client';
+import { API_BASE, type ApiClient } from '../api/client';
 import type {
   AccountService,
   AnnouncementService,
@@ -11,6 +11,7 @@ import type {
   OperationListService,
   OperationService,
   ParticipantService,
+  RealtimeService,
   RoleAssignmentService,
   TaskService,
   UserAdminService,
@@ -286,5 +287,51 @@ export function httpInvitationService(api: ApiClient): InvitationService {
         { idempotencyKey },
       ),
     revoke: (id) => api.post<InvitationView>(`/invitations/${p(id)}/revoke`),
+  };
+}
+
+const LIVE_EVENTS = [
+  'inbox.changed',
+  'announcement.sent',
+  'operation.state.changed',
+  'subscription.revoked',
+  'session.revoked',
+  'resync',
+] as const;
+
+/**
+ * RT-01: tarayıcının `EventSource`'u (çerezle kimlik, CSRF gerekmez). Geçici kopmada tarayıcı `Last-Event-ID` ile
+ * kendisi yeniden bağlanır; sunucu bağlantıyı reddederse (401/403) akış kapanır ve `onClosed` çağrılır.
+ */
+export function httpRealtimeService(baseUrl: string = API_BASE): RealtimeService {
+  return {
+    connect: (topics, onEvent, onClosed) => {
+      if (typeof EventSource === 'undefined') return () => undefined;
+      const query = topics.length > 0 ? `?topics=${topics.map(p).join(',')}` : '';
+      const source = new EventSource(`${baseUrl}/stream${query}`, { withCredentials: true });
+      let closed = false;
+      for (const type of LIVE_EVENTS) {
+        source.addEventListener(type, (message) => {
+          const event = message as MessageEvent<string>;
+          let data: Record<string, unknown> = {};
+          try {
+            data = JSON.parse(event.data) as Record<string, unknown>;
+          } catch {
+            // bozuk çerçeve: yalnızca tür bilgisiyle iletilir
+          }
+          onEvent({ type, id: event.lastEventId || undefined, data });
+        });
+      }
+      source.onerror = () => {
+        if (source.readyState === EventSource.CLOSED && !closed) {
+          closed = true;
+          onClosed();
+        }
+      };
+      return () => {
+        closed = true;
+        source.close();
+      };
+    },
   };
 }

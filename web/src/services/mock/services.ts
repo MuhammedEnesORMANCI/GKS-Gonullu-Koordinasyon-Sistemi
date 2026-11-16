@@ -5,11 +5,13 @@ import type {
   AuthService,
   GroupService,
   InvitationService,
+  LiveEvent,
   MeContextService,
   NotificationService,
   OperationListService,
   OperationService,
   ParticipantService,
+  RealtimeService,
   RoleAssignmentService,
   TaskService,
   UserAdminService,
@@ -1100,6 +1102,33 @@ export function mockAuditService(): AuditService {
             (!filter.operationId || e.operationId === filter.operationId),
         ),
       });
+    },
+  };
+}
+
+/** Örnek veri modunda akış yoktur; testler ve tanıtım olayları `emitMockLiveEvent` ile verir. */
+const liveListeners = new Set<{ topics: string[]; onEvent: (event: LiveEvent) => void }>();
+
+export function emitMockLiveEvent(event: LiveEvent): void {
+  const topic = typeof event.data.topic === 'string' ? event.data.topic : undefined;
+  for (const listener of [...liveListeners]) {
+    if (!topic || topic.startsWith('user:') || listener.topics.includes(topic)) listener.onEvent(event);
+  }
+}
+
+/** Testler için: açık sahte akışların konuları. */
+export function mockLiveTopics(): string[][] {
+  return [...liveListeners].map((l) => l.topics);
+}
+
+export function mockRealtimeService(): RealtimeService {
+  return {
+    connect: (topics, onEvent) => {
+      const listener = { topics, onEvent };
+      liveListeners.add(listener);
+      return () => {
+        liveListeners.delete(listener);
+      };
     },
   };
 }

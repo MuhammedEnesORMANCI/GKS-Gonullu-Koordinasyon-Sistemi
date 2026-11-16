@@ -20,6 +20,7 @@
 | ADR-014 | Android yönetim oturumu: ADM/KOR için TOTP ile açılan, 12 sa mutlak, MFA'lı Android oturumu | Kabul edildi (proje sahibi isteği, 15.11.2026) | MVP |
 | ADR-015 | ADM, KOR ataması olmadan tüm operasyonlarda KOR'un operasyon yönetimi izinlerine sahiptir (K-07'nin ilgili kısmının yerine) | Kabul edildi (proje sahibi isteği, 16.11.2026) | MVP |
 | ADR-016 | Denetim kaydı aynı işlemde eşzamanlı yazılır; yalnızca ekleme; `actor_basis` | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
+| ADR-017 | Gerçek zamanlı akış: tek örnek içi SSE, işlem sonrası yayın, bağlantı başına yetki | Kabul edildi (16.11.2026; proje sahibinin SSE isteği ve bağımlılık kuralı) | MVP |
 
 ---
 
@@ -180,3 +181,15 @@
   5. Kayıt içeriği: mesaj başlığı/metni, parola, belirteç, e-posta, adres ve koordinat yazılmaz (AC-27.2); yalnızca tür, kimlik ve sayılar.
 - **Sonuçlar:** (+) kayıt kaybı veya kayıtsız işlem yok; (+) ADM işlemleri `actor_basis = 'ADM'` ile süzülür; (−) denetim yazımı iş işleminin süresine eklenir (tek INSERT); (−) id (UUIDv7) sırası olay sırası kabul edilir, `at` ayrı tutulur.
 - **Kapsanan eylemler (V12, 16.11):** `ROLE_ASSIGNED/REVOKED`, `ACCOUNT_DISABLED/ENABLED`, `SESSIONS_REVOKED`, `PASSWORD_RESET_BY_ADMIN`, `MFA_RESET`, `INVITATION_CREATED/REVOKED`, `OPERATION_CREATED/UPDATED/STATE_CHANGED`, `GROUP_CREATED/UPDATED/MEMBER_ADDED/MEMBER_REMOVED/LEADER_CHANGED`, `MEETING_POINT_UPDATED`, `TASK_CREATED/UPDATED/PUBLISHED/STATE_CHANGED`, `ASSIGNMENT_ADDED/REMOVED`, `ANNOUNCEMENT_SENT` (LD-60 (7)). Kimlik olayları (giriş, çıkış, MFA doğrulama) ve gönüllü yanıtları henüz yok.
+
+## ADR-017 Gerçek zamanlı akış: tek örnek içi SSE, işlem sonrası yayın, bağlantı başına yetki
+
+- **Bağlam:** ADR-009 web için SSE'yi seçti; tasarım (§12.2) olayların outbox'tan geçmesini öngörüyordu. Outbox henüz yok ve yeni bağımlılık istenmiyor (16.11.2026). Gelen kutusu ve duyuruların canlı yenilenmesi istendi.
+- **Karar:**
+  1. Uç `GET /api/v1/stream` (RT-01), Spring MVC `SseEmitter` (ek bağımlılık yok). Kimlik ve oturum iptali güvenlik filtresinde; **her konunun yetkisi her bağlantı açılışında** access'teki `RealtimeAccess` ile verilir; biri yetkisizse akış açılmaz (`403`, kısmi abonelik yok). Bilinmeyen konu biçimi veya 10'dan fazla konu `400`.
+  2. Konular: `user:{id}` (her bağlantıya kendiliğinden eklenir), `operation:{id}` (KOR veya ADR-015 ile ADM; kurumsal oturum kapısı), `organization` (ADM). `alert:{id}` ve konum olayları ilgili modüllerle eklenecek.
+  3. Üretici modüller ortak çekirdekteki `RealtimeBus` ile olay yayınlar; realtime modülü `@TransactionalEventListener(AFTER_COMMIT)` ile **işlem tamamlandıktan sonra** gönderir (geri alınan işlemin olayı gitmez). Veri yalnızca kimlik, durum ve zaman (RT-K3).
+  4. Yeniden oynatma: bellek içi arabellek (5 dk / 10 000 olay), kimlik `<epochMillis>-<sıra>`. `Last-Event-ID` (başlık) veya `lastEventId` (sorgu) arabellekte yoksa önce `resync`. `retry: 3000`, 15 sn'de bir `: ping`, akış en geç 30 dk'da bir kapanır.
+  5. Yetki düşmesi: rol kaldırılınca (`PERMISSION_REVOKED`) ve operasyon kapanınca (`OPERATION_CLOSED`) etkilenen konu `subscription.revoked` ile akıştan çıkarılır; oturum iptali (çıkış, tüm oturumları kapatma, hesap devre dışı, parola/MFA sıfırlama) `session.revoked` gönderip akışı kapatır.
+- **Sonuçlar:** (+) bağımlılıksız, testli; (+) olay iş işlemiyle tutarlı. (−) **tek örnek:** çoklu örnekte olaylar örnekler arası kanal (PostgreSQL `LISTEN/NOTIFY` veya outbox) gerektirir; (−) sunucu yeniden başlarsa arabellek boşalır, istemci `resync` alır; (−) olaylar commit eden iş parçacığında gönderilir (yavaş istemci o gönderimi bekletir; ayrı yürütücü sonraki iş).
+- **Ek olaylar (tasarımda yoktu, N-21 kapsamında):** `inbox.changed` (`user:{id}`; `change`: `CREATED`/`READ`), `announcement.sent` (`operation:{id}` veya `organization`; `announcementId`, `recipientCount`).
