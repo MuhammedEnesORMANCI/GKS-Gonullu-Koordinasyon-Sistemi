@@ -64,16 +64,21 @@ Modül sınırları `backend/src/test/java/org/gks/backend/ModularityTests.java`
 | Görev (TK-01…12) | ✅ | ✅ | ✅ gönüllü kabul/ret + KOR görev yönetimi |
 | Bildirim gelen kutusu (NT-04/05/07/08) | ✅ | ✅ zil rozeti, `/bildirimler` | ✅ sekme, rozet, 30 sn yoklama |
 | Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ✅ operasyon/grup/kişi hedefi, önizleme, >50 onay, geçmiş, kurum duyurusu |
+| Denetim kaydı (AU-01, ADR-016) | ✅ `audit/` (V12) | ✅ `/denetim` salt-okur | – |
+| Gerçek zamanlı akış (RT-01, ADR-017) | ✅ `realtime/` | ✅ `app/live.ts` | – (yoklama) |
+| Acil alarm (AL-01, 03–16, ADR-018) | ✅ `alerts/` (V13) | ✅ `/operasyonlar/:id/alarmlar`, `/alarmlar/:id`, `/alarmlar` | ✅ gönüllü: alarm bandı + yanıt ekranı (`ui/alerts/`) |
+| Konum (LC-01…05, ADR-019) | ✅ `location/` (V14) | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi (`location/`, `ui/location/`) |
 
 ### 3.2 Planlanan / yok
 
-Denetim kaydı (audit), acil alarm (alerts), konum ve harita (location), cihaz kaydı (ID-26), FCM push, gerçek zamanlı akış (SSE), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
+Harita (sağlayıcı arayüzü hazır), cihaz kaydı (ID-26), FCM push (alarm için zorunlu), Android SSE, alarm taslak düzenleme (AL-02), kendi kendine parola sıfırlama e-postası (ID-27/28), onay metni (ID-29), hesap kapatma (ID-31). Ayrıntı ve öncelik: §11.
 
 ### 3.3 Gerçek cihazda/kullanıcıyla doğrulanmamış
 
 - Android uygulaması emülatörde açılmadı; ekranlar (16.11'deki duyuru yönetimi ve tarih-saat seçici dahil) yalnızca derleme + birim testleriyle doğrulandı. Web'in yeni `/roller` ve `/kullanicilar` ekranları tarayıcıda gerçek backend'le denenmedi (mock + birim testleri). Kullanıcı gerçek telefonda test etmeye başladı (USB, `adb reverse`); sonuç bu belgeye yansımadı.
 - ADM/KOR için Android MFA girişi gerçek hesapla denenmedi (backend entegrasyon testi gerçek TOTP ile geçiyor).
 - Gerçek SMTP yok; davet e-postası yalnızca Mailpit'e gider.
+- 16.11 sabahı eklenen alarm, konum, denetim ve SSE ekranları tarayıcıda/cihazda denenmedi; Android konum servisi gerçek GPS ile çalıştırılmadı. Backend bu modüllerde Testcontainers entegrasyon testleriyle doğrulandı.
 
 ---
 
@@ -127,12 +132,15 @@ Denetim kaydı (audit), acil alarm (alerts), konum ve harita (location), cihaz k
 | V9 | `identity.invitations` |
 | V10 | `notifications.notifications`, `deliveries` (IN_APP gelen kutusu + PUSH kuyruğu) |
 | V11 | MFA bileti istemci/kurulum alanları; `ck_refresh_tokens_mfa_absolute` |
+| V12 | `audit.audit_entries` (+ `actor_basis`); UPDATE/DELETE/TRUNCATE tetikleyiciyle reddedilir |
+| V13 | `alerts.alerts`, `alerts.alert_recipients` |
+| V14 | `location.location_sharings`, `location.last_locations` (`retain_until`), `audit.location_view_windows` |
 
 **Önemli ilişkiler:** Katılım = `access.role_assignments` (GON/OPERATION). KOR ataması da aynı tablo. Grup üyeliği `groups.group_memberships` (LEADER/MEMBER). Görev atamaları `tasks.task_assignments` (PENDING/ACCEPTED/REJECTED/CAPACITY_FULL/REMOVED). Bildirim ↔ teslim: bir `notifications` satırı, alıcı başına `deliveries` satırları; tekrar önleme `uq_notifications_idempotency_key`.
 
 **Veri koruma kuralları:**
 - Mevcut geliştirme veritabanında gerçek test verisi var (operasyon, grup, gönüllü hesapları). **Silme, sıfırlama, `docker compose down -v` yasak.**
-- Şema değişikliği yalnızca yeni Flyway migration ile (V12+); mevcut migration dosyaları değiştirilmez.
+- Şema değişikliği yalnızca yeni Flyway migration ile (V15+); mevcut migration dosyaları değiştirilmez. `audit.audit_entries` yalnızca eklenebilir (tetikleyici); kayıtlar silinmez.
 - Testler Testcontainers ile ayrı, geçici bir PostgreSQL kullanır; geliştirme veritabanına dokunmaz.
 
 ---
@@ -153,6 +161,10 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 | Gelen kutusu | `GET /me/notifications`, `GET /me/notifications/{id}`, `POST /{id}/read`, `GET /unread-count` | `notifications/InboxController.java` |
 | Duyuru | `POST /announcements/preview`, `POST /announcements`, `GET /announcements`, `GET /announcements/{id}` | `notifications/AnnouncementController.java` |
 | Kullanıcılar (16.11) | `GET /users`, `GET /users/{id}`, `POST /users/{id}/disable`, `/enable`, `/revoke-sessions`, `/reset-password`, `/reset-mfa` | `identity/UserAdminController.java` |
+| Denetim (16.11) | `GET /audit-entries` (süzgeçler, imleç; değiştirme/silme ucu yok) | `audit/AuditController.java` |
+| Akış (16.11) | `GET /stream?topics=…&lastEventId=…` (`text/event-stream`) | `realtime/StreamController.java` |
+| Alarm (16.11) | `POST/GET /operations/{id}/alerts`, `GET /alerts`, `GET/DELETE /alerts/{id}`, `/preview`, `/send`, `/cancel`, `/close`, `/resend`, `/recipients`, `GET /me/alerts`, `POST /alert-recipients/{id}/delivered|seen|responses` | `alerts/AlertController.java` |
+| Konum (16.11) | `POST/DELETE /operations/{id}/location-sharing`, `POST /operations/{id}/locations`, `GET /operations/{id}/locations`, `GET /me/location-sharing` | `location/LocationController.java` |
 
 **Kurallar:**
 - **Idempotency (§3.6):** "Z" uçlarında `Idempotency-Key` zorunlu (ör. ID-12, ID-16, ID-17/18, TK-03, TK-11/12, NT-02); "d" uçlarında isteğe bağlı. Eksikse `400 REQUIRED`.
@@ -226,9 +238,9 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 | Paket | Komut | Son sonuç |
 |---|---|---|
-| Backend (paket paket) | `cd backend && ./gradlew test --offline --no-daemon --max-workers=1 --tests "org.gks.backend.<paket>.*"` | 16.11: access 37, identity 128, notifications 19, organization 54, tasks 115, groups 62, kök 46 → **461/461** |
-| Web | `cd web && npx tsc -b && npx eslint src && npx vitest run --maxWorkers=1 --minWorkers=1` | **118/118** (tsc, eslint temiz) |
-| Android | `cd android && ./gradlew assembleDebug testDebugUnitTest --offline` (JDK 17) | **73/73** |
+| Backend (paket paket) | `cd backend && ./gradlew test --offline --no-daemon --max-workers=1 --tests "org.gks.backend.<paket>.*"` | 16.11 sabah: access 37, identity 128, notifications 19, organization 54, tasks 115, groups 62, audit 5, realtime 5, alerts 6, location 4, kök 46 → **481/481** |
+| Web | `cd web && npx tsc -b && npx eslint src && npx vitest run --maxWorkers=1 --minWorkers=1` | **131/131** (tsc, eslint temiz) |
+| Android | `cd android && ./gradlew assembleDebug testDebugUnitTest --offline` (JDK 17) | **80/80** |
 
 - Backend testleri Testcontainers kullanır (Docker gerekir).
 - **Backend tam test paketini tek seferde çalıştırmayın**: makinede iki kez JVM "insufficient memory" çökmesine yol açtı. Paket paket ve `--max-workers=1`.
@@ -239,14 +251,16 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ## 11. Eksikler ve yol haritası (öncelik sırası)
 
-1. ~~Android duyuru yönetimi~~ — **tamamlandı (16.11)**. Ayrıca tamamlananlar: ADR-015, Android tarih-saat seçici, web rol atama ekranı, kullanıcı yönetimi (ID-19…25), sayfalama birleştirme.
-2. **Denetim kaydı (audit)** — sıradaki iş; **proje sahibinin tasarım onayı bekleniyor** (`.claude-runs/SABAH_RAPORU.md`). — `audit` modülü boş. K-26 (yalnızca ADM/UYM görür), LD-05/LD-22/LD-44 (konum görüntüleme penceresi), `x-audit` olayları (`ANNOUNCEMENT_SENT`, rol/operasyon işlemleri) henüz yazılmıyor.
-3. **Acil alarm (US-20…25)** — `alerts` boş. Tasarım: `emergency-alert-design.md`, DB §6.3–6.4, API §11.1. Bildirim altyapısı (`Notifier`, CRITICAL kuyruk) hazır. ADR-014 ile MFA'lı Android oturumundan da gönderilebilir (DR-12 güncellendi).
-4. **Konum ve harita (US-17…19)** — `location` boş. K-14 (kullanıcı başlatır), K-15 (başkalarının konumunu yalnızca KOR görür), K-16 (yalnızca son konum), ADR-011 (ön plan servisi). Harita kütüphanesi kararı verilmedi (Google Maps API anahtarı vs. OSM).
-5. ~~Kullanıcı yönetimi (ID-19…25)~~ ve ~~web rol atama ekranı~~ — **tamamlandı (16.11)**. Kalan: Android'de kullanıcı yönetimi ekranı yok; Android koordinatör seçimi hâlâ katılımcılar + diğer KOR'larla sınırlı (ID-19 Android'den kullanılmıyor).
-7. **FCM push + cihaz kaydı (ID-26)** — kullanıcının Firebase projesi yok. `notifications/PushGateway.java`, `DeliveryWorker.java` hazır; `gks.notifications.push.provider` şu an `none`.
-8. **SSE gerçek zamanlı** (ADR-009) — yok; istemciler 30 sn yoklama.
-9. Genişletilmiş kapsam: operasyonun "Askıda" durumu, parola sıfırlama e-postası, onay metni, toplanma noktası geçmişi.
+Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, web rol atama, kullanıcı yönetimi, sayfalama birleştirme; sabah: **denetim kaydı (ADR-016), SSE (ADR-017), acil alarm (ADR-018), konum (ADR-019)**.
+
+1. **FCM push + cihaz kaydı (ID-26)** — acil alarmın kilitli telefona ulaşması için zorunlu. `notifications/PushGateway.java`, `DeliveryWorker.java` hazır; `gks.notifications.push.provider=none`. Firebase projesi ve bağımlılıklar gerekir (`.claude-runs/RAPOR_2.md` §3). FCM gelince: alarm alıcıları `QUEUED` doğup işçiyle ilerler, hatırlatmalar yeniden iletim yapar, `deliveryDelayed` hesaplanır.
+2. **Harita** — sağlayıcı kararı ve bağımlılık; web `features/location/mapProvider.ts` arayüzü hazır.
+3. **Android SSE** — ertelendi; FCM sonrası değerlendirilmeli.
+4. Alarm kalanları: AL-02, `alert:{id}` konusu ve 1 sn birleştirme, KOR/ADM için Android alarm yönetimi.
+5. Konum kalanları: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma; `OPERATION_SUSPENDED` (G).
+6. Denetim kalanları: kimlik olayları (giriş/çıkış/MFA); ayrı yalnızca `SELECT/INSERT` DB rolü.
+7. Android'de kullanıcı yönetimi ekranı; Android koordinatör seçimi (ID-19).
+8. Genişletilmiş kapsam: operasyonun "Askıda" durumu, parola sıfırlama e-postası, onay metni, toplanma noktası geçmişi.
 
 ---
 
@@ -260,14 +274,16 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 - **Eski kod yorumları:** ADR-013'ü anlatan yorumlar (EffectivePermissions, AnnouncementController `x-client`, AnnouncementAccess, Subject, TaskAccess) 16.11'de düzeltildi.
 - **Belge tutarlılığı:** `backend-api-design.md` §2.4 ve `authorization.md` §5.4'teki eski "yalnızca web" metinleri silinmedi, üstlerine ADR-014 notu eklendi; okurken not esas alınmalı. `web-screen-api-mapping.md` 16.11'de başa "Güncel durum (ADR-014/015)" bölümü eklenerek güncellendi; eski metinler o notla birlikte okunur.
 - **PROJECT_PROGRESS.md ile çelişki:** yok, bu belgeyle uyumlu. Ancak oradaki test tablosu farklı tarihlerde çalıştırılan paketlerin son sonuçlarıdır; tam paket hiç tek seferde çalıştırılmadı.
-- **Açık kararlar:** harita sağlayıcısı; FCM projesi; TEK/UYM'nin mobile alınıp alınmayacağı (şu an hayır); "Askıda" durumunun Çekirdek'e alınması.
+- **Açık kararlar:** harita sağlayıcısı; FCM projesi; ADM'nin konum görmesi (şu an hayır, ADR-019); denetim için ayrı DB rolü; TEK/UYM'nin mobile alınıp alınmayacağı (şu an hayır); "Askıda" durumunun Çekirdek'e alınması.
+- **SSE tek örnek:** olaylar bellek içi; çoklu backend örneğinde `LISTEN/NOTIFY` veya outbox gerekir (ADR-017). Sunucu yeniden başlarsa istemci `resync` alır.
+- **Windows dosya sistemi:** kök pakette `realtime` paketiyle büyük/küçük harf farkıyla çakışan sınıf adı (ör. `Realtime`) Hibernate taramasını bozar; bu yüzden ad `RealtimeBus`.
 
 ---
 
 ## 13. Devralacak yapay zekâ için talimatlar
 
-1. **Önce oku:** bu belge, `PROJECT_PROGRESS.md`, `TASKS.md` içinde LD-59…LD-61, `decisions.md` ADR-014.
-2. **Mevcut kodu koru:** Tamamlanan modülleri yeniden yazma. Ortak bileşenleri (`ui/common`, `ApiCaller`, `LoadViewModel`, `IdempotencyKeys`, `PageCursor`, `Notifier`) yeniden kullan.
+1. **Önce oku:** bu belge, `PROJECT_PROGRESS.md`, `TASKS.md` içinde LD-59…LD-61, `decisions.md` ADR-014…ADR-019, `.claude-runs/RAPOR_2.md`.
+2. **Mevcut kodu koru:** Tamamlanan modülleri yeniden yazma. Ortak bileşenleri (`ui/common`, `ApiCaller`, `LoadViewModel`, `IdempotencyKeys`, `PageCursor`, `Notifier`, `AuditTrail`, `RealtimeBus`) yeniden kullan. Her yeni yönetim işlemi denetime yazılır (ADR-016).
 3. **Yetki kurallarını bozma:** `Grants.corporate`, `Grants.coordinates` (ADR-015), `requireManagementSession`, `requireAndroid`, MFA ve 12 sa sınırı değiştirilmez. Yeni yönetim uçları `requireManagementSession()` + `can()` ile korunur. İstemcide görünürlük yalnızca menü içindir.
 4. **Sözleşmeyi koru:** Uç yolları ve alan adları `backend-api-design.md` ile birebir. Sapma gerekiyorsa `TASKS.md`'ye yeni LD kaydı ve API tablosuna not.
 5. **Veri:** Geliştirme veritabanını silme, sıfırlama. Şema değişikliği yalnızca yeni migration. Kullanıcı gerçek telefonda test ediyor olabilir: backend'i gereksiz yeniden başlatma; gerekirse önce kullanıcıya sor.
@@ -278,13 +294,8 @@ Demo yardımcı betiği: `scripts/demo-davet-kabul.mjs` (Mailpit'teki yeni kulla
 
 ---
 
-## 14. Sıradaki görev: Denetim kaydı (audit) — proje sahibinin onayı bekleniyor
+## 14. Sıradaki görev: proje sahibinin kararları
 
-16.11 gecesinde Android duyuru yönetimi (§14'ün eski içeriği) tamamlandı: `data/AnnouncementRepository.kt`, `domain/AnnouncementForm.kt`, `ui/management/AnnouncementScreens.kt`, test `AnnouncementManagementTest.kt` (commit `094ff9d`).
+16.11 sabahı tamamlananlar ve commit'ler: denetim `5fd8771`, SSE `2b800a1`, acil alarm `9a79e24`, konum `0f51d86` (ayrıntı `.claude-runs/RAPOR_2.md`).
 
-Audit, acil alarm, konum/harita, FCM ve SSE **proje sahibinin kararı olmadan başlatılmaz.** Audit için tasarım önerisi (tablolar, olay listesi, ADM işlemlerinin kaydı) `.claude-runs/SABAH_RAPORU.md` dosyasındadır; proje sahibi onaylarsa:
-
-- Yeni şema V12 (`audit` şeması V1'de var, tablo yok).
-- Olaylar üretici modülün işleminde yazılır (Notifier deseniyle aynı: `MANDATORY` yayılım, tek işlem).
-- ADR-015 gereği ADM'nin KOR ataması olmadan yaptığı operasyon işlemleri ve kullanıcı yönetimi işlemleri (ID-21…25) mutlaka kaydedilir.
-- Okuma ucu `audit.view` (ADM, UYM; K-26), web WEB-11.
+Sıradaki işler proje sahibinin kararına bağlıdır (RAPOR_2 §5): FCM (Firebase projesi ve `google-services.json`), harita sağlayıcısı, ADM'nin konum görmesi, denetim DB rolü. Karar gelmeden bunlara başlanmaz; FCM ve harita yeni bağımlılık ve internetten indirme gerektirir.

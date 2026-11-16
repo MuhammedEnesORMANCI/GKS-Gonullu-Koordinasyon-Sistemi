@@ -26,7 +26,7 @@
 | Hesap: profil, telefon, parola değişikliği, zorunlu parola | ✅ | ✅ `/hesabim` | ✅ | ID-08 yeni belirteç çifti hemen depoya yazılır |
 | Operasyon (OR-01…06) | ✅ | ✅ | ✅ Yönetim sekmesi | Liste/ayrıntı/oluştur/düzenle/durum, ADM koordinatör atama; tarih alanları seçiciyle |
 | Rol atama (AC-01…03) | ✅ | ✅ `/roller` (16.11) | ✅ koordinatör ekle/kaldır | Web: rol/operasyon süzgeci, KOR ve kurum rolü atama, onaylı kaldırma |
-| **ADM tüm operasyonlarda yönetim (ADR-015, 16.11)** | ✅ | ✅ | ✅ | `Grants.coordinates` = KOR(op) veya ADM; konum ve alarm izinleri hariç |
+| **ADM tüm operasyonlarda yönetim (ADR-015, 16.11)** | ✅ | ✅ | ✅ | `Grants.coordinates` = KOR(op) veya ADM; alarm izinleri dahil (ADR-018), konum hariç (ADR-019) |
 | Kullanıcı yönetimi (ID-19…25, 16.11) | ✅ | ✅ `/kullanicilar` | – | Liste/ayrıntı (ADM tam, TEK ad+durum, KOR kendi operasyonu), devre dışı/etkin, oturum iptali, parola ve MFA sıfırlama |
 | Gönüllü yönetimi (OR-06, ID-12…14) | ✅ | ✅ | ✅ `VolunteersScreen.kt` | Katılımcı listesi, operasyona davet, bekleyen davetler, iptal |
 | Grup (GR-01…08) | ✅ | ✅ | ✅ gönüllü/lider ekranları + yönetim `GroupManagementScreens.kt` | Oluştur, ad/açıklama, üye ekle/çıkar, lider, toplanma noktası. Yönetim: operasyonun KOR'u ve (ADR-015) ADM |
@@ -36,24 +36,34 @@
 | Android yönetim oturumu (ADR-014, V11) | ✅ | – | ✅ MFA ekranı, ekran kilidi şartı | ADM/KOR mobilde TOTP + 12 sa mutlak oturum; TEK/UYM web'de (LD-61) |
 | Android tarih-saat seçici (16.11) | – | – | ✅ `ui/common/DateTimeField.kt` | Yerel saatle seçim, UTC ISO gönderim; görev ve operasyon formları |
 | Sayfalama yardımcısı (16.11) | ✅ `PageCursor` | – | – | tasks/groups/rol atamaları birleştirildi; imleç biçimleri `CursorFormat` ile korundu |
+| **Denetim kaydı (V12, ADR-016, 16.11)** | ✅ `audit/` | ✅ `/denetim` | – | Aynı işlemde eşzamanlı yazım (yazılamazsa işlem geri alınır), `actor_basis` (KOR/ADM/…), tetikleyiciyle yalnızca ekleme; AU-01 süzgeçli okuma (ADM, UYM) |
+| **Gerçek zamanlı SSE (RT-01, ADR-017, 16.11)** | ✅ `realtime/` | ✅ gelen kutusu, duyuru, alarm, konum canlı | – (ertelendi) | Bağlantı başına yetki, işlem sonrası yayın, `Last-Event-ID`/`resync`, rol kaldırmada `subscription.revoked`, oturum iptalinde `session.revoked`; tek örnek |
+| **Acil alarm (V13, ADR-018, 16.11)** | ✅ `alerts/` AL-01, 03–16 | ✅ WEB-09/10, `/alarmlar` | ✅ gönüllü: alarm bandı, yanıt ekranı | Taslak → alıcı listeli onay → gönderim; iptal/düzeltme/kapatma/yeniden gönderim; hatırlatma sayacı; operasyon kapanışında kapanır. **İletim gelen kutusu + SSE; FCM yok** |
+| **Konum (V14, ADR-019, 16.11)** | ✅ `location/` LC-01…05 | ✅ `/operasyonlar/:id/konum` tablo | ✅ izin akışı + ön plan servisi | Yalnızca aktif operasyonda açık başlatma; yalnızca KOR görür; 5 dk pencerede tek denetim kaydı; kapanıştan 30 gün sonra silinir; **harita yok** (sağlayıcı arayüzü hazır) |
 
 ## 3. Eksik modüller (önem sırasına göre)
 
-1. **Denetim kaydı (audit)** — sıradaki iş, **proje sahibinin tasarım onayı bekleniyor** (öneri: `.claude-runs/SABAH_RAPORU.md`). ADR-015 ile ADM'nin KOR ataması olmadan yaptığı operasyon işlemleri ve kullanıcı yönetimi işlemleri (ID-21…25) mutlaka kaydedilmeli; şu an hiçbiri yazılmıyor.
-2. **Acil alarm (alerts, US-20…25)** — backend modülü yok; ADM'nin alarm yetkisi ADR-015'te kapsam dışı bırakıldı (karar gerekiyor).
-3. **Konum ve harita (location, US-17…19)** — backend yok; harita sağlayıcısı kararı bekleniyor; K-15 (yalnızca KOR) ADR-015 ile değişmedi.
-4. **FCM push + cihaz kaydı (ID-26)** — Firebase projesi gerekli.
-5. **Gerçek zamanlı (SSE)** — yok; web ve Android 30 sn yoklama.
-6. Küçük kalanlar: Android'de kullanıcı yönetimi ekranı yok (yalnızca web); grup toplanma noktası saati Android'de hâlâ metin alanı; devre dışı hesaba bildirim satırı yazılmasını engelleyen kontrol yok (oturumu iptal olduğu için göremez).
+1. **FCM push + cihaz kaydı (ID-26)** — acil alarmın telefon kilitliyken/uygulama kapalıyken ulaşması için **zorunlu**. Firebase projesi, `google-services.json`, Firebase bağımlılıkları ve sunucu hizmet hesabı gerekir (`.claude-runs/RAPOR_2.md` §3).
+2. **Harita** — konum şu an tablo; sağlayıcı kararı (OSM/Leaflet, Google, MapLibre) ve bağımlılık gerekir. Bağlanma noktası: web `features/location/mapProvider.ts`.
+3. **Android SSE** — ertelendi (Android yoklama ile çalışıyor: alarm 15 sn, bildirim 30 sn).
+4. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM'siz her zaman `false`; KOR/ADM için Android alarm yönetim ekranı yok (web'de).
+5. Konum: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma nedenleri üretilmiyor; harita yok.
+6. Denetim: kimlik olayları (giriş, çıkış, MFA doğrulama) kaydedilmiyor; yalnızca `SELECT/INSERT` yetkili ayrı DB rolü yok (tetikleyici tablo sahibince kaldırılabilir).
+7. Küçük kalanlar: Android'de kullanıcı yönetimi ekranı yok (yalnızca web); grup toplanma noktası saati Android'de hâlâ metin alanı.
 
 ## 4. Önemli kararlar (yeni oturum için)
 
-- **ADR-015 / LD-62 (16.11):** ADM, KOR ataması olmadan tüm operasyonlarda görev, grup/üyelik, toplanma noktası, operasyon duyurusu (ve zaten olan operasyon yönetimi, davet, koordinatör atama) yetkisine sahip. Tek kural `access/Grants.coordinates`. `location.view` ve `alert.*` hariç (`EffectivePermissions.ADM_OPERATION`). `/me/context` ADM'ye tüm operasyonlar için bu seti döndürür; istemciler buna göre açılır.
+- **ADR-015 / LD-62 (16.11):** ADM, KOR ataması olmadan tüm operasyonlarda görev, grup/üyelik, toplanma noktası, operasyon duyurusu (ve zaten olan operasyon yönetimi, davet, koordinatör atama) yetkisine sahip. Tek kural `access/Grants.coordinates`. 16.11 sabahından itibaren `alert.*` dahil (ADR-018), yalnızca `location.view` hariç (`EffectivePermissions.ADM_OPERATION`, ADR-019). `/me/context` ADM'ye tüm operasyonlar için bu seti döndürür; istemciler buna göre açılır.
 - **ADR-014 / LD-61:** `Grants.corporate` — Android'de kurumsal izin yalnızca ADM/KOR + `mfaVerified`. Yönetim uçlarında kapı `Subject.requireManagementSession()`. DB kısıtı `ck_refresh_tokens_mfa_absolute`.
 - **Kullanıcı yönetimi (16.11):** kendi hesabında disable/parola/MFA sıfırlama `403`; TEK, ADM rolü olan hesabı kapatamaz; MFA sıfırlama tüm oturumları kapatır; geçici parola commit sonrası e-postayla (Mailpit).
 - **LD-60:** Gelen kutusu W/A; bildirimler üretici modülün işleminde `Notifier` (MANDATORY) ile yazılır.
+- **ADR-016 (denetim):** üretici `AuditTrail.record(...)` → `AuditEvent` → `audit/AuditWriter` aynı işlemde (`MANDATORY`). Yeni yönetim işlemi yazarken denetim satırı eklenmeli; içerik (başlık, metin, e-posta, adres, koordinat) yazılmaz. `actor_basis` access'teki `ActingBasis` ile.
+- **ADR-017 (SSE):** üretici `RealtimeBus.publish(topic, type, operationId, data)`; olay commit sonrası gider, veri yalnızca kimlik/durum/zaman. Konular `user:`, `operation:`, `organization`, `location:`.
+- **ADR-018 (alarm):** ADM alarm izinlerinin tümüne sahip; iletim gelen kutusu + SSE, alıcı `SENT` = gelen kutusuna yazıldı.
+- **ADR-019 (konum):** yalnızca KOR görür (ADM görmez — proje sahibinin onayı bekleniyor); saklama `gks.location.retention-after-close` (varsayılan `P30D`).
+- **`OperationClosed`** (organization): kapanış işleminde eşzamanlı yayımlanır; alerts (açık alarmları kapatır) ve location (paylaşımı durdurur, saklamayı başlatır) dinler.
 
-## 5. Test durumu (16.11.2026 gecesi, son çalıştırmalar)
+## 5. Test durumu (16.11.2026 sabah, son çalıştırmalar)
 
 | Paket | Sonuç |
 |---|---|
@@ -63,16 +73,20 @@
 | Backend organization | 54/54 |
 | Backend tasks | 115/115 |
 | Backend groups | 62/62 |
+| Backend audit | 5/5 |
+| Backend realtime | 5/5 |
+| Backend alerts | 6/6 |
+| Backend location | 4/4 |
 | Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **461/461** (gece başı 452) |
-| Web | tsc + eslint temiz, vitest **118/118** (gece başı 106) |
-| Android | **73/73** (gece başı 58) |
+| **Backend toplam** | **481/481** (bu oturum başı 461) |
+| Web | tsc + eslint temiz, vitest **131/131** (bu oturum başı 118) |
+| Android | **80/80**, `assembleDebug` başarılı (bu oturum başı 73) |
 
-Denenmeyenler: Android uygulaması cihazda/emülatörde açılmadı (yeni duyuru ve tarih seçici ekranları dahil); web yeni ekranları (`/roller`, `/kullanicilar`) gerçek backend'le tarayıcıda denenmedi (mock + birim testleri); gerçek SMTP yok (Mailpit).
+Denenmeyenler: Android uygulaması cihazda/emülatörde açılmadı (alarm bandı, alarm ekranı, konum izin akışı ve ön plan servisi yalnızca derleme + birim testleriyle doğrulandı; gerçek GPS ölçümü yok). Web'in yeni ekranları (`/denetim`, `/alarmlar`, `/operasyonlar/:id/alarmlar`, `/operasyonlar/:id/konum`) ve SSE akışı tarayıcıda gerçek backend'le denenmedi (mock + birim testleri; SSE backend'de MockMvc ile test edildi). Vite geliştirme vekilinin SSE'yi arabelleğe almadan ilettiği doğrulanmadı.
 
 ## 6. Sonraki oturumda başlangıç adımları
 
-1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun).
-2. Proje sahibinin audit tasarım kararını oku (`.claude-runs/SABAH_RAPORU.md` §Audit); onay yoksa audit kodlamasına başlama.
-3. Kod yerleri: backend `backend/src/main/java/org/gks/backend/<modül>/`; Android `android/app/src/main/java/org/gks/android/` (`data/*Repository.kt`, `ui/management/`, `ui/common/`); web `web/src/features/<ekran>/`, servisler `web/src/services/`.
-4. Yeni yönetim ekranı yazarken: Android görünürlük `domain/ManagementAccess.kt`, hata eşleme `toUiText(...)`, test kalıbı `app/src/test/.../data/*Test.kt` (FakeBackend); web görünürlük `usePermissions().can(...)`, yeni servis için http + mock + `config/services.ts` anahtarı.
+1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V12–V14 ilk açılışta uygulanır (yeni tablolar; mevcut veri değişmez).
+2. `.claude-runs/RAPOR_2.md` §5'teki kararları oku (ADM konum, FCM, harita, denetim DB rolü).
+3. Kod yerleri: backend `backend/src/main/java/org/gks/backend/<modül>/`; Android `android/app/src/main/java/org/gks/android/` (`data/*Repository.kt`, `ui/alerts/`, `ui/location/`, `location/LocationSharingService.kt`); web `web/src/features/<ekran>/`, servisler `web/src/services/`, canlı akış `web/src/app/live.ts`.
+4. Yeni yönetim işlemi: yetki `access/` arayüzü, denetim `AuditTrail.record`, canlı güncelleme `RealtimeBus.publish`; web'de yeni servis için http + mock + `config/services.ts` anahtarı ve `screens.test.tsx` anahtar listesi.
