@@ -34,8 +34,8 @@ import org.gks.android.domain.HomeKind
 import org.gks.android.domain.PrimaryRole
 import org.gks.android.domain.toHomeModel
 import org.gks.android.ui.common.Badge
-import org.gks.android.ui.common.StatusKind
-import org.gks.android.ui.common.StatusBadge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.InfoCard
 import org.gks.android.ui.common.Load
 import org.gks.android.ui.common.MessageCard

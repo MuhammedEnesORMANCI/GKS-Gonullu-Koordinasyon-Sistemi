@@ -203,13 +203,19 @@ fun OperationMapSection(viewModel: OperationMapViewModel, canSeeLocations: Boole
 
 /** Gönüllü: buluşma noktası haritada + kendi konumu; "Yol tarifi" `geo:` ile (çevrimdışı da çalışır). */
 @Composable
-fun MeetingPointMap(lat: Double, lon: Double, label: String) {
+fun MeetingPointMap(
+	lat: Double,
+	lon: Double,
+	label: String,
+	description: String = stringResource(R.string.map_meeting_point, label),
+	colorHex: String = MapColors.MEETING_POINT,
+) {
 	val context = LocalContext.current
 	Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 		GksMap(
-			points = listOf(MapPoint("mp", lat, lon, MapColors.MEETING_POINT, label)),
+			points = listOf(MapPoint("mp", lat, lon, colorHex, label)),
 			height = 200.dp,
-			description = stringResource(R.string.map_meeting_point, label),
+			description = description,
 			showMyLocation = true,
 		)
 		Text(stringResource(R.string.meeting_point_coords) + ": " + formatLatLon(lat, lon), style = MaterialTheme.typography.bodyMedium)

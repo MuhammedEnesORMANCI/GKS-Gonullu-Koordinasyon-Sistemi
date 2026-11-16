@@ -27,6 +27,8 @@ import CampaignIcon from '@mui/icons-material/Campaign';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CrisisAlertIcon from '@mui/icons-material/CrisisAlert';
+import Button from '@mui/material/Button';
+import { GeneralAlertDialog } from '../features/alerts/GeneralAlertDialog';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ForumIcon from '@mui/icons-material/Forum';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -202,6 +204,7 @@ export function AppShell() {
 
   const canOperations = perms.isAdm || perms.isKor;
   const groups = usePanelNav(opId);
+  const [generalAlert, setGeneralAlert] = useState(false);
 
   // RT-01: gelen kutusu, alarmlar, duyurular canlı yenilenir.
   useLiveUpdates();
@@ -367,6 +370,17 @@ export function AppShell() {
             </TextField>
           )}
           {canOperations && listMock && <MockBadge detail="Operasyon listesi (GET /operations) örnek veri." />}
+          {canOperations && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<CrisisAlertIcon />}
+              onClick={() => setGeneralAlert(true)}
+              sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}
+            >
+              Genel Acil Alarm
+            </Button>
+          )}
           <IconButton
             component={RouterLink}
             to="/panel/bildirimler"
@@ -430,6 +444,7 @@ export function AppShell() {
         <Toolbar sx={{ minHeight: 72 }} />
         <Outlet />
       </Box>
+      {generalAlert && <GeneralAlertDialog onClose={() => setGeneralAlert(false)} />}
     </Box>
   );
 }

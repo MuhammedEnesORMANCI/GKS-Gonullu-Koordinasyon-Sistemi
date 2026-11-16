@@ -310,4 +310,19 @@
   8. **Haritasız yedek:** WebGL/GL yoksa (eski cihaz, test ortamı) ya da karolar yüklenemezse koordinatlar ve adres metin olarak görünür; Android'de "Yol tarifi" telefonun harita uygulamasını `geo:` adresiyle açar (ek bağımlılık yok, ağsız da çalışır). `geo:` adresindeki sayılar yerel ayardan bağımsız (`Locale.ROOT`) yazılır.
   9. Halka açık site harita verisi göstermez ve harita uçlarını çağırmaz.
 - **Sınırlar:** Adres arama (geocoding) yok; açıklayıcı adresi kullanıcı yazar. Çevrimdışı karo önbelleği yok. Android'de harita etiketleri (yazı tipi/glyph gerektirir) yok; adlar liste ve özet kartında.
+
+## ADR-026 Genel Acil Alarm ve olay yeri
+
+- **Bağlam:** 16.11.2026: proje sahibi operasyondan bağımsız, birleştirilebilir hedefli bir "Genel Acil Alarm" istedi (web üst çubuğu ve Android yönetim). Operasyon alarmıyla aynı davranış (yüksek öncelikli FCM, sürekli ses, bildirimden yanıt, kapanışta bildirim, takip ekranı) beklendi.
+- **Karar:**
+  1. **Aynı alarm altyapısı:** `alerts.alerts.scope` (`OPERATION` | `GENERAL`, V19); genel alarmın `operation_id`'si boştur (CHECK ile zorunlu). Alıcı satırları, iletim, yanıt, hatırlatma, yeniden gönderim, iptal/kapatma aynı koddan geçer. Hedefler `target_expr` içinde (`organization`, `operations`, `groups`, `users`).
+  2. **Uçlar:** `POST /api/v1/general-alerts` (taslak + tekilleştirilmiş önizleme: sayı ve liste); gönderim AL-05 `POST /alerts/{id}/send` ile, genel alarmda gövdede **`confirmed: true` zorunlu** (yoksa `400`, alan `confirmed`). İstemcide güçlü onay: onay kutusu + "GÖNDER" düğmesi.
+  3. **Kapsam:** yalnızca kurumsal (MFA'lı) oturum. **Kurum geneli (tüm etkin hesaplar) yalnızca ADM.** KOR yalnızca koordine ettiği aktif operasyonları, onların gruplarını ve katılımcılarını/koordinatörlerini seçebilir; dışı `403`. Operasyon hedefi = katılımcılar ∪ koordinatörler. Alıcılar tekilleştirilir, gönderen hariç, yalnızca etkin hesaplar; üst sınır 500 (VS-02).
+  4. **Yönetim:** genel alarmı ADM veya onu gönderen (hâlâ KOR olan) kişi izler/kapatır. KOR'un alarm listesi kendi operasyonlarının alarmları + kendi genel alarmlarıdır.
+  5. **Bildirim:** başlık "GENEL ACİL ALARM", CRITICAL; kapatınca alıcılara "Acil durum sona erdi". Alarm metni hedef operasyonların operasyon kanalına ve hedef grupların kanalına sistem mesajı olarak yazılır (ADR-024; kurum genelinde tüm aktif operasyonlar).
+  6. **Olay yeri** (`event_lat/event_lon`, her iki kapsamda isteğe bağlı): haritadan ya da elle; bildirim metnine koordinat eklenir (çevrimdışı da okunur); Android alarm ekranında harita + "Yol tarifi".
+  7. **Oran sınırı:** kişi başı 10 dakikada 3 genel alarm gönderimi (`gks.alerts.general.rate-limit`, `rate-window`), bellek içi, tek örnek → `429` + `Retry-After`.
+  8. **Denetim:** `ALERT_DRAFTED`/`ALERT_SENT`/`ALERT_CLOSED` … ayrıntıda `scope=GENERAL`, alıcı sayısı, kurum geneli bayrağı, operasyon ve grup kimlikleri, kişi sayısı; dayanak ADM ise kurum rolü, KOR ise `KOR`.
+  9. Canlı: genel alarm olayları `organization` konusuna (ADM) ve gönderenin kullanıcı konusuna yayımlanır.
+- **Sınırlar:** Android yönetim ekranında hedef olarak kurum geneli ve operasyonlar seçilir; grup ve kişi seçimi web panelindedir. Genel alarm "düzeltme" (iptal sonrası düzeltilmiş alarm) akışı yoktur. Operasyon Haritası genel alarmları göstermez.
 

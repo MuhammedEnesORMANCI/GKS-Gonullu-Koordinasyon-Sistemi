@@ -24,6 +24,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { useServices } from '../../services/registry';
 import type { AlertDraftRequest, AlertPreview, AlertPriority, Uuid } from '../../services/types';
 import { ParticipantMultiSelect } from '../groups/ParticipantPicker';
+import { EMPTY_POINT, parsePoint, PointPicker } from '../map/PointPicker';
 
 export const ALERT_MESSAGE_MAX = 500;
 export const ALERT_ACTION_MAX = 200;
@@ -60,6 +61,8 @@ export function AlertCreateDialog({
   const [touched, setTouched] = useState(false);
   const [preview, setPreview] = useState<AlertPreview | null>(null);
   const [changed, setChanged] = useState(false);
+  const [location, setLocation] = useState(EMPTY_POINT);
+  const point = parsePoint(location);
 
   const groups = useQuery({
     queryKey: [...Q.groups(operationId), { includeArchived: false }],
@@ -97,6 +100,7 @@ export function AlertCreateDialog({
   const errors: Record<string, string> = {};
   if (!message.trim()) errors.message = 'Mesaj zorunludur.';
   if (userIds.length + groupIds.length === 0) errors.targets = 'En az bir kişi veya grup seçin.';
+  if (point.error) errors.eventLocation = point.error;
   const shown = touched ? { ...fieldErrorMap(draft.error), ...errors } : fieldErrorMap(draft.error);
 
   function submitDraft() {
@@ -108,6 +112,7 @@ export function AlertCreateDialog({
       priority,
       targets: { userIds, groupIds },
       correctsAlertId: initial.correctsAlertId,
+      ...(point.point ? { eventLocation: point.point } : {}),
     });
   }
 
@@ -178,6 +183,7 @@ export function AlertCreateDialog({
               onChange={setUserIds}
               helperText="Yalnızca operasyon katılımcıları. Siz alıcı olmazsınız."
             />
+            <PointPicker label="Olay yeri" value={location} onChange={setLocation} />
             <ErrorAlert error={draft.error} />
           </Stack>
         ) : (

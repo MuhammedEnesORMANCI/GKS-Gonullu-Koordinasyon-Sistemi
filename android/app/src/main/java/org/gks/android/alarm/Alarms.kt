@@ -126,7 +126,8 @@ class Alarms(
 			for (alert in open) {
 				val existing = load(alert.id)
 				if (existing == null) {
-					val title = context.getString(R.string.alert_title, alert.operationName.orEmpty())
+					val title = if (alert.scope == "GENERAL") context.getString(R.string.general_alert_title)
+					else context.getString(R.string.alert_title, alert.operationName.orEmpty())
 					val responded = alert.recipient.responseOption
 					val state = AlarmState(alert.id, title, alert.message,
 						if (responded == null) AlarmPhase.RINGING else AlarmPhase.RESPONDED, clock(), responded)

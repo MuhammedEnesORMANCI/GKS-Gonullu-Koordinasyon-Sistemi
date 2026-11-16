@@ -23,10 +23,22 @@ final class AlertViews {
 	record PreviewRecipient(UUID id, String displayName, List<GroupRef> groups) {
 	}
 
+	/** İsteğe bağlı olay yeri (ADR-026). */
+	record EventLocation(double lat, double lon) {
+
+		static EventLocation of(Double lat, Double lon) {
+			return lat == null || lon == null ? null : new EventLocation(lat, lon);
+		}
+	}
+
+	/** Genel alarm hedef özeti (ADR-026): kurum geneli, operasyon/grup/kişi sayısı. */
+	record GeneralTargets(boolean organization, List<Ref> operations, int groupCount, int userCount) {
+	}
+
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	record AlertPreview(UUID alertId, UUID operationId, String operationName, int version, String audienceHash,
 			int recipientCount, List<PreviewRecipient> recipients, String message, String requestedAction, String priority,
-			UUID correctsAlertId) {
+			UUID correctsAlertId, String scope, EventLocation eventLocation, GeneralTargets targets) {
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -34,12 +46,12 @@ final class AlertViews {
 			String requestedAction, String priority, List<String> responseOptions, Ref createdBy, Instant createdAt,
 			Ref sentBy, Instant sentAt, Integer recipientCount, Counts counts, boolean deliveryDelayed, Ref cancelledBy,
 			Instant cancelledAt, Ref closedBy, Instant closedAt, String closeReason, UUID correctsAlertId,
-			UUID correctedByAlertId) {
+			UUID correctedByAlertId, String scope, EventLocation eventLocation, GeneralTargets targets) {
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	record AlertSummary(UUID id, UUID operationId, String operationName, String state, String message, String priority,
-			Instant createdAt, Instant sentAt, Counts counts) {
+			Instant createdAt, Instant sentAt, Counts counts, String scope) {
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -48,7 +60,8 @@ final class AlertViews {
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	record MyAlertView(UUID id, UUID operationId, String operationName, String state, String message,
-			String requestedAction, String priority, List<String> responseOptions, Instant sentAt, MyRecipient recipient) {
+			String requestedAction, String priority, List<String> responseOptions, Instant sentAt, MyRecipient recipient,
+			String scope, EventLocation eventLocation) {
 	}
 
 	/** Zaman alanlarında {@code null} = "bilinmiyor" / olmadı; her zaman yazılır (AC-24.2, §3 istisnası). */

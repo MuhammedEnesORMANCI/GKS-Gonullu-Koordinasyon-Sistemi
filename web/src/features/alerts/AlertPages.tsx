@@ -19,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { shouldRetryIdempotentMutation } from '../../app/queryClient';
 import { Q } from '../../app/queryKeys';
-import { usePermissions } from '../../app/session';
+import { usePermissions, useSession } from '../../app/session';
 import { useIntentKey } from '../../app/useIntentKey';
 import { PALETTE } from '../../app/theme';
 import { StatusChip } from '../../components/panel/StatusChip';
@@ -34,6 +34,10 @@ import type { AlertCounts, AlertSummary, AlertView } from '../../services/types'
 import { NoParticipantsHint } from '../operations/NoParticipantsHint';
 import { useOperationScope } from '../operations/useOperation';
 import { AlertCreateDialog, type AlertDraftInitial } from './AlertCreateDialog';
+import { ChannelLinkButton } from '../messaging/ChannelLinkButton';
+import { GksMap } from '../../components/map/GksMap';
+import { formatLatLon } from '../../components/map/geo';
+import { MAP_COLORS } from '../map/mapModel';
 import { ALERT_STATE_COLOR, ALERT_STATE_LABEL, RECIPIENT_STATE_LABEL, RESPONSE_LABEL } from './alertLabels';
 
 export function countsLabel(c: AlertCounts): string {
@@ -60,7 +64,7 @@ function AlertTable({ items, showOperation }: { items: AlertSummary[]; showOpera
               <TableCell>
                 <RouterLink to={`/panel/alarmlar/${a.id}`}>{a.message}</RouterLink>
               </TableCell>
-              {showOperation && <TableCell>{a.operationName ?? '—'}</TableCell>}
+              {showOperation && <TableCell>{a.scope === 'GENERAL' ? 'Genel Acil Alarm' : a.operationName ?? '—'}</TableCell>}
               <TableCell>
                 <StatusChip kind="alert" value={a.state} />
               </TableCell>
@@ -192,6 +196,7 @@ export function AlertDetailPage() {
   const services = useServices();
   const queryClient = useQueryClient();
   const perms = usePermissions();
+  const session = useSession();
   const mock = useIsMock('alerts');
   const intent = useIntentKey();
   const [confirm, setConfirm] = useState<'cancel' | 'close' | 'resend' | null>(null);
@@ -223,7 +228,10 @@ export function AlertDetailPage() {
   });
 
   const a = alert.data;
-  const canManage = !!a && perms.can('alert.send', a.operationId);
+  const me = session.context?.user.id;
+  const general = a?.scope === 'GENERAL';
+  // ADR-026: genel alarmı ADM ya da gönderen KOR yönetir; operasyon alarmını o operasyonun KOR'u/ADM.
+  const canManage = !!a && (general ? perms.isAdm || (perms.isKor && a.createdBy?.id === me) : perms.can('alert.send', a.operationId));
   return (
     <>
       <PageHeader title="Acil alarm" mock={mock} />
@@ -243,14 +251,33 @@ export function AlertDetailPage() {
                     <CrisisAlertIcon sx={{ fontSize: 40, color: a!.state === 'OPEN' ? PALETTE.danger : 'text.secondary' }} aria-hidden />
                     <Chip color={ALERT_STATE_COLOR[a!.state]} label={ALERT_STATE_LABEL[a!.state]} sx={{ fontSize: '1rem', height: 34 }} />
                     <Typography color="text.secondary">
-                      <RouterLink to={`/panel/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
+                      {general ? (
+                        <strong>Genel Acil Alarm</strong>
+                      ) : (
+                        <RouterLink to={`/panel/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
+                      )}
                       {a!.sentAt ? ` · ${formatDateTime(a!.sentAt)} · ${a!.sentBy?.displayName ?? ''}` : ''}
                     </Typography>
+                    {/* Görev 23: ilgili mesaj kanalına hızlı geçiş. */}
+                    {a!.operationId && <ChannelLinkButton operationId={a!.operationId} />}
                   </Stack>
                   <Typography variant="h4" component="p" sx={{ fontWeight: 800 }}>
                     {a!.message}
                   </Typography>
                   {a!.requestedAction && <Typography sx={{ fontSize: '1.125rem' }}>İstenen eylem: {a!.requestedAction}</Typography>}
+                  {a!.eventLocation && (
+                    <Typography>Olay yeri: {formatLatLon(a!.eventLocation.lat, a!.eventLocation.lon)}</Typography>
+                  )}
+                  {general && a!.targets && (
+                    <Typography variant="body2" color="text.secondary">
+                      Hedef: {[
+                        a!.targets.organization && 'tüm kurum',
+                        a!.targets.operations.length > 0 && a!.targets.operations.map((o) => o.displayName).join(', '),
+                        a!.targets.groupCount > 0 && `${a!.targets.groupCount} grup`,
+                        a!.targets.userCount > 0 && `${a!.targets.userCount} kişi`,
+                      ].filter(Boolean).join(' · ')}
+                    </Typography>
+                  )}
                   {a!.state !== 'DRAFT' && <CountChips counts={a!.counts} />}
                 </Stack>
               </CardContent>
@@ -270,6 +297,13 @@ export function AlertDetailPage() {
               <Alert severity="info">
                 Bu alarm düzeltildi: <RouterLink to={`/panel/alarmlar/${a!.correctedByAlertId}`}>düzeltilmiş alarm</RouterLink>
               </Alert>
+            )}
+            {a!.eventLocation && (
+              <GksMap
+                markers={[{ id: 'event', lat: a!.eventLocation.lat, lon: a!.eventLocation.lon, color: MAP_COLORS.ALERT, label: 'Olay yeri' }]}
+                height={220}
+                ariaLabel="Olay yeri haritası"
+              />
             )}
             <PushStatusNotice status={push.data} />
             {canManage && (
@@ -291,7 +325,7 @@ export function AlertDetailPage() {
                     </Button>
                   </>
                 )}
-                {a!.state === 'CANCELLED' && !a!.correctedByAlertId && perms.can('alert.send', a!.operationId) && (
+                {a!.state === 'CANCELLED' && !a!.correctedByAlertId && !general && perms.can('alert.send', a!.operationId) && (
                   <Button
                     variant="contained"
                     color="error"
@@ -379,7 +413,7 @@ export function AlertDetailPage() {
           <Typography>Yanıtsız ve gönderilemeyen alıcılara alarm yeniden iletilir.</Typography>
         )}
       </ConfirmDialog>
-      {correcting && a && (
+      {correcting && a?.operationId && (
         <AlertCreateDialog operationId={a.operationId} initial={correcting} onClose={() => setCorrecting(null)} />
       )}
     </>

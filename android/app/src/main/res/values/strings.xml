@@ -625,4 +625,37 @@
 	<string name="area_err_lon">Boylam −180 ile 180 arasında olmalı.</string>
 	<string name="area_err_radius">Yarıçap 50–200000 metre arasında tam sayı olmalı.</string>
 	<string name="area_err_radius_center">Yarıçap için önce merkez seçin.</string>
+	<!-- Genel Acil Alarm ve alarm takibi (ADR-026) -->
+	<string name="general_alert_title">GENEL ACİL ALARM</string>
+	<string name="general_alert_button">Genel Acil Alarm</string>
+	<string name="general_alert_warning">Genel alarm seçtiğiniz herkesin telefonunda sürekli sesli acil alarm olarak çalar. Yalnızca gerçek acil durumda ya da duyurulmuş tatbikatta kullanın. Mesaja kişisel veri yazmayın.</string>
+	<string name="general_alert_message">Mesaj</string>
+	<string name="general_alert_action">İstenen eylem (isteğe bağlı)</string>
+	<string name="general_alert_targets">Hedefler (birleştirilebilir)</string>
+	<string name="general_alert_organization">Tüm kurum (tüm etkin hesaplar)</string>
+	<string name="general_alert_no_operations">Seçilebilecek aktif operasyon yok.</string>
+	<string name="general_alert_web_hint">Grup ve kişi seçimi web panelinde de yapılabilir.</string>
+	<string name="general_alert_preview">Önizle</string>
+	<string name="general_alert_recipient_count">Tekilleştirilmiş alıcı sayısı: %1$d</string>
+	<string name="general_alert_confirm">Mesajı ve %1$d alıcıyı kontrol ettim; genel acil alarmı göndermek istiyorum.</string>
+	<string name="general_alert_send">GÖNDER</string>
+	<string name="general_alert_back">Geri dön ve düzenle</string>
+	<string name="general_alert_message_required">Mesaj zorunludur.</string>
+	<string name="general_alert_message_too_long">Mesaj en fazla 500 karakter olabilir.</string>
+	<string name="general_alert_action_too_long">İstenen eylem en fazla 200 karakter olabilir.</string>
+	<string name="general_alert_targets_required">En az bir hedef seçin.</string>
+	<string name="event_location">Olay yeri</string>
+	<string name="event_location_optional">Olay yeri (isteğe bağlı)</string>
+	<string name="alerts_managed_title">Açık alarmlar</string>
+	<string name="alerts_managed_empty">Açık alarm yok.</string>
+	<string name="alert_follow_title">Alarm takibi</string>
+	<string name="alert_follow_counts">Yanıtlayan %1$d · Bekleyen %2$d · Yardım isteyen %3$d</string>
+	<string name="alert_follow_need_help">Yardım isteyen (%1$d)</string>
+	<string name="alert_follow_responded">Yanıtlayan (%1$d)</string>
+	<string name="alert_follow_waiting">Bekleyen (%1$d)</string>
+	<string name="alert_follow_no_response">yanıt yok</string>
+	<string name="alert_state_open">Alarm açık.</string>
+	<string name="alert_close_action">Alarmı kapat</string>
+	<string name="alert_close_confirm">Alarm kapatılınca alıcılara "Acil durum sona erdi" bildirimi gider ve telefonlarda ses durur.</string>
+	<string name="open_operation_channel">Operasyon mesaj kanalı</string>
 </resources>

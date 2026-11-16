@@ -34,7 +34,7 @@ class AlertStore {
 			a.id, a.operation_id, a.message, a.requested_action, a.priority, a.state, a.version, a.target_expr::text as targets,
 			a.audience_fingerprint, a.recipient_count, a.corrects_alert_id, a.sent_notification_id, a.created_by,
 			a.created_at, a.sent_by, a.sent_at, a.cancelled_by, a.cancelled_at, a.closed_by, a.closed_at, a.close_reason,
-			a.reminder_interval_seconds, a.reminder_max,
+			a.reminder_interval_seconds, a.reminder_max, a.scope, a.event_lat, a.event_lon,
 			(select c.id from alerts.alerts c where c.corrects_alert_id = a.id) as corrected_by""";
 
 	private static final String RECIPIENT_COLUMNS = """
@@ -58,7 +58,9 @@ class AlertStore {
 					uuid(rs, "corrects_alert_id"), uuid(rs, "corrected_by"), uuid(rs, "sent_notification_id"),
 					uuid(rs, "created_by"), instant(rs, "created_at"), uuid(rs, "sent_by"), instant(rs, "sent_at"),
 					uuid(rs, "cancelled_by"), instant(rs, "cancelled_at"), uuid(rs, "closed_by"), instant(rs, "closed_at"),
-					rs.getString("close_reason"), rs.getInt("reminder_interval_seconds"), rs.getInt("reminder_max"));
+					rs.getString("close_reason"), rs.getInt("reminder_interval_seconds"), rs.getInt("reminder_max"),
+					rs.getString("scope"), ids(targets.get("operations")), targets.containsKey("organization"),
+					(Double) rs.getObject("event_lat"), (Double) rs.getObject("event_lon"));
 		};
 		this.recipient = (rs, row) -> new RecipientRow(uuid(rs, "id"), uuid(rs, "alert_id"), uuid(rs, "user_id"),
 				uuid(rs, "via_group_id"), RecipientState.valueOf(rs.getString("state")),
@@ -71,7 +73,21 @@ class AlertStore {
 			int version, List<UUID> userIds, List<UUID> groupIds, String fingerprint, Integer recipientCount,
 			UUID correctsAlertId, UUID correctedByAlertId, UUID sentNotificationId, UUID createdBy, Instant createdAt,
 			UUID sentBy, Instant sentAt, UUID cancelledBy, Instant cancelledAt, UUID closedBy, Instant closedAt,
-			String closeReason, int reminderIntervalSeconds, int reminderMax) {
+			String closeReason, int reminderIntervalSeconds, int reminderMax, String scope, List<UUID> operationIds,
+			boolean organization, Double eventLat, Double eventLon) {
+
+		/** ADR-026: operasyondan bağımsız Genel Acil Alarm. */
+		boolean general() {
+			return "GENERAL".equals(scope);
+		}
+	}
+
+	/** Alarm hedefleri; {@code operationIds}/{@code organization} yalnızca genel alarmda. */
+	record Targets(List<UUID> userIds, List<UUID> groupIds, List<UUID> operationIds, boolean organization) {
+
+		static Targets of(List<UUID> userIds, List<UUID> groupIds) {
+			return new Targets(userIds, groupIds, List.of(), false);
+		}
 	}
 
 	record RecipientRow(UUID id, UUID alertId, UUID userId, UUID viaGroupId, RecipientState state,
@@ -106,14 +122,16 @@ class AlertStore {
 	// ---- alarm ----
 
 	void insertDraft(UUID id, UUID operationId, String message, String requestedAction, String priority,
-			List<UUID> userIds, List<UUID> groupIds, UUID correctsAlertId, UUID createdBy, Instant now) {
+			Targets targets, UUID correctsAlertId, UUID createdBy, Instant now, Double eventLat, Double eventLon) {
 		jdbc.sql("""
-				insert into alerts.alerts (id, operation_id, message, requested_action, priority, target_expr,
-				                           corrects_alert_id, created_by, created_at, updated_at)
-				values (:id, :op, :message, :action, :priority, cast(:targets as jsonb), :corrects, :by, :now, :now)""")
-			.param("id", id).param("op", operationId).param("message", message).param("action", requestedAction)
-			.param("priority", priority).param("targets", targets(userIds, groupIds)).param("corrects", correctsAlertId)
-			.param("by", createdBy).param("now", Timestamp.from(now)).update();
+				insert into alerts.alerts (id, operation_id, scope, message, requested_action, priority, target_expr,
+				                           corrects_alert_id, created_by, created_at, updated_at, event_lat, event_lon)
+				values (:id, :op, :scope, :message, :action, :priority, cast(:targets as jsonb), :corrects, :by, :now, :now,
+				        :lat, :lon)""")
+			.param("id", id).param("op", operationId).param("scope", operationId == null ? "GENERAL" : "OPERATION")
+			.param("message", message).param("action", requestedAction)
+			.param("priority", priority).param("targets", targets(targets)).param("corrects", correctsAlertId)
+			.param("by", createdBy).param("now", Timestamp.from(now)).param("lat", eventLat).param("lon", eventLon).update();
 	}
 
 	Optional<AlertRow> find(UUID id) {
@@ -179,14 +197,27 @@ class AlertStore {
 	 * Alarm listesi (zaman azalan, UUIDv7 sırası). {@code operationIds == null}: tüm operasyonlar (ADM).
 	 */
 	List<AlertRow> list(Collection<UUID> operationIds, Set<AlertState> states, UUID before, int limit) {
+		return list(operationIds, null, states, before, limit);
+	}
+
+	/**
+	 * {@code operationIds == null}: tümü (ADM). Aksi hâlde o operasyonların alarmları ve, {@code generalCreatedBy}
+	 * verilirse, o kişinin gönderdiği genel alarmlar (ADR-026: KOR kendi genel alarmını izler).
+	 */
+	List<AlertRow> list(Collection<UUID> operationIds, UUID generalCreatedBy, Set<AlertState> states, UUID before, int limit) {
 		StringBuilder sql = new StringBuilder("select " + ALERT_COLUMNS + " from alerts.alerts a where true");
 		Map<String, Object> params = new HashMap<>();
 		if (operationIds != null) {
-			if (operationIds.isEmpty()) {
+			if (operationIds.isEmpty() && generalCreatedBy == null) {
 				return List.of();
 			}
-			sql.append(" and a.operation_id in (:ops)");
-			params.put("ops", operationIds);
+			sql.append(" and (a.operation_id in (:ops)");
+			params.put("ops", operationIds.isEmpty() ? List.of(new UUID(0, 0)) : operationIds);
+			if (generalCreatedBy != null) {
+				sql.append(" or (a.scope = 'GENERAL' and a.created_by = :generalBy)");
+				params.put("generalBy", generalCreatedBy);
+			}
+			sql.append(")");
 		}
 		if (!states.isEmpty()) {
 			sql.append(" and a.state in (:states)");
@@ -375,9 +406,17 @@ class AlertStore {
 			.param("id", alertId).param("now", Timestamp.from(now)).update();
 	}
 
-	private String targets(List<UUID> userIds, List<UUID> groupIds) {
-		return json.writeValueAsString(Map.of("users", userIds.stream().map(UUID::toString).toList(), "groups",
-				groupIds.stream().map(UUID::toString).toList()));
+	private String targets(Targets targets) {
+		Map<String, List<String>> map = new LinkedHashMap<>();
+		map.put("users", targets.userIds().stream().map(UUID::toString).toList());
+		map.put("groups", targets.groupIds().stream().map(UUID::toString).toList());
+		if (!targets.operationIds().isEmpty()) {
+			map.put("operations", targets.operationIds().stream().map(UUID::toString).toList());
+		}
+		if (targets.organization()) {
+			map.put("organization", List.of("ALL"));
+		}
+		return json.writeValueAsString(map);
 	}
 
 	private static List<UUID> ids(List<String> values) {

@@ -55,8 +55,8 @@ import org.gks.android.ui.common.LoadContent
 import org.gks.android.ui.common.LoadingView
 import org.gks.android.ui.common.MessageCard
 import org.gks.android.ui.common.SectionTitle
-import org.gks.android.ui.common.StatusBadge
-import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
+import org.gks.android.ui.common.StatusKind
 import org.gks.android.ui.common.TitleRow
 import org.gks.android.ui.common.formatDateTime
 import org.gks.android.ui.common.operationStateLabel
@@ -76,6 +76,8 @@ fun ManagementScreen(
 	onCreate: () -> Unit,
 	onOrganizationAnnouncement: () -> Unit = {},
 	onMap: () -> Unit = {},
+	onGeneralAlert: () -> Unit = {},
+	onOpenAlerts: () -> Unit = {},
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val filter by viewModel.filter.collectAsStateWithLifecycle()
@@ -99,7 +101,16 @@ fun ManagementScreen(
 			if (access.canCreateOperation) {
 				Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.operation_create)) }
 			}
-			OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.map_title)) }
+			// ADR-026: Genel Acil Alarm her zaman görünür (ADM ve KOR yönetim oturumu).
+			Button(
+				onClick = onGeneralAlert,
+				colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+				modifier = Modifier.fillMaxWidth(),
+			) { Text(stringResource(R.string.general_alert_button)) }
+			Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+				OutlinedButton(onClick = onOpenAlerts, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.alerts_managed_title)) }
+				OutlinedButton(onClick = onMap, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.map_title)) }
+			}
 			if (access.canAnnounceOrganization) {
 				OutlinedButton(onClick = onOrganizationAnnouncement, modifier = Modifier.fillMaxWidth()) {
 					Text(stringResource(R.string.announcements_organization_title))
@@ -165,6 +176,7 @@ fun OperationManageScreen(
 	onChanged: () -> Unit,
 	onAnnouncements: () -> Unit = {},
 	mapSection: (@Composable () -> Unit)? = null,
+	onOpenChannel: (() -> Unit)? = null,
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
@@ -199,6 +211,11 @@ fun OperationManageScreen(
 						}
 					}
 				}
+			}
+		}
+		onOpenChannel?.let { open ->
+			item(key = "channel") {
+				OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.open_operation_channel)) }
 			}
 		}
 		mapSection?.let { section -> item(key = "map") { section() } }

@@ -496,12 +496,42 @@ export interface AlertDraftRequest {
   priority?: AlertPriority;
   targets: { userIds: Uuid[]; groupIds: Uuid[] };
   correctsAlertId?: Uuid;
+  /** Görev 23: isteğe bağlı olay yeri. */
+  eventLocation?: EventLocation;
+}
+
+/** ADR-026 olay yeri. */
+export interface EventLocation {
+  lat: number;
+  lon: number;
+}
+
+export type AlertScope = 'OPERATION' | 'GENERAL';
+
+/** ADR-026 genel alarm hedef özeti. */
+export interface GeneralAlertTargets {
+  organization: boolean;
+  operations: { id: Uuid; displayName?: string }[];
+  groupCount: number;
+  userCount: number;
+}
+
+/** ADR-026 `POST /general-alerts`: hedefler birleştirilebilir; kurum geneli yalnızca ADM. */
+export interface GeneralAlertDraftRequest {
+  message: string;
+  requestedAction?: string;
+  targets: { organization: boolean; operationIds: Uuid[]; groupIds: Uuid[]; userIds: Uuid[] };
+  eventLocation?: EventLocation;
 }
 
 export interface AlertPreview {
   alertId: Uuid;
-  operationId: Uuid;
-  operationName: string;
+  /** Genel alarmda yok (ADR-026). */
+  operationId?: Uuid;
+  operationName?: string;
+  scope?: AlertScope;
+  eventLocation?: EventLocation;
+  targets?: GeneralAlertTargets;
   version: number;
   audienceHash: string;
   recipientCount: number;
@@ -514,8 +544,12 @@ export interface AlertPreview {
 
 export interface AlertView {
   id: Uuid;
-  operationId: Uuid;
+  /** Genel alarmda yok (ADR-026). */
+  operationId?: Uuid;
   operationName?: string;
+  scope?: AlertScope;
+  eventLocation?: EventLocation;
+  targets?: GeneralAlertTargets;
   state: AlertState;
   version: number;
   message: string;
@@ -540,8 +574,9 @@ export interface AlertView {
 
 export interface AlertSummary {
   id: Uuid;
-  operationId: Uuid;
+  operationId?: Uuid;
   operationName?: string;
+  scope?: AlertScope;
   state: AlertState;
   message: string;
   priority: AlertPriority;

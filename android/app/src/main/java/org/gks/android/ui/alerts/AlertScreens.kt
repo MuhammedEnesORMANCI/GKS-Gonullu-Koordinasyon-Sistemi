@@ -64,7 +64,7 @@ fun OpenAlertsBand(alerts: List<MyAlertView>, onOpen: (String) -> Unit) {
 
 /** AND-04: alarm ekranı; üç sabit yanıt (K-13), alarm açıkken değiştirilebilir (TD-07). */
 @Composable
-fun AlertDetailScreen(viewModel: AlertDetailViewModel, onResponded: () -> Unit) {
+fun AlertDetailScreen(viewModel: AlertDetailViewModel, onResponded: () -> Unit, onOpenChannel: ((String) -> Unit)? = null) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
 	val sounding by viewModel.sounding.collectAsStateWithLifecycle()
@@ -73,11 +73,32 @@ fun AlertDetailScreen(viewModel: AlertDetailViewModel, onResponded: () -> Unit) 
 	LoadContent(state, onRetry = viewModel::load) { alert ->
 		item {
 			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-				Text(stringResource(R.string.alert_title, alert.operationName.orEmpty()), style = MaterialTheme.typography.titleMedium,
-					color = MaterialTheme.colorScheme.error)
+				Text(
+					if (alert.scope == "GENERAL") stringResource(R.string.general_alert_title)
+					else stringResource(R.string.alert_title, alert.operationName.orEmpty()),
+					style = MaterialTheme.typography.titleMedium,
+					color = MaterialTheme.colorScheme.error,
+				)
 				Text(alert.message, style = MaterialTheme.typography.headlineSmall)
 				alert.requestedAction?.let { Text(stringResource(R.string.alert_requested_action, it)) }
 				alert.sentAt?.let { Text(formatDateTime(it), style = MaterialTheme.typography.bodySmall) }
+			}
+		}
+		// Görev 23: operasyon alarmında operasyon kanalına hızlı geçiş.
+		val opId = alert.operationId
+		if (opId != null && onOpenChannel != null) {
+			item {
+				OutlinedButton(onClick = { onOpenChannel(opId) }, modifier = Modifier.fillMaxWidth()) {
+					Text(stringResource(R.string.open_operation_channel))
+				}
+			}
+		}
+		// ADR-026: olay yeri (harita + koordinat + "Yol tarifi"; ağsız da metin ve yol tarifi çalışır).
+		alert.eventLocation?.let { loc ->
+			item {
+				val label = stringResource(R.string.event_location)
+				org.gks.android.ui.map.MeetingPointMap(loc.lat, loc.lon, label, description = label,
+					colorHex = org.gks.android.ui.map.MapColors.ALERT)
 			}
 		}
 		if (sounding && alert.state == "OPEN") {

@@ -31,6 +31,20 @@ class JdbcUserDirectory implements UserDirectory {
 	}
 
 	@Override
+	public java.util.List<UUID> activeUserIds() {
+		return jdbc.sql("select id from identity.users where status = 'ACTIVE' order by id").query(UUID.class).list();
+	}
+
+	@Override
+	public java.util.Set<UUID> activeAmong(Collection<UUID> userIds) {
+		if (userIds.isEmpty()) {
+			return java.util.Set.of();
+		}
+		return new java.util.HashSet<>(jdbc.sql("select id from identity.users where status = 'ACTIVE' and id in (:ids)")
+			.param("ids", userIds).query(UUID.class).list());
+	}
+
+	@Override
 	public Map<UUID, UserSummary> summaries(Collection<UUID> userIds) {
 		Map<UUID, UserSummary> summaries = new HashMap<>();
 		if (userIds.isEmpty()) {

@@ -17,8 +17,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.gks.android.R
 import org.gks.android.data.remote.MeContext
 import org.gks.android.ui.common.Badge
-import org.gks.android.ui.common.StatusKind
-import org.gks.android.ui.common.StatusBadge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.LoadContent
@@ -39,6 +39,8 @@ fun OperationDetailScreen(
 	onOpenGroup: (String) -> Unit,
 	/** AND-06: katılımcı ve aktif operasyonda konum paylaşımı kartı. */
 	locationCard: (@Composable () -> Unit)? = null,
+	/** Görev 23: operasyon kanalına geçiş. */
+	onOpenChannel: (() -> Unit)? = null,
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	LoadContent(state, onRetry = viewModel::load) { detail ->
@@ -59,6 +61,13 @@ fun OperationDetailScreen(
 		}
 		if ("KOR" in myRoles && !context.session.mfaVerified) item { MessageCard(stringResource(R.string.home_coordinator_note), error = false) }
 		if (locationCard != null && "GON" in myRoles && operation.state == "ACTIVE") item { locationCard() }
+		onOpenChannel?.let { open ->
+			item {
+				androidx.compose.material3.OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth()) {
+					Text(stringResource(R.string.open_operation_channel))
+				}
+			}
+		}
 		item {
 			ElevatedCard(Modifier.fillMaxWidth()) {
 				Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

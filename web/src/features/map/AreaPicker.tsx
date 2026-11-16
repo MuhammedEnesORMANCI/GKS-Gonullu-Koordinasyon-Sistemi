@@ -58,13 +58,17 @@ export function AreaPicker({
   const { area, errors } = parseArea(value);
   const shown = { ...errors, ...serverErrors };
   const [touched, setTouched] = useState(false);
+  // Bağımlılık yalnızca sayılar: her çizimde yeni nesne harita işaretlerini gereksiz yenilemesin.
+  const lat = area?.lat;
+  const lon = area?.lon;
+  const radiusM = area?.radiusM;
   const markers = useMemo(
-    () => (area ? [{ id: 'center', lat: area.lat, lon: area.lon, color: MAP_COLORS.ACTIVE, label: 'Operasyon merkezi' }] : []),
-    [area?.lat, area?.lon],
+    () => (lat !== undefined && lon !== undefined ? [{ id: 'center', lat, lon, color: MAP_COLORS.ACTIVE, label: 'Operasyon merkezi' }] : []),
+    [lat, lon],
   );
   const circles = useMemo(
-    () => (area?.radiusM ? [{ id: 'area', lat: area.lat, lon: area.lon, radiusM: area.radiusM, color: MAP_COLORS.ACTIVE }] : []),
-    [area?.lat, area?.lon, area?.radiusM], // eslint-disable-line react-hooks/exhaustive-deps
+    () => (lat !== undefined && lon !== undefined && radiusM ? [{ id: 'area', lat, lon, radiusM, color: MAP_COLORS.ACTIVE }] : []),
+    [lat, lon, radiusM],
   );
   const show = (k: string) => (touched || serverErrors[k] ? shown[k] : undefined);
   return (

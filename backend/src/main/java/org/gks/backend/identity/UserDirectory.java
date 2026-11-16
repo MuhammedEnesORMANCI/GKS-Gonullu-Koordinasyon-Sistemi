@@ -16,6 +16,12 @@ public interface UserDirectory {
 	/** Bilinmeyen kimlikler sonuçta yer almaz. */
 	Map<UUID, String> displayNames(Collection<UUID> userIds);
 
+	/** ADR-026: durumu {@code ACTIVE} olan tüm hesaplar (kurum geneli alarm hedefi). */
+	java.util.List<UUID> activeUserIds();
+
+	/** Verilen kimliklerden durumu {@code ACTIVE} olanlar. */
+	java.util.Set<UUID> activeAmong(Collection<UUID> userIds);
+
 	/** Bilinmeyen kimlikler sonuçta yer almaz. */
 	Map<UUID, UserSummary> summaries(Collection<UUID> userIds);
 

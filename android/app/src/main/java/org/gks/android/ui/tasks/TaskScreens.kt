@@ -33,8 +33,8 @@ import org.gks.android.data.remote.TaskSummary
 import org.gks.android.data.remote.TaskView
 import org.gks.android.data.remote.TimeWindow
 import org.gks.android.ui.common.Badge
-import org.gks.android.ui.common.StatusKind
-import org.gks.android.ui.common.StatusBadge
+import org.gks.android.ui.common.StatusKind
+import org.gks.android.ui.common.StatusBadge
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Fact
 import org.gks.android.ui.common.LoadContent

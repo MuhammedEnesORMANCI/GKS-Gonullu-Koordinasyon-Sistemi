@@ -1,6 +1,6 @@
 package org.gks.android.ui
 
-import androidx.annotation.DrawableRes
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -27,21 +27,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -55,6 +56,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.gks.android.GksApplication
 import org.gks.android.R
 import org.gks.android.domain.HomeKind
@@ -68,10 +70,16 @@ import org.gks.android.ui.account.ProfileEditScreen
 import org.gks.android.ui.account.ProfileEditViewModel
 import org.gks.android.ui.alerts.AlertDetailScreen
 import org.gks.android.ui.alerts.AlertDetailViewModel
+import org.gks.android.ui.alerts.AlertFollowUpScreen
+import org.gks.android.ui.alerts.AlertFollowUpViewModel
+import org.gks.android.ui.alerts.GeneralAlertScreen
+import org.gks.android.ui.alerts.GeneralAlertViewModel
+import org.gks.android.ui.alerts.ManagedAlertsScreen
+import org.gks.android.ui.alerts.ManagedAlertsViewModel
 import org.gks.android.ui.alerts.OpenAlertsBand
 import org.gks.android.ui.alerts.OpenAlertsViewModel
-import org.gks.android.ui.announcements.PublicAnnouncementsScreen
-import org.gks.android.ui.announcements.PublicAnnouncementsViewModel
+import org.gks.android.ui.announcements.PublicAnnouncementsScreen
+import org.gks.android.ui.announcements.PublicAnnouncementsViewModel
 import org.gks.android.ui.common.Centered
 import org.gks.android.ui.common.MessageCard
 import org.gks.android.ui.common.containerViewModel
@@ -79,15 +87,15 @@ import org.gks.android.ui.groups.GroupDetailScreen
 import org.gks.android.ui.groups.GroupDetailViewModel
 import org.gks.android.ui.groups.GroupsScreen
 import org.gks.android.ui.groups.GroupsViewModel
-import org.gks.android.ui.guide.GuideRoutes
-import org.gks.android.ui.guide.guideGraph
-import org.gks.android.ui.guide.guideIcon
-import org.gks.android.ui.home.HomeLanding
+import org.gks.android.ui.guide.GuideRoutes
+import org.gks.android.ui.guide.guideGraph
+import org.gks.android.ui.guide.guideIcon
+import org.gks.android.ui.home.HomeLanding
 import org.gks.android.ui.home.HomeTab
 import org.gks.android.ui.home.HomeViewModel
 import org.gks.android.ui.home.OperationDetailScreen
 import org.gks.android.ui.home.OperationDetailViewModel
-import org.gks.android.ui.home.QuickLink
+import org.gks.android.ui.home.QuickLink
 import org.gks.android.ui.location.LocationSharingCard
 import org.gks.android.ui.location.LocationSharingViewModel
 import org.gks.android.ui.management.AnnouncementDetailScreen
@@ -119,10 +127,10 @@ import org.gks.android.ui.map.OperationMapSection
 import org.gks.android.ui.map.OperationMapViewModel
 import org.gks.android.ui.map.OperationsMapScreen
 import org.gks.android.ui.map.OperationsMapViewModel
-import org.gks.android.ui.messaging.ChannelsScreen
-import org.gks.android.ui.messaging.ChannelsViewModel
-import org.gks.android.ui.messaging.ChatScreen
-import org.gks.android.ui.messaging.ChatViewModel
+import org.gks.android.ui.messaging.ChannelsScreen
+import org.gks.android.ui.messaging.ChannelsViewModel
+import org.gks.android.ui.messaging.ChatScreen
+import org.gks.android.ui.messaging.ChatViewModel
 import org.gks.android.ui.notifications.InboxScreen
 import org.gks.android.ui.notifications.InboxViewModel
 import org.gks.android.ui.notifications.NotificationDetailScreen
@@ -134,7 +142,7 @@ import org.gks.android.ui.tasks.TaskDetailScreen
 import org.gks.android.ui.tasks.TaskDetailViewModel
 import org.gks.android.ui.tasks.TasksScreen
 import org.gks.android.ui.tasks.TasksViewModel
-import org.gks.android.ui.theme.GksPalette
+import org.gks.android.ui.theme.GksPalette
 
 /**
  * Üst düzey ekranlar. Alt gezinme (ADR-023): Ana Sayfa, Rehberler, Duyurular, (Yönetim), Hesap. Görevler, Grubum ve
@@ -175,6 +183,10 @@ private object Routes {
 	const val NOTIFICATION = "notification/{id}"
 	const val MANAGED_OPERATION = "management/operation/{id}"
 	const val OPERATIONS_MAP = "management/map"
+	const val GENERAL_ALERT = "management/general-alert"
+	const val MANAGED_ALERTS = "management/alerts"
+	const val MANAGED_ALERT = "management/alert/{id}"
+	fun managedAlert(id: String) = "management/alert/$id"
 	const val EDIT_OPERATION = "management/operation/{id}/edit"
 	const val NEW_OPERATION = "management/operation/new"
 	const val VOLUNTEERS = "management/operation/{id}/volunteers"
@@ -234,6 +246,9 @@ private object Routes {
 		GuideRoutes.EMERGENCY -> R.string.guide_what_to_do
 		"messages/{id}" -> R.string.tab_messages
 		OPERATIONS_MAP -> R.string.map_title
+		GENERAL_ALERT -> R.string.general_alert_button
+		MANAGED_ALERTS -> R.string.alerts_managed_title
+		MANAGED_ALERT -> R.string.alert_follow_title
 		else -> Tab.entries.firstOrNull { it.route == route }?.label ?: R.string.app_name
 	}
 }
@@ -278,6 +293,17 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 
 	// Açık alarmlar (AL-08): FCM yokken ön plandayken yoklanır (ADR-018).
 	val alertsVm = containerViewModel { c -> OpenAlertsViewModel(c.alertRepository) { open -> c.alarms.reconcile(open) } }
+	// Görev 23: alarm/operasyon ekranlarından ilgili operasyon kanalına geçiş (kanal erişilemiyorsa hiçbir şey olmaz).
+	val channelScope = rememberCoroutineScope()
+	val channelRepository = (LocalContext.current.applicationContext as GksApplication).container.messagingRepository
+	val openOperationChannel: (String) -> Unit = { operationId ->
+		channelScope.launch {
+			val result = channelRepository.channels()
+			val channel = (result as? org.gks.android.data.ApiResult.Success<List<org.gks.android.data.remote.ChannelView>>)
+				?.value?.firstOrNull { c -> c.operationId == operationId && c.kind == "OPERATION" }
+			if (channel != null) nav.navigate("messages/${channel.id}")
+		}
+	}
 	val openAlerts by alertsVm.alerts.collectAsStateWithLifecycle()
 	LaunchedEffect(lifecycle) {
 		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -302,8 +328,10 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						// ADR-024: yeni/değişen mesaj; kanal listesi ve açık sohbet tazelenir.
 						"message.created", "message.updated", "channel.updated" -> container.messagingEvents.tryEmit(Unit)
 						// ADR-025: harita alarm ve operasyon durumunu gösterir.
-						"alert.opened", "alert.closed", "alert.cancelled", "alert.recipient.changed", "operation.state.changed" ->
+						"alert.opened", "alert.closed", "alert.cancelled", "alert.recipient.changed", "operation.state.changed" -> {
 							container.mapEvents.tryEmit(Unit)
+							container.alertEvents.tryEmit(Unit)
+						}
 						// Oturum sunucuda iptal edildi: bağlam yeniden okunur; 401 ile giriş ekranına dönülür.
 						"session.revoked" -> app.refreshContext()
 					}
@@ -460,8 +488,40 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						onCreate = { nav.navigate(Routes.NEW_OPERATION) },
 						onOrganizationAnnouncement = { nav.navigate(Routes.ORGANIZATION_ANNOUNCEMENTS) },
 						onMap = { nav.navigate(Routes.OPERATIONS_MAP) },
+						onGeneralAlert = { nav.navigate(Routes.GENERAL_ALERT) },
+						onOpenAlerts = { nav.navigate(Routes.MANAGED_ALERTS) },
 					)
 				}
+			}
+			composable(Routes.GENERAL_ALERT) {
+				val access = management
+				if (access == null) {
+					Centered { MessageCard(stringResource(R.string.management_session_required), error = true) }
+				} else {
+					val vm = containerViewModel { GeneralAlertViewModel(it.alertManagementRepository, it.managementRepository) }
+					GeneralAlertScreen(vm, isAdmin = access.isAdmin, onSent = { id ->
+						nav.navigate(Routes.managedAlert(id)) { popUpTo(Routes.GENERAL_ALERT) { inclusive = true } }
+					})
+				}
+			}
+			composable(Routes.MANAGED_ALERTS) {
+				if (management == null) {
+					Centered { MessageCard(stringResource(R.string.management_session_required), error = true) }
+				} else {
+					val vm = containerViewModel { ManagedAlertsViewModel(it.alertManagementRepository) }
+					RefreshOn(refreshTick, vm::load)
+					LaunchedEffect(vm) { container.alertEvents.collect { vm.load() } }
+					ManagedAlertsScreen(vm, onOpen = { nav.navigate(Routes.managedAlert(it)) })
+				}
+			}
+			composable(Routes.MANAGED_ALERT) { backStack ->
+				val id = backStack.arguments?.getString("id").orEmpty()
+				val vm = containerViewModel(key = "follow-$id") { AlertFollowUpViewModel(it.alertManagementRepository, id) }
+				RefreshOn(refreshTick, vm::load)
+				// ADR-026: yanıtlar SSE ile anında; olay gelmezse ekran açıkken 15 sn'de bir tazelenir.
+				LaunchedEffect(vm) { container.alertEvents.collect { vm.load() } }
+				LaunchedEffect(vm) { while (true) { delay(15_000); vm.load() } }
+				AlertFollowUpScreen(vm, onOpenChannel = openOperationChannel)
 			}
 			composable(Routes.OPERATIONS_MAP) {
 				if (management == null) {
@@ -493,6 +553,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						onTasks = { nav.navigate(Routes.operationTasks(id)) },
 						onChanged = app::refreshContext,
 						onAnnouncements = { nav.navigate(Routes.operationAnnouncements(id)) },
+						onOpenChannel = { openOperationChannel(id) },
 						mapSection = {
 							val mapVm = containerViewModel(key = "op-map-$id") { OperationMapViewModel(it.managementRepository, id) }
 							OperationMapSection(mapVm, canSeeLocations = true)
@@ -678,6 +739,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 					onOpenTask = { nav.navigate(Routes.task(it)) },
 					onOpenGroup = { nav.navigate(Routes.group(it)) },
 					locationCard = { LocationSharingCard(locationVm, id) },
+					onOpenChannel = { openOperationChannel(id) },
 				)
 			}
 			composable(Routes.ALERT) { backStack ->
@@ -685,6 +747,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				AlertDetailScreen(
 					containerViewModel(key = "alert-$id") { AlertDetailViewModel(it.alertRepository, id, it.alarms) },
 					onResponded = alertsVm::refresh,
+					onOpenChannel = openOperationChannel,
 				)
 			}
 		}

@@ -1,49 +1,49 @@
-import type {
-  AccountService,
-  AlertService,
-  AnnouncementService,
-  AuditService,
-  AuthService,
-  GroupService,
-  InvitationService,
-  LiveEvent,
-  LocationService,
-  MeContextService,
-  NotificationService,
-  OperationListService,
-  OperationService,
-  ParticipantService,
-  PublicAnnouncementService,
-  MessagingService,
-  RealtimeService,
-  RoleAssignmentService,
-  TaskService,
-  UserAdminService,
-  MapService,
+import type {
+  AccountService,
+  AlertService,
+  AnnouncementService,
+  AuditService,
+  AuthService,
+  GroupService,
+  InvitationService,
+  LiveEvent,
+  LocationService,
+  MeContextService,
+  NotificationService,
+  OperationListService,
+  OperationService,
+  ParticipantService,
+  PublicAnnouncementService,
+  MessagingService,
+  RealtimeService,
+  RoleAssignmentService,
+  TaskService,
+  UserAdminService,
+  MapService,
 } from '../contracts';
-import type {
-  AlertRecipientView,
-  AlertView,
-  AssignmentView,
-  AuditEntryView,
-  EffectivePermissions,
-  AnnouncementView,
-  GroupView,
-  InboxItem,
-  InvitationView,
-  MessageView,
-  MeContext,
-  MeProfile,
-  OperationState,
-  OperationView,
-  ParticipantView,
-  RoleAssignmentView,
-  TaskState,
-  TaskView,
-  UserRef,
-  UserSummary,
-  Uuid,
-  MapOperationView,
+import type {
+  AlertRecipientView,
+  AlertView,
+  AssignmentView,
+  AuditEntryView,
+  EffectivePermissions,
+  AnnouncementView,
+  GroupView,
+  InboxItem,
+  InvitationView,
+  MessageView,
+  MeContext,
+  MeProfile,
+  OperationState,
+  OperationView,
+  ParticipantView,
+  RoleAssignmentView,
+  TaskState,
+  TaskView,
+  UserRef,
+  UserSummary,
+  Uuid,
+  MapOperationView,
 } from '../types';
 import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockMessage, type MockPersona, type MockPublicAnnouncement } from './store';
 
@@ -1359,8 +1359,32 @@ export function mockAlertService(): AlertService {
     return [...ids];
   };
   const name = (userId: string) => mockStore.users.get(userId)?.displayName ?? 'Gönüllü';
+  type GeneralTargetsInput = { organization: boolean; operationIds: string[]; groupIds: string[]; userIds: string[] };
+  const general = new Map<string, GeneralTargetsInput>();
+  const generalAudience = (t: GeneralTargetsInput) => {
+    const ids = new Set<string>();
+    if (t.organization) mockStore.users.forEach((u) => ids.add(u.id));
+    for (const opId of t.operationIds) {
+      (mockStore.participants.get(opId) ?? []).forEach((p) => ids.add(p.userId));
+      mockStore.operations.get(opId)?.coordinators.forEach((c) => ids.add(c.id));
+    }
+    for (const groupId of t.groupIds) mockStore.groups.get(groupId)?.members.forEach((m) => ids.add(m.user.id));
+    t.userIds.forEach((u) => ids.add(u));
+    ids.delete(me());
+    return [...ids];
+  };
   const previewOf = (a: { view: AlertView; targets: { userIds: string[]; groupIds: string[] } }) => {
-    const ids = audience(a.view.operationId, a.targets);
+    const g = general.get(a.view.id);
+    if (g) {
+      const ids = generalAudience(g);
+      return {
+        alertId: a.view.id, version: a.view.version, audienceHash: [...ids].sort().join(','), recipientCount: ids.length,
+        recipients: ids.map((id) => ({ id, displayName: name(id), groups: [] })), message: a.view.message,
+        requestedAction: a.view.requestedAction, priority: a.view.priority, scope: 'GENERAL' as const,
+        eventLocation: a.view.eventLocation, targets: a.view.targets,
+      };
+    }
+    const ids = audience(a.view.operationId ?? '', a.targets);
     return {
       alertId: a.view.id, operationId: a.view.operationId, operationName: a.view.operationName ?? '', version: a.view.version,
       audienceHash: [...ids].sort().join(','), recipientCount: ids.length,
@@ -1413,14 +1437,39 @@ export function mockAlertService(): AlertService {
       }
       return respond(previewOf(created));
     },
+    createGeneral: async (request) => {
+      if (!allowed()) return fail(403, 'FORBIDDEN');
+      const t = request.targets;
+      if (t.organization && mockStore.persona !== 'ADM') return fail(403, 'FORBIDDEN');
+      if (mockStore.persona === 'KOR' && t.operationIds.some((op) => !isCoordinatorOf(op))) return fail(403, 'FORBIDDEN');
+      if (!t.organization && !t.operationIds.length && !t.groupIds.length && !t.userIds.length) {
+        return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'targets', code: 'REQUIRED' }]);
+      }
+      if (generalAudience(t).length === 0) return fail(422, 'VALIDATION_FAILED', {}, [{ field: 'targets', code: 'EMPTY_AUDIENCE' }]);
+      const id = nextId('7000');
+      const view: AlertView = {
+        id, scope: 'GENERAL', state: 'DRAFT', version: 1, message: request.message, requestedAction: request.requestedAction,
+        priority: 'CRITICAL', responseOptions: ['RECEIVED', 'NEED_HELP', 'ON_MY_WAY'], createdBy: { id: me(), displayName: name(me()) },
+        createdAt: nowIso(), counts: counts([]), deliveryDelayed: false, eventLocation: request.eventLocation,
+        targets: {
+          organization: t.organization, groupCount: t.groupIds.length, userCount: t.userIds.length,
+          operations: t.operationIds.map((op) => ({ id: op, displayName: mockStore.operations.get(op)?.name })),
+        },
+      };
+      const created = { view, targets: { userIds: t.userIds, groupIds: t.groupIds }, recipients: [] as AlertRecipientView[] };
+      mockStore.alerts.set(id, created);
+      general.set(id, t);
+      return respond(previewOf(created));
+    },
     preview: async (id) => {
       const a = find(id);
       if (!a) return fail(404, 'NOT_FOUND');
       return respond(previewOf(a));
     },
-    send: async (id, version, audienceHash) => {
+    send: async (id, version, audienceHash, _key, confirmed) => {
       const a = find(id);
       if (!a) return fail(404, 'NOT_FOUND');
+      if (general.has(id) && confirmed !== true) return fail(400, 'VALIDATION_FAILED', {}, [{ field: 'confirmed', code: 'REQUIRED' }]);
       if (a.view.state !== 'DRAFT') return fail(409, 'INVALID_STATE_TRANSITION', { currentState: a.view.state });
       if (a.view.version !== version) return fail(409, 'VERSION_CONFLICT', { currentVersion: a.view.version });
       const preview = previewOf(a);

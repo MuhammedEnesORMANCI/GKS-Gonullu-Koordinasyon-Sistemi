@@ -51,11 +51,22 @@ class AlertController {
 	record TargetsRequest(List<UUID> userIds, List<UUID> groupIds) {
 	}
 
-	record DraftRequest(String message, String requestedAction, String priority, TargetsRequest targets,
-			UUID correctsAlertId) {
+	record LocationRequest(Double lat, Double lon) {
 	}
 
-	record SendRequest(Integer version, String audienceHash) {
+	record DraftRequest(String message, String requestedAction, String priority, TargetsRequest targets,
+			UUID correctsAlertId, LocationRequest eventLocation) {
+	}
+
+	/** ADR-026: hedefler birleştirilebilir; {@code organization} yalnızca ADM. */
+	record GeneralTargetsRequest(Boolean organization, List<UUID> operationIds, List<UUID> groupIds, List<UUID> userIds) {
+	}
+
+	record GeneralDraftRequest(String message, String requestedAction, GeneralTargetsRequest targets,
+			LocationRequest eventLocation) {
+	}
+
+	record SendRequest(Integer version, String audienceHash, Boolean confirmed) {
 	}
 
 	record ReasonRequest(String reason) {
@@ -75,6 +86,13 @@ class AlertController {
 	ResponseEntity<AlertPreview> create(@PathVariable UUID operationId, @RequestBody DraftRequest body,
 			Authentication authentication) {
 		AlertPreview preview = service.create(management(authentication), operationId, draft(body));
+		return ResponseEntity.created(URI.create("/api/v1/alerts/" + preview.alertId())).body(preview);
+	}
+
+	/** ADR-026 Genel Acil Alarm: taslak + tekilleştirilmiş alıcı önizlemesi. Gönderim AL-05 ile ({@code confirmed=true}). */
+	@PostMapping("/api/v1/general-alerts")
+	ResponseEntity<AlertPreview> createGeneral(@RequestBody GeneralDraftRequest body, Authentication authentication) {
+		AlertPreview preview = service.createGeneral(management(authentication), generalDraft(body));
 		return ResponseEntity.created(URI.create("/api/v1/alerts/" + preview.alertId())).body(preview);
 	}
 
@@ -107,7 +125,8 @@ class AlertController {
 		requireValid(errors);
 		var request = idempotency.request(idemKey, subject.userId(), "POST", "/alerts/{id}/send", Map.of("id", alertId),
 				body);
-		return service.send(subject, alertId, body.version(), body.audienceHash(), request).toResponseEntity();
+		return service.send(subject, alertId, body.version(), body.audienceHash(), Boolean.TRUE.equals(body.confirmed()),
+				request).toResponseEntity();
 	}
 
 	/** AL-06. */
@@ -307,8 +326,67 @@ class AlertController {
 		if (userIds.stream().anyMatch(java.util.Objects::isNull) || groupIds.stream().anyMatch(java.util.Objects::isNull)) {
 			errors.add(new FieldError("targets", "INVALID_VALUE", "Boş kimlik"));
 		}
+		double[] location = location(body.eventLocation(), errors);
 		requireValid(errors);
-		return new AlertService.Draft(message, action, priority, userIds, groupIds, body.correctsAlertId());
+		return new AlertService.Draft(message, action, priority, userIds, groupIds, body.correctsAlertId(),
+				location == null ? null : location[0], location == null ? null : location[1]);
+	}
+
+	static AlertService.GeneralDraft generalDraft(GeneralDraftRequest body) {
+		List<FieldError> errors = new ArrayList<>();
+		if (body == null) {
+			throw ApiException.validation(List.of(new FieldError("message", "REQUIRED", "Mesaj zorunludur")));
+		}
+		String message = body.message() == null ? null : body.message().strip();
+		if (message == null || message.isEmpty()) {
+			errors.add(new FieldError("message", "REQUIRED", "Mesaj zorunludur"));
+		}
+		else if (message.length() > AlertService.MESSAGE_MAX) {
+			errors.add(new FieldError("message", "TOO_LONG", "Mesaj en fazla 500 karakter olabilir"));
+		}
+		String action = body.requestedAction() == null || body.requestedAction().isBlank() ? null
+				: body.requestedAction().strip();
+		if (action != null && action.length() > AlertService.ACTION_MAX) {
+			errors.add(new FieldError("requestedAction", "TOO_LONG", "İstenen eylem en fazla 200 karakter olabilir"));
+		}
+		GeneralTargetsRequest t = body.targets();
+		boolean organization = t != null && Boolean.TRUE.equals(t.organization());
+		List<UUID> ops = t == null || t.operationIds() == null ? List.of() : t.operationIds().stream().distinct().toList();
+		List<UUID> groupIds = t == null || t.groupIds() == null ? List.of() : t.groupIds().stream().distinct().toList();
+		List<UUID> userIds = t == null || t.userIds() == null ? List.of() : t.userIds().stream().distinct().toList();
+		if (!organization && ops.isEmpty() && groupIds.isEmpty() && userIds.isEmpty()) {
+			errors.add(new FieldError("targets", "REQUIRED", "En az bir hedef seçilmelidir"));
+		}
+		if (ops.size() > 100 || groupIds.size() > AlertService.MAX_RECIPIENTS || userIds.size() > AlertService.MAX_RECIPIENTS) {
+			errors.add(new FieldError("targets", "TOO_MANY", "Hedef listesi çok uzun"));
+		}
+		if (java.util.stream.Stream.of(ops, groupIds, userIds).flatMap(List::stream).anyMatch(java.util.Objects::isNull)) {
+			errors.add(new FieldError("targets", "INVALID_VALUE", "Boş kimlik"));
+		}
+		double[] location = location(body.eventLocation(), errors);
+		requireValid(errors);
+		return new AlertService.GeneralDraft(message, action, organization, ops, groupIds, userIds,
+				location == null ? null : location[0], location == null ? null : location[1]);
+	}
+
+	/** İsteğe bağlı olay yeri: enlem/boylam birlikte ve aralıkta. */
+	private static double[] location(LocationRequest location, List<FieldError> errors) {
+		if (location == null) {
+			return null;
+		}
+		if (location.lat() == null || location.lon() == null) {
+			errors.add(new FieldError("eventLocation", "REQUIRED", "Enlem ve boylam birlikte verilmelidir"));
+			return null;
+		}
+		if (location.lat().isNaN() || location.lat() < -90 || location.lat() > 90) {
+			errors.add(new FieldError("eventLocation.lat", "OUT_OF_RANGE", "Enlem -90 ile 90 arasında olmalıdır"));
+			return null;
+		}
+		if (location.lon().isNaN() || location.lon() < -180 || location.lon() > 180) {
+			errors.add(new FieldError("eventLocation.lon", "OUT_OF_RANGE", "Boylam -180 ile 180 arasında olmalıdır"));
+			return null;
+		}
+		return new double[] { location.lat(), location.lon() };
 	}
 
 	private static Set<AlertState> states(List<String> values, Set<AlertState> defaults, List<FieldError> errors) {

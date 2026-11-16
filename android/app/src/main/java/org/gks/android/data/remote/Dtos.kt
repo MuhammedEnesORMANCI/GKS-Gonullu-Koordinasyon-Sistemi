@@ -555,8 +555,12 @@ data class AnnouncementView(
 @Serializable
 data class MyAlertView(
 	val id: String,
-	val operationId: String,
+	/** Genel Acil Alarmda yok (ADR-026). */
+	val operationId: String? = null,
 	val operationName: String? = null,
+	/** `OPERATION` | `GENERAL`. */
+	val scope: String? = null,
+	val eventLocation: EventLocation? = null,
 	val state: String,
 	val message: String,
 	val requestedAction: String? = null,
@@ -565,6 +569,99 @@ data class MyAlertView(
 	val sentAt: String? = null,
 	val recipient: MyAlertRecipient,
 )
+
+/** İsteğe bağlı olay yeri (ADR-026). */
+@Serializable
+data class EventLocation(val lat: Double, val lon: Double)
+
+// ---------------------------------------------------------------- acil alarm (yönetim: ADM/KOR)
+
+@Serializable
+data class AlertCountsView(
+	val total: Int = 0,
+	val responded: Int = 0,
+	val pending: Int = 0,
+	val unanswered: Int = 0,
+	val failed: Int = 0,
+	val needHelp: Int = 0,
+)
+
+/** AL-07 yönetici görünümü (sayılarla). */
+@Serializable
+data class ManagedAlertView(
+	val id: String,
+	val operationId: String? = null,
+	val operationName: String? = null,
+	val scope: String? = null,
+	val state: String,
+	val version: Int = 1,
+	val message: String,
+	val requestedAction: String? = null,
+	val sentAt: String? = null,
+	val sentBy: UserRef? = null,
+	val createdBy: UserRef? = null,
+	val recipientCount: Int? = null,
+	val counts: AlertCountsView = AlertCountsView(),
+	val eventLocation: EventLocation? = null,
+)
+
+/** AL-16 açık alarm listesi satırı. */
+@Serializable
+data class AlertSummaryView(
+	val id: String,
+	val operationId: String? = null,
+	val operationName: String? = null,
+	val scope: String? = null,
+	val state: String,
+	val message: String,
+	val sentAt: String? = null,
+	val counts: AlertCountsView = AlertCountsView(),
+)
+
+@Serializable
+data class PreviewRecipientView(val id: String, val displayName: String? = null)
+
+@Serializable
+data class AlertPreviewView(
+	val alertId: String,
+	val version: Int,
+	val audienceHash: String,
+	val recipientCount: Int,
+	val recipients: List<PreviewRecipientView> = emptyList(),
+	val message: String? = null,
+	val requestedAction: String? = null,
+	val scope: String? = null,
+)
+
+@Serializable
+data class AlertRecipientRowView(
+	val id: String,
+	val user: UserRef,
+	val state: String,
+	val responseOption: String? = null,
+	val respondedAt: String? = null,
+)
+
+@Serializable
+data class GeneralAlertTargets(
+	val organization: Boolean = false,
+	val operationIds: List<String> = emptyList(),
+	val groupIds: List<String> = emptyList(),
+	val userIds: List<String> = emptyList(),
+)
+
+/** ADR-026 `POST /general-alerts`. */
+@Serializable
+data class GeneralAlertDraftRequest(
+	val message: String,
+	val requestedAction: String? = null,
+	val targets: GeneralAlertTargets,
+	val eventLocation: EventLocation? = null,
+)
+
+/** AL-05; genel alarmda `confirmed=true` zorunlu (güçlü onay). */
+@Serializable
+data class AlertSendRequest(val version: Int, val audienceHash: String, val confirmed: Boolean? = null)
 
 /** `id` AL-13 – AL-15 yol parametresidir. */
 @Serializable

@@ -380,6 +380,36 @@ interface GksApi {
 	@GET("api/v1/alerts/{id}")
 	suspend fun myAlert(@Path("id") id: String): Response<MyAlertView>
 
+	// ------------------------------------------------------------ acil alarm (yönetim: ADM/KOR, ADR-026)
+
+	/** ADR-026 Genel Acil Alarm taslağı + tekilleştirilmiş önizleme. */
+	@POST("api/v1/general-alerts")
+	suspend fun createGeneralAlert(@Body request: GeneralAlertDraftRequest): Response<AlertPreviewView>
+
+	/** AL-05 onaylı gönderim. */
+	@POST("api/v1/alerts/{id}/send")
+	suspend fun sendAlert(@Path("id") id: String, @Header(IDEMPOTENCY_HEADER) key: String, @Body request: AlertSendRequest): Response<ManagedAlertView>
+
+	/** AL-03 taslağı sil (vazgeçince). */
+	@DELETE("api/v1/alerts/{id}")
+	suspend fun deleteAlertDraft(@Path("id") id: String): Response<Unit>
+
+	/** AL-16 açık alarmlar (KOR: kendi operasyonları + kendi genel alarmları; ADM: tümü). */
+	@GET("api/v1/alerts")
+	suspend fun managedAlerts(@Query("state") state: String? = "OPEN", @Query("cursor") cursor: String? = null): Response<Page<AlertSummaryView>>
+
+	/** AL-07 yönetici görünümü (aynı uç; yöneticiye sayılarla döner). */
+	@GET("api/v1/alerts/{id}")
+	suspend fun managedAlert(@Path("id") id: String): Response<ManagedAlertView>
+
+	/** AL-09 alıcı tablosu (yardım isteyen önce). */
+	@GET("api/v1/alerts/{id}/recipients")
+	suspend fun alertRecipients(@Path("id") id: String): Response<Page<AlertRecipientRowView>>
+
+	/** AL-12 kapatma: alıcılara "Acil durum sona erdi" / "Alarm kapatıldı". */
+	@POST("api/v1/alerts/{id}/close")
+	suspend fun closeAlert(@Path("id") id: String): Response<ManagedAlertView>
+
 	/** AL-13: uygulama alarmı aldı; yalnızca ileri geçiş, etkisiz tekrar `204`. */
 	@POST("api/v1/alert-recipients/{id}/delivered")
 	suspend fun alertDelivered(@Path("id") recipientId: String, @Body request: AlertSignalRequest): Response<Unit>

@@ -1,17 +1,19 @@
 package org.gks.android
 
-import org.gks.android.data.guide.GuideContent
-import org.gks.android.data.PublicAnnouncementRepository
 import android.content.Context
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import org.gks.android.data.messaging.OutboxStore
-import org.gks.android.data.messaging.MessagingRepository
-import org.gks.android.data.messaging.MessageOutbox
-import org.gks.android.alarm.MessageNotifier
+import org.gks.android.alarm.Alarms
+import org.gks.android.alarm.DeviceRegistrar
+import org.gks.android.alarm.MessageNotifier
+import org.gks.android.data.AlertManagementRepository
 import org.gks.android.data.AlertRepository
 import org.gks.android.data.AnnouncementRepository
 import org.gks.android.data.ApiCaller
@@ -19,9 +21,15 @@ import org.gks.android.data.AuthRepository
 import org.gks.android.data.InvitationRepository
 import org.gks.android.data.LocationRepository
 import org.gks.android.data.ManagementRepository
-import org.gks.android.data.TaskManagementRepository
 import org.gks.android.data.NotificationRepository
+import org.gks.android.data.PublicAnnouncementRepository
+import org.gks.android.data.TaskManagementRepository
 import org.gks.android.data.VolunteerRepository
+import org.gks.android.data.guide.GuideContent
+import org.gks.android.data.messaging.MessageOutbox
+import org.gks.android.data.messaging.MessagingRepository
+import org.gks.android.data.messaging.OutboxStore
+import org.gks.android.data.realtime.RealtimeStream
 import org.gks.android.data.remote.GksApi
 import org.gks.android.data.remote.RefreshApi
 import org.gks.android.data.session.AuthInterceptor
@@ -31,15 +39,8 @@ import org.gks.android.data.session.SessionManager
 import org.gks.android.data.session.SessionStore
 import org.gks.android.data.session.TokenAuthenticator
 import org.gks.android.data.session.TokenRefresher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import org.gks.android.data.realtime.RealtimeStream
-import org.gks.android.alarm.Alarms
-import org.gks.android.alarm.DeviceRegistrar
 import org.gks.android.ui.notify.LiveNotifier
 import retrofit2.Retrofit
-import java.util.concurrent.TimeUnit
 
 /** Elle bağımlılık kurulumu; uygulama boyunca tek örnek. */
 class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BASE_URL) {
@@ -87,6 +88,9 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val openChannel = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 	val messageNotifier by lazy { MessageNotifier(context.applicationContext, messagingRepository, openChannel) }
 	/** Canlı akıştan mesaj olayı: kanal listesi ve açık sohbet tazelenir. */
+	/** ADR-026: alarm takip ekranları için alarm olayları. */
+	val alertEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
 	/** ADR-025: harita tazeleme olayları (alarm/operasyon). */
 	val mapEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -96,6 +100,7 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val alertRepository by lazy { AlertRepository(api, caller) }
 	val locationRepository by lazy { LocationRepository(api, caller) }
 	val managementRepository by lazy { ManagementRepository(api, caller) }
+	val alertManagementRepository by lazy { AlertManagementRepository(api, caller) }
 	val taskManagementRepository by lazy { TaskManagementRepository(api, caller) }
 	val announcementRepository by lazy { AnnouncementRepository(api, caller) }
 }
