@@ -74,6 +74,24 @@ public class ApiException extends RuntimeException {
 		return new ApiException(ApiProblems.Code.INVITATION_INVALID, List.of(), extensions, Map.of());
 	}
 
+	/** {@code 409 ALERT_NOT_OPEN} ve {@code alertState} uzantısı (AL-10 – AL-15). */
+	public static ApiException alertNotOpen(String alertState) {
+		return new ApiException(ApiProblems.Code.ALERT_NOT_OPEN, List.of(), Map.of("alertState", alertState), Map.of());
+	}
+
+	/** {@code 409 AUDIENCE_CHANGED} ve güncel önizleme ({@code preview}). */
+	public static ApiException audienceChanged(Object preview) {
+		return new ApiException(ApiProblems.Code.AUDIENCE_CHANGED, List.of(), Map.of("preview", preview), Map.of());
+	}
+
+	/** {@code 422 AUDIENCE_TOO_LARGE}: {@code recipientCount} ve {@code limit}. */
+	public static ApiException audienceTooLarge(int recipientCount, int limit) {
+		Map<String, Object> extensions = new LinkedHashMap<>();
+		extensions.put("recipientCount", recipientCount);
+		extensions.put("limit", limit);
+		return new ApiException(ApiProblems.Code.AUDIENCE_TOO_LARGE, List.of(), extensions, Map.of());
+	}
+
 	public static ApiException alreadyExists(String conflict) {
 		return new ApiException(ApiProblems.Code.ALREADY_EXISTS, List.of(), Map.of("conflict", conflict), Map.of());
 	}

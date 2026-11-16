@@ -18,4 +18,7 @@ public interface GroupMembers {
 	 */
 	Map<UUID, List<UUID>> activeMembers(UUID operationId, Collection<UUID> groupIds);
 
+	/** Grup adları (arşivlenmişler dahil); bilinmeyen kimlikler sonuçta yer almaz. */
+	Map<UUID, String> names(Collection<UUID> groupIds);
+
 }

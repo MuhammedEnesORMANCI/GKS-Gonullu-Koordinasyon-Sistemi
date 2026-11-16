@@ -19,19 +19,26 @@ public interface Notifier {
 	/** @return oluşan bildirimin kimliği; anahtar daha önce kullanılmışsa boş */
 	java.util.Optional<UUID> notify(NotificationRequest request);
 
+	/**
+	 * Aynı bildirimi seçili alıcılarda yeniden öne çıkarır: gelen kutusu kaydı okunmamış olur (AL-10 yeniden
+	 * gönderim; push turu FCM ile eklenecek). Çağıranın işleminde çalışır.
+	 */
+	void resurface(UUID notificationId, Collection<UUID> users);
+
 	enum Category { ALERT, TASK, ANNOUNCEMENT, MEETING_POINT, OPERATION_INVITE, SYSTEM }
 
 	/** backend-api-design.md §12.4 {@code NotificationKind} (yalnızca bu aşamada üretilenler + duyuru). */
 	enum Kind {
 		TASK_ASSIGNED, TASK_UPDATED, TASK_CANCELLED, TASK_CAPACITY_FULL, TASK_ASSIGNMENT_REMOVED,
-		MEETING_POINT_UPDATED, GROUP_MEMBER_ADDED, ANNOUNCEMENT, OPERATION_INVITE
+		MEETING_POINT_UPDATED, GROUP_MEMBER_ADDED, ANNOUNCEMENT, OPERATION_INVITE, ALERT_SENT, ALERT_CANCELLED,
+		ALERT_CLOSED
 	}
 
 	/** communication.md §1.2. {@code CRITICAL} ayrı kuyruktan iletilir. */
 	enum Priority { CRITICAL, HIGH, NORMAL, LOW }
 
 	/** İstemcinin bağlantıya çevirdiği kaynak ({@code NotificationInboxItem.link}). */
-	enum SourceType { TASK, GROUP, OPERATION, INVITATION }
+	enum SourceType { TASK, GROUP, OPERATION, INVITATION, ALERT }
 
 	/**
 	 * @param idempotencyKey kaynak olay anahtarı, ör. {@code task:{id}:PUBLISHED}

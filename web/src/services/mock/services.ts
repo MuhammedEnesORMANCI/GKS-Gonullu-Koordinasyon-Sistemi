@@ -1,5 +1,6 @@
 import type {
   AccountService,
+  AlertService,
   AnnouncementService,
   AuditService,
   AuthService,
@@ -17,6 +18,8 @@ import type {
   UserAdminService,
 } from '../contracts';
 import type {
+  AlertRecipientView,
+  AlertView,
   AssignmentView,
   AuditEntryView,
   EffectivePermissions,
@@ -55,12 +58,16 @@ const OPERATIONAL_PERMS = [
   'task.manage',
   'invitation.create',
   'alert.send',
+  'alert.view',
+  'alert.cancel',
+  'alert.close',
+  'alert.resend',
   'location.view',
   'announcement.send.group',
 ];
 
-/** ADR-015: ADM'nin her operasyondaki izinleri = KOR seti − konum ve alarm (backend `EffectivePermissions.ADM_OPERATION`). */
-const ADM_OPERATIONAL_PERMS = OPERATIONAL_PERMS.filter((p) => p !== 'location.view' && !p.startsWith('alert.'));
+/** ADR-015/018: ADM'nin her operasyondaki izinleri = KOR seti − konum (backend `EffectivePermissions.ADM_OPERATION`). */
+const ADM_OPERATIONAL_PERMS = OPERATIONAL_PERMS.filter((p) => p !== 'location.view');
 
 const PERSONA_USER: Record<MockPersona, Uuid> = {
   ADM: MOCK_IDS.adm,
@@ -1129,6 +1136,155 @@ export function mockRealtimeService(): RealtimeService {
       return () => {
         liveListeners.delete(listener);
       };
+    },
+  };
+}
+
+// ------------------------------------------------------------- alerts (AL-01 – AL-16)
+
+/** Örnek acil alarm yönetimi (KOR ve ADM, ADR-018). İletim yoktur; alıcı satırları "Gönderildi" doğar. */
+export function mockAlertService(): AlertService {
+  const allowed = () => mockStore.persona === 'KOR' || mockStore.persona === 'ADM';
+  const me = () => (mockStore.persona === 'ADM' ? MOCK_IDS.adm : MOCK_IDS.kor);
+  const counts = (rows: { state: string; responseOption: string | null }[]) => ({
+    total: rows.length,
+    responded: rows.filter((r) => r.state === 'RESPONDED').length,
+    pending: rows.filter((r) => ['QUEUED', 'SENT', 'DELIVERED', 'SEEN'].includes(r.state)).length,
+    unanswered: rows.filter((r) => r.state === 'UNANSWERED').length,
+    failed: rows.filter((r) => r.state === 'FAILED').length,
+    needHelp: rows.filter((r) => r.responseOption === 'NEED_HELP').length,
+  });
+  const audience = (operationId: string, targets: { userIds: string[]; groupIds: string[] }) => {
+    const ids = new Set(targets.userIds);
+    for (const groupId of targets.groupIds) {
+      const group = mockStore.groups.get(groupId);
+      if (group && group.operationId === operationId) group.members.forEach((m) => ids.add(m.user.id));
+    }
+    ids.delete(me());
+    return [...ids];
+  };
+  const name = (userId: string) => mockStore.users.get(userId)?.displayName ?? 'Gönüllü';
+  const previewOf = (a: { view: AlertView; targets: { userIds: string[]; groupIds: string[] } }) => {
+    const ids = audience(a.view.operationId, a.targets);
+    return {
+      alertId: a.view.id, operationId: a.view.operationId, operationName: a.view.operationName ?? '', version: a.view.version,
+      audienceHash: [...ids].sort().join(','), recipientCount: ids.length,
+      recipients: ids.map((id) => ({ id, displayName: name(id), groups: [] })), message: a.view.message,
+      requestedAction: a.view.requestedAction, priority: a.view.priority, correctsAlertId: a.view.correctsAlertId,
+    };
+  };
+  const find = (id: string) => mockStore.alerts.get(id);
+  const refresh = (a: { view: AlertView; recipients: AlertRecipientView[] }) => {
+    a.view.counts = counts(a.recipients);
+    return a.view;
+  };
+  return {
+    list: async (filter = {}) => {
+      if (!allowed()) return fail(403, 'FORBIDDEN');
+      const states = filter.states ?? (filter.operationId ? [] : ['OPEN']);
+      const items = [...mockStore.alerts.values()]
+        .filter((a) => (!filter.operationId || a.view.operationId === filter.operationId) && (states.length === 0 || states.includes(a.view.state)))
+        .sort((x, y) => (x.view.id < y.view.id ? 1 : -1))
+        .map((a) => ({ id: a.view.id, operationId: a.view.operationId, operationName: a.view.operationName, state: a.view.state,
+          message: a.view.message, priority: a.view.priority, createdAt: a.view.createdAt, sentAt: a.view.sentAt, counts: a.view.counts }));
+      return respond({ items });
+    },
+    get: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      return respond(refresh(a));
+    },
+    create: async (operationId, request) => {
+      if (!allowed()) return fail(403, 'FORBIDDEN');
+      const operation = mockStore.operations.get(operationId);
+      if (!operation) return fail(404, 'NOT_FOUND');
+      if (operation.state !== 'ACTIVE') return fail(409, 'OPERATION_NOT_ACTIVE');
+      const targets = { userIds: request.targets.userIds, groupIds: request.targets.groupIds };
+      if (audience(operationId, targets).length === 0) {
+        return fail(422, 'VALIDATION_FAILED', {}, [{ field: 'targets', code: 'EMPTY_AUDIENCE' }]);
+      }
+      const id = nextId('7000');
+      const view: AlertView = {
+        id, operationId, operationName: operation.name, state: 'DRAFT', version: 1, message: request.message,
+        requestedAction: request.requestedAction, priority: request.priority ?? 'CRITICAL',
+        responseOptions: ['RECEIVED', 'NEED_HELP', 'ON_MY_WAY'], createdBy: { id: me(), displayName: name(me()) },
+        createdAt: nowIso(), counts: counts([]), deliveryDelayed: false, correctsAlertId: request.correctsAlertId,
+      };
+      const created = { view, targets, recipients: [] as AlertRecipientView[] };
+      mockStore.alerts.set(id, created);
+      if (request.correctsAlertId) {
+        const old = find(request.correctsAlertId);
+        if (old) old.view.correctedByAlertId = id;
+      }
+      return respond(previewOf(created));
+    },
+    preview: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      return respond(previewOf(a));
+    },
+    send: async (id, version, audienceHash) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      if (a.view.state !== 'DRAFT') return fail(409, 'INVALID_STATE_TRANSITION', { currentState: a.view.state });
+      if (a.view.version !== version) return fail(409, 'VERSION_CONFLICT', { currentVersion: a.view.version });
+      const preview = previewOf(a);
+      if (preview.audienceHash !== audienceHash) return fail(409, 'AUDIENCE_CHANGED', { preview });
+      const at = nowIso();
+      a.recipients = preview.recipients.map((r) => ({
+        id: nextId('7100'), user: { id: r.id, displayName: r.displayName }, group: null, state: 'SENT', reminderCount: 0,
+        responseOption: null, sentAt: at, deliveredAt: null, seenAt: null, respondedAt: null, respondedAtDevice: null, failureReason: null,
+      }));
+      Object.assign(a.view, { state: 'OPEN', sentAt: at, sentBy: { id: me(), displayName: name(me()) }, recipientCount: a.recipients.length });
+      return respond(refresh(a));
+    },
+    deleteDraft: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      if (a.view.state !== 'DRAFT') return fail(409, 'INVALID_STATE_TRANSITION');
+      mockStore.alerts.delete(id);
+      return respond(undefined);
+    },
+    cancel: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      if (a.view.state !== 'OPEN') return fail(409, 'ALERT_NOT_OPEN', { alertState: a.view.state });
+      Object.assign(a.view, { state: 'CANCELLED', cancelledAt: nowIso(), cancelledBy: { id: me(), displayName: name(me()) } });
+      return respond(refresh(a));
+    },
+    close: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      if (a.view.state !== 'OPEN') return fail(409, 'ALERT_NOT_OPEN', { alertState: a.view.state });
+      Object.assign(a.view, { state: 'CLOSED', closedAt: nowIso(), closeReason: 'MANUAL', closedBy: { id: me(), displayName: name(me()) } });
+      return respond(refresh(a));
+    },
+    resend: async (id, recipientIds) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      if (a.view.state !== 'OPEN') return fail(409, 'ALERT_NOT_OPEN', { alertState: a.view.state });
+      let requeued = 0;
+      for (const r of a.recipients) {
+        if ((r.state === 'UNANSWERED' || r.state === 'FAILED') && (recipientIds.length === 0 || recipientIds.includes(r.id))) {
+          r.state = 'SENT';
+          r.reminderCount = 0;
+          r.failureReason = null;
+          requeued += 1;
+        }
+      }
+      return respond({ alert: refresh(a), requeuedCount: requeued, skippedCount: Math.max(0, recipientIds.length - requeued) });
+    },
+    recipients: async (id) => {
+      const a = find(id);
+      if (!a) return fail(404, 'NOT_FOUND');
+      const order = ['QUEUED', 'SENT', 'DELIVERED', 'SEEN', 'RESPONDED', 'UNANSWERED', 'FAILED'];
+      const items = [...a.recipients].sort(
+        (x, y) =>
+          Number(y.responseOption === 'NEED_HELP') - Number(x.responseOption === 'NEED_HELP') ||
+          order.indexOf(x.state) - order.indexOf(y.state) ||
+          x.user.displayName.localeCompare(y.user.displayName, 'tr'),
+      );
+      return respond({ items });
     },
   };
 }

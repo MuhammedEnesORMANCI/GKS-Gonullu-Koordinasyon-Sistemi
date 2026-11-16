@@ -21,6 +21,7 @@
 | ADR-015 | ADM, KOR ataması olmadan tüm operasyonlarda KOR'un operasyon yönetimi izinlerine sahiptir (K-07'nin ilgili kısmının yerine) | Kabul edildi (proje sahibi isteği, 16.11.2026) | MVP |
 | ADR-016 | Denetim kaydı aynı işlemde eşzamanlı yazılır; yalnızca ekleme; `actor_basis` | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 | ADR-017 | Gerçek zamanlı akış: tek örnek içi SSE, işlem sonrası yayın, bağlantı başına yetki | Kabul edildi (16.11.2026; proje sahibinin SSE isteği ve bağımlılık kuralı) | MVP |
+| ADR-018 | Acil alarm: ADM tam yetki, FCM'siz iletim (gelen kutusu + SSE), alıcı durumunun anlamı | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 
 ---
 
@@ -193,3 +194,14 @@
   5. Yetki düşmesi: rol kaldırılınca (`PERMISSION_REVOKED`) ve operasyon kapanınca (`OPERATION_CLOSED`) etkilenen konu `subscription.revoked` ile akıştan çıkarılır; oturum iptali (çıkış, tüm oturumları kapatma, hesap devre dışı, parola/MFA sıfırlama) `session.revoked` gönderip akışı kapatır.
 - **Sonuçlar:** (+) bağımlılıksız, testli; (+) olay iş işlemiyle tutarlı. (−) **tek örnek:** çoklu örnekte olaylar örnekler arası kanal (PostgreSQL `LISTEN/NOTIFY` veya outbox) gerektirir; (−) sunucu yeniden başlarsa arabellek boşalır, istemci `resync` alır; (−) olaylar commit eden iş parçacığında gönderilir (yavaş istemci o gönderimi bekletir; ayrı yürütücü sonraki iş).
 - **Ek olaylar (tasarımda yoktu, N-21 kapsamında):** `inbox.changed` (`user:{id}`; `change`: `CREATED`/`READ`), `announcement.sent` (`operation:{id}` veya `organization`; `announcementId`, `recipientCount`).
+
+## ADR-018 Acil alarm: ADM tam yetki, FCM'siz iletim (gelen kutusu + SSE), alıcı durumunun anlamı
+
+- **Bağlam:** ADR-015 alarm izinlerini ADM'ye vermemişti (K-15'le birlikte ayrı karar). Proje sahibi 16.11.2026'da ADM'nin KOR'un tüm alarm izinlerine sahip olmasını ve iletimin şimdilik gelen kutusu + SSE ile yapılmasını kararlaştırdı; FCM sonra.
+- **Karar:**
+  1. `alert.send`, `alert.cancel`, `alert.close`, `alert.resend`, `alert.view` → `Grants.coordinates` (operasyonun KOR'u veya ADM); `EffectivePermissions.ADM_OPERATION` yalnızca `location.view`'ı dışarıda bırakır. Denetimde ADM'nin işlemi `actor_basis = 'ADM'`.
+  2. Gönderimde alıcılara `CRITICAL` `ALERT_SENT` gelen kutusu bildirimi yazılır (iptalde `ALERT_CANCELLED`, kapanışta `ALERT_CLOSED`); panel `operation:{id}` konusundan `alert.opened`, `alert.recipient.changed`, `alert.cancelled`, `alert.closed` alır. `alert:{id}` konusu ve 1 sn birleştirme bu aşamada yok (olaylar `alertId` taşır).
+  3. **Alıcı durumu:** FCM olmadığı için alıcı satırı `SENT` doğar ve `sent_at` = gelen kutusuna yazılma anıdır. `DELIVERED` (uygulama yoklamada aldı) ve `SEEN` (alarm ekranı açıldı) Android'den gelir. FCM eklenince satırlar `QUEUED` doğup teslim işçisiyle ilerleyecek; API sözleşmesi değişmez.
+  4. Hatırlatma zamanlayıcısı (30 sn, 2 dk × 5) çalışır ama yalnızca sayacı ve `UNANSWERED` geçişini yürütür; yeniden iletim FCM ile gelecek. Yeniden gönderim (AL-10) aynı bildirimin gelen kutusu kaydını yeniden okunmamış yapar.
+  5. Operasyon kapanışı aynı işlemde `OperationClosed` olayıyla açık alarmları `CLOSED` (`OPERATION_CLOSED`) yapar (TD-06).
+- **Sonuçlar:** (+) alarm uçtan uca kullanılabilir ve denetlenir; (−) telefon kilitliyken/uygulama kapalıyken alarm **ulaşmaz** — FCM olmadan acil alarm saha kullanımı için yeterli değildir; (−) AL-02 (taslak düzenleme) yok, taslak silinip yeniden oluşturulur.

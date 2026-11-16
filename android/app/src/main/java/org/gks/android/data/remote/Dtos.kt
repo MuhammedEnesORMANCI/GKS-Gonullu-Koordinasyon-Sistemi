@@ -504,3 +504,36 @@ data class AnnouncementView(
 	val recipientCount: Int = 0,
 	val delivery: AnnouncementDelivery? = null,
 )
+
+// ---------------------------------------------------------------- acil alarm (§11.3, alıcı görünümü)
+
+/** AL-07/08 alıcının gördüğü alarm; sayılar ve diğer alıcılar yoktur. */
+@Serializable
+data class MyAlertView(
+	val id: String,
+	val operationId: String,
+	val operationName: String? = null,
+	val state: String,
+	val message: String,
+	val requestedAction: String? = null,
+	val priority: String,
+	val responseOptions: List<String> = emptyList(),
+	val sentAt: String? = null,
+	val recipient: MyAlertRecipient,
+)
+
+/** `id` AL-13 – AL-15 yol parametresidir. */
+@Serializable
+data class MyAlertRecipient(
+	val id: String,
+	val state: String,
+	val responseOption: String? = null,
+	val respondedAt: String? = null,
+)
+
+@Serializable
+data class AlertSignalRequest(val at: String? = null)
+
+/** Serbest metin yok (AC-22.5). */
+@Serializable
+data class AlertResponseRequest(val option: String, val respondedAtDevice: String)

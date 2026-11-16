@@ -1,5 +1,12 @@
 import type {
   ActorBasis,
+  AlertDraftRequest,
+  AlertPreview,
+  AlertRecipientView,
+  AlertResendResult,
+  AlertState,
+  AlertSummary,
+  AlertView,
   AuditEntryView,
   AnnouncementCreateRequest,
   AnnouncementPreview,
@@ -156,6 +163,27 @@ export interface AuditFilter extends PageRequest {
   operationId?: Uuid;
 }
 
+export interface AlertFilter {
+  /** Verilmezse AL-16 (koordine edilen tüm operasyonlar; ADM: kurum). */
+  operationId?: Uuid;
+  states?: AlertState[];
+}
+
+/** Acil alarm AL-01, AL-03 – AL-12, AL-16 (yönetim; KOR ve ADM, ADR-018). Alıcı uçları Android'dedir. */
+export interface AlertService {
+  list(filter?: AlertFilter): Promise<Page<AlertSummary>>;
+  get(alertId: Uuid): Promise<AlertView>;
+  create(operationId: Uuid, request: AlertDraftRequest): Promise<AlertPreview>;
+  preview(alertId: Uuid): Promise<AlertPreview>;
+  /** AL-05 (Z). `409 AUDIENCE_CHANGED` → `error.details.preview`. */
+  send(alertId: Uuid, version: number, audienceHash: string, idempotencyKey: string): Promise<AlertView>;
+  deleteDraft(alertId: Uuid): Promise<void>;
+  cancel(alertId: Uuid, reason: string | undefined, idempotencyKey: string): Promise<AlertView>;
+  close(alertId: Uuid): Promise<AlertView>;
+  resend(alertId: Uuid, recipientIds: Uuid[], idempotencyKey: string): Promise<AlertResendResult>;
+  recipients(alertId: Uuid): Promise<Page<AlertRecipientView>>;
+}
+
 /** AU-01 `GET /audit-entries` (salt-okur; `audit.view`: ADM, UYM). Güncelleme/silme yoktur (K-26). */
 export interface AuditService {
   list(filter?: AuditFilter): Promise<Page<AuditEntryView>>;
@@ -254,6 +282,10 @@ export type LiveEventType =
   | 'inbox.changed'
   | 'announcement.sent'
   | 'operation.state.changed'
+  | 'alert.opened'
+  | 'alert.recipient.changed'
+  | 'alert.cancelled'
+  | 'alert.closed'
   | 'subscription.revoked'
   | 'session.revoked'
   | 'resync';
@@ -287,5 +319,6 @@ export interface Services {
   roleAssignments: RoleAssignmentService;
   users: UserAdminService;
   audit: AuditService;
+  alerts: AlertService;
   realtime: RealtimeService;
 }

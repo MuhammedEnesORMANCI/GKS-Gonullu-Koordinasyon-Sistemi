@@ -48,4 +48,14 @@ class JdbcGroupMembers implements GroupMembers {
 		return result;
 	}
 
+	@Override
+	public Map<UUID, String> names(Collection<UUID> groupIds) {
+		Map<UUID, String> names = new LinkedHashMap<>();
+		if (!groupIds.isEmpty()) {
+			jdbc.sql("select id, name from groups.groups where id in (:ids)").param("ids", groupIds)
+				.query((rs, row) -> names.put(rs.getObject("id", UUID.class), rs.getString("name"))).list();
+		}
+		return names;
+	}
+
 }

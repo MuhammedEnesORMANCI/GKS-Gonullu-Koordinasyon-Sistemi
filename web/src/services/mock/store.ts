@@ -1,5 +1,7 @@
 import { ApiError } from '../../api/problem';
 import type {
+  AlertRecipientView,
+  AlertView,
   AssignmentView,
   GroupView,
   InvitationView,
@@ -40,6 +42,32 @@ export interface MockParticipant {
   joinedAt: string;
 }
 
+export interface MockAlert {
+  view: AlertView;
+  targets: { userIds: Uuid[]; groupIds: Uuid[] };
+  recipients: AlertRecipientView[];
+}
+
+function seedAlerts(users: Map<Uuid, UserSummary>): Map<Uuid, MockAlert> {
+  const at = new Date(Date.now() - 4 * 60_000).toISOString();
+  const name = (n: number) => users.get(MOCK_IDS.volunteer(n))?.displayName ?? `Gönüllü ${n}`;
+  const row = (n: number, state: AlertRecipientView['state'], option: AlertRecipientView['responseOption']): AlertRecipientView => ({
+    id: id('7100', n), user: { id: MOCK_IDS.volunteer(n), displayName: name(n) }, group: null, state, reminderCount: state === 'SENT' ? 2 : 0,
+    responseOption: option, sentAt: at, deliveredAt: null, seenAt: state === 'SENT' ? null : at,
+    respondedAt: option ? at : null, respondedAtDevice: option ? at : null, failureReason: null,
+  });
+  const recipients = [row(1, 'RESPONDED', 'NEED_HELP'), row(2, 'RESPONDED', 'ON_MY_WAY'), row(3, 'SENT', null)];
+  const alertId = id('7000', 1);
+  const view: AlertView = {
+    id: alertId, operationId: MOCK_IDS.op1, operationName: 'Deprem Arama Kurtarma — Merkez', state: 'OPEN', version: 1,
+    message: 'Artçı sarsıntı: B blok çevresini boşaltın', requestedAction: 'Toplanma alanına geçip yanıt verin', priority: 'CRITICAL',
+    responseOptions: ['RECEIVED', 'NEED_HELP', 'ON_MY_WAY'], createdBy: { id: MOCK_IDS.kor, displayName: 'Koordinatör (örnek)' },
+    createdAt: at, sentBy: { id: MOCK_IDS.kor, displayName: 'Koordinatör (örnek)' }, sentAt: at, recipientCount: 3,
+    counts: { total: 3, responded: 2, pending: 1, unanswered: 0, failed: 0, needHelp: 1 }, deliveryDelayed: false,
+  };
+  return new Map([[alertId, { view, targets: { userIds: recipients.map((r) => r.user.id), groupIds: [] }, recipients }]]);
+}
+
 export interface MockState {
   persona: MockPersona;
   loggedIn: boolean;
@@ -60,6 +88,8 @@ export interface MockState {
   /** TOTP kurulu kullanıcılar (ID-25 taklidi). */
   mfaEnrolled: Set<Uuid>;
   idempotency: Map<string, unknown>;
+  /** Acil alarmlar (örnek): alarm + alıcı satırları. */
+  alerts: Map<Uuid, MockAlert>;
   seq: number;
 }
 
@@ -291,6 +321,7 @@ function seed(): MockState {
     ],
     mfaEnrolled: new Set([MOCK_IDS.adm, MOCK_IDS.kor]),
     idempotency: new Map(),
+    alerts: seedAlerts(users),
     seq: 100,
   };
 }

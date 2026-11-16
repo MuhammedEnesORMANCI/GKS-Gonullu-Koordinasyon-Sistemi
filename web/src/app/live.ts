@@ -60,6 +60,13 @@ export function useLiveUpdates(): void {
         case 'operation.state.changed':
           void queryClient.invalidateQueries({ queryKey: Q.operationsRoot() });
           break;
+        case 'alert.opened':
+        case 'alert.recipient.changed':
+        case 'alert.cancelled':
+        case 'alert.closed':
+          // WEB-09/10 canlı: alarm, sayılar ve alıcı tablosu yeniden çekilir.
+          void queryClient.invalidateQueries({ queryKey: Q.alertsRoot() });
+          break;
         case 'subscription.revoked':
           // İzinler değişti: bağlam yenilenir, konular yeniden hesaplanır ve akış yeniden açılır.
           void queryClient.invalidateQueries({ queryKey: Q.meContext() });
@@ -68,6 +75,7 @@ export function useLiveUpdates(): void {
           sessionEvents.endSession('AUTH_SESSION_REVOKED');
           break;
         case 'resync':
+          void queryClient.invalidateQueries({ queryKey: Q.alertsRoot() });
           void queryClient.invalidateQueries({ queryKey: Q.inboxRoot() });
           void queryClient.invalidateQueries({ queryKey: Q.announcementsRoot() });
           break;

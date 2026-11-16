@@ -490,4 +490,18 @@
 	<string name="announcement_error_forbidden">Seçilen kişi veya grup bu operasyona ait değil (ya da grup arşivlenmiş) veya bu operasyonda duyuru yetkiniz yok.</string>
 	<string name="announcement_error_confirmation">50\'den fazla alıcıya gönderim için onay kutusunu işaretleyin.</string>
 	<string name="announcement_error_empty">Seçilen hedeflerde duyuruyu alacak kimse yok.</string>
+	<!-- Acil alarm (AND-03/04, ADR-018) -->
+	<string name="title_alert">Acil alarm</string>
+	<string name="alert_title">ACİL ALARM · %1$s</string>
+	<string name="alert_requested_action">İstenen: %1$s</string>
+	<string name="alert_band_open">ACİL ALARM: %1$s — yanıt verin</string>
+	<string name="alert_band_answered">Açık alarm: %1$s (yanıtınız iletildi)</string>
+	<string name="alert_response_received">Aldım</string>
+	<string name="alert_response_need_help">Yardım gerekiyor</string>
+	<string name="alert_response_on_my_way">Yoldayım</string>
+	<string name="alert_my_response">Yanıtınız: %1$s. Alarm açıkken değiştirebilirsiniz.</string>
+	<string name="alert_response_sent">Yanıtınız iletildi.</string>
+	<string name="alert_not_open">Bu alarm kapatıldı veya iptal edildi; yanıt kabul edilmedi.</string>
+	<string name="alert_cancelled">Bu alarm iptal edildi.</string>
+	<string name="alert_closed">Bu alarm kapatıldı.</string>
 </resources>

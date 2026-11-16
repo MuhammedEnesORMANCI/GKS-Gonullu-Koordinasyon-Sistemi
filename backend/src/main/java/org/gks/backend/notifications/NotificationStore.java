@@ -120,6 +120,14 @@ class NotificationStore {
 			.param("id", deliveryId).param("userId", userId).param("now", Timestamp.from(now)).update() == 1;
 	}
 
+	/** AL-10: yeniden gönderimde gelen kutusu kaydı yeniden okunmamış olur. */
+	void markUnread(UUID notificationId, Collection<UUID> userIds) {
+		jdbc.sql("""
+				update notifications.deliveries set read_at = null
+				 where notification_id = :id and channel = 'IN_APP' and user_id in (:users)""")
+			.param("id", notificationId).param("users", userIds).update();
+	}
+
 	/** {@code ix_deliveries_unread}. */
 	int unreadCount(UUID userId) {
 		return jdbc.sql("""

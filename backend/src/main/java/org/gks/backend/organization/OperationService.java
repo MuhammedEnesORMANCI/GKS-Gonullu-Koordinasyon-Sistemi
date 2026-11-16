@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.gks.backend.RealtimeBus;
 import org.gks.backend.access.ActingBasis;
 import org.gks.backend.AuditTrail;
@@ -53,11 +54,14 @@ class OperationService {
 	private final Clock clock;
 	private final AuditTrail audit;
 	private final RealtimeBus realtime;
+	private final ApplicationEventPublisher events;
 	private final ActingBasis acting;
 
 	OperationService(OperationRepository operations, OperationAccess access, RoleAssignments roles, UserDirectory users,
 			ParticipantDetails.Groups groups, ParticipantDetails.Assignments assignments, Idempotency idempotency,
-			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting, RealtimeBus realtime) {
+			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting, RealtimeBus realtime,
+			ApplicationEventPublisher events) {
+		this.events = events;
 		this.realtime = realtime;
 		this.audit = audit;
 		this.acting = acting;
@@ -201,7 +205,10 @@ class OperationService {
 				closing ? subject.userId() : null) == 0) {
 			throw ApiException.invalidStateTransition(load(id).state(), target);   // eşzamanlı geçiş kazandı
 		}
-		// Kapanış zinciri (§7.3, OperationStateChanged → outbox) tüketen modüllerle birlikte eklenecek.
+		// Kapanış zinciri (§7.3): tüketiciler aynı işlemde (OperationClosed); diğerleri tüketen modüllerle eklenecek.
+		if (closing) {
+			events.publishEvent(new OperationClosed(id, subject.userId(), now));
+		}
 		audit.record(subject.userId(), acting.operation(subject, id), subject.client(), "OPERATION_STATE_CHANGED", "OPERATION",
 				id, id, Map.of("from", current.name(), "to", target.name()));
 		realtime.publish(RealtimeBus.operationTopic(id), "operation.state.changed", id, Map.of("state", target.name()));

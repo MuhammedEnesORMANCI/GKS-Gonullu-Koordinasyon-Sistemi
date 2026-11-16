@@ -1,4 +1,5 @@
 import type {
+  AlertFilter,
   AssignmentFilter,
   AuditFilter,
   InvitationFilter,
@@ -36,4 +37,8 @@ export const Q = {
   users: (f: UserFilter = {}) => ['users', 'list', f] as const,
   user: (id: string) => ['users', id] as const,
   audit: (f: AuditFilter = {}) => ['audit', f] as const,
+  alertsRoot: () => ['alerts'] as const,
+  alerts: (f: AlertFilter = {}) => ['alerts', 'list', f] as const,
+  alert: (id: string) => ['alerts', id] as const,
+  alertRecipients: (id: string) => ['alerts', id, 'recipients'] as const,
 };

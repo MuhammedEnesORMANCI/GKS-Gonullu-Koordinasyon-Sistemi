@@ -32,8 +32,8 @@ record Grants(List<Grant> grants) {
 	 * operasyonda KOR'un operasyon kapsamlı tüm yönetim izinlerine sahiptir. Operasyon kapsamlı yönetim kararları
 	 * yalnızca bu yöntemden (ve {@link #coordinator}) türer; kural tek yerde tutulur.
 	 * <p>
-	 * <b>Kapsam dışı:</b> konum ({@code location.view}, K-15) ve acil alarm izinleri ADR-015'e dahil değildir; o
-	 * modüller yazılırken bu yöntem değil {@code has(Role.KOR, operationId)} kullanılmalı ya da yeni karar alınmalıdır
+	 * Acil alarm izinleri de bu yöntemden türer (ADR-018: ADM, KOR'un tüm alarm izinlerine sahiptir).
+	 * <b>Kapsam dışı:</b> konum ({@code location.view}, K-15); o karar konum modülünde verilir
 	 * ({@link EffectivePermissions#ADM_OPERATION}).
 	 */
 	boolean coordinates(UUID operationId) {

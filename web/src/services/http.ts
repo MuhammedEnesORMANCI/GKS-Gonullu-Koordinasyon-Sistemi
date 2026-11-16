@@ -1,6 +1,7 @@
 import { API_BASE, type ApiClient } from '../api/client';
 import type {
   AccountService,
+  AlertService,
   AnnouncementService,
   AuditService,
   AuthService,
@@ -17,6 +18,11 @@ import type {
   UserAdminService,
 } from './contracts';
 import type {
+  AlertPreview,
+  AlertRecipientView,
+  AlertResendResult,
+  AlertSummary,
+  AlertView,
   AnnouncementPreview,
   AnnouncementView,
   AuditEntryView,
@@ -173,6 +179,27 @@ export function httpAuditService(api: ApiClient): AuditService {
   };
 }
 
+export function httpAlertService(api: ApiClient): AlertService {
+  return {
+    list: (filter = {}) =>
+      api.get<Page<AlertSummary>>(filter.operationId ? `/operations/${p(filter.operationId)}/alerts` : '/alerts', {
+        query: { state: filter.states },
+      }),
+    get: (id) => api.get<AlertView>(`/alerts/${p(id)}`),
+    create: (operationId, request) => api.post<AlertPreview>(`/operations/${p(operationId)}/alerts`, request),
+    preview: (id) => api.get<AlertPreview>(`/alerts/${p(id)}/preview`),
+    send: (id, version, audienceHash, idempotencyKey) =>
+      api.post<AlertView>(`/alerts/${p(id)}/send`, { version, audienceHash }, { idempotencyKey }),
+    deleteDraft: (id) => api.delete(`/alerts/${p(id)}`),
+    cancel: (id, reason, idempotencyKey) =>
+      api.post<AlertView>(`/alerts/${p(id)}/cancel`, reason ? { reason } : {}, { idempotencyKey }),
+    close: (id) => api.post<AlertView>(`/alerts/${p(id)}/close`),
+    resend: (id, recipientIds, idempotencyKey) =>
+      api.post<AlertResendResult>(`/alerts/${p(id)}/resend`, { recipientIds }, { idempotencyKey }),
+    recipients: (id) => api.get<Page<AlertRecipientView>>(`/alerts/${p(id)}/recipients`),
+  };
+}
+
 export function httpMeContextService(api: ApiClient): MeContextService {
   return { getContext: () => api.get<MeContext>('/me/context') };
 }
@@ -294,6 +321,10 @@ const LIVE_EVENTS = [
   'inbox.changed',
   'announcement.sent',
   'operation.state.changed',
+  'alert.opened',
+  'alert.recipient.changed',
+  'alert.cancelled',
+  'alert.closed',
   'subscription.revoked',
   'session.revoked',
   'resync',

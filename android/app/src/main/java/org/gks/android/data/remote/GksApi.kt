@@ -306,6 +306,36 @@ interface GksApi {
 	/** NT-06 (`body` dahil). */
 	@GET("api/v1/announcements/{id}")
 	suspend fun announcement(@Path("id") id: String): Response<AnnouncementView>
+
+	// ------------------------------------------------------------ acil alarm (alıcı)
+
+	/** AL-08: alıcısı olunan alarmlar (varsayılan `OPEN`); `state` virgüllü. */
+	@GET("api/v1/me/alerts")
+	suspend fun myAlerts(
+		@Query("state") state: String?,
+		@Query("cursor") cursor: String?,
+		@Query("limit") limit: Int = PAGE_LIMIT,
+	): Response<Page<MyAlertView>>
+
+	/** AL-07: alıcıya `MyAlertView` döner (sayılar ve diğer alıcılar yok). */
+	@GET("api/v1/alerts/{id}")
+	suspend fun myAlert(@Path("id") id: String): Response<MyAlertView>
+
+	/** AL-13: uygulama alarmı aldı; yalnızca ileri geçiş, etkisiz tekrar `204`. */
+	@POST("api/v1/alert-recipients/{id}/delivered")
+	suspend fun alertDelivered(@Path("id") recipientId: String, @Body request: AlertSignalRequest): Response<Unit>
+
+	/** AL-14: alarm ekranı açıldı. */
+	@POST("api/v1/alert-recipients/{id}/seen")
+	suspend fun alertSeen(@Path("id") recipientId: String, @Body request: AlertSignalRequest): Response<Unit>
+
+	/** AL-15 (Idempotency-Key zorunlu): yanıt veya yanıt değişikliği (TD-07). */
+	@POST("api/v1/alert-recipients/{id}/responses")
+	suspend fun respondToAlert(
+		@Path("id") recipientId: String,
+		@Header(IDEMPOTENCY_HEADER) key: String,
+		@Body request: AlertResponseRequest,
+	): Response<MyAlertView>
 }
 
 /** Yalnızca yenileme; kimlik doğrulayıcı (Authenticator) içinde eşzamanlı çağrılır, kendisi yenileme tetiklemez. */

@@ -81,6 +81,9 @@ export function AppShell() {
     (ctxPerms.organization.includes('invitation.create') ||
       Object.values(ctxPerms.operations).some((list) => list.includes('invitation.create')));
 
+  // ADR-018: KOR kendi operasyonlarında, ADM tüm operasyonlarda.
+  const canAlert = !!ctxPerms && Object.values(ctxPerms.operations).some((list) => list.includes('alert.view'));
+
   const canAnnounce =
     !!ctxPerms &&
     (ctxPerms.organization.includes('announcement.send.organization') ||
@@ -113,6 +116,7 @@ export function AppShell() {
     { label: 'Davetler', to: '/davetler', show: canInvite },
     { label: 'Bildirimler', to: '/bildirimler', show: true },
     { label: 'Duyurular', to: '/duyurular', show: canAnnounce },
+    { label: 'Acil alarmlar', to: '/alarmlar', show: canAlert },
     { label: 'Roller', to: '/roller', show: perms.can('role.assign') },
     { label: 'Kullanıcılar', to: '/kullanicilar', show: perms.can('user.status.view') },
     { label: 'Denetim kayıtları', to: '/denetim', show: perms.can('audit.view') },
@@ -123,6 +127,7 @@ export function AppShell() {
         { label: 'Operasyon detayı', to: `/operasyonlar/${opId}`, show: canOperations },
         { label: 'Gruplar', to: `/operasyonlar/${opId}/gruplar`, show: perms.isKorOf(opId) || perms.isAdm },
         { label: 'Görevler', to: `/operasyonlar/${opId}/gorevler`, show: perms.isKorOf(opId) || perms.isAdm },
+        { label: 'Acil alarmlar', to: `/operasyonlar/${opId}/alarmlar`, show: perms.can('alert.view', opId) },
         { label: 'Operasyon davetleri', to: `/davetler?kapsam=${opId}`, show: perms.can('invitation.create', opId) },
       ]
     : [];

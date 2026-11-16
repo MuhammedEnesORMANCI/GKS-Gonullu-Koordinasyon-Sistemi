@@ -5,6 +5,7 @@ import type { Services } from './contracts';
 import {
   httpAccountService,
   httpAnnouncementService,
+  httpAlertService,
   httpAuditService,
   httpRealtimeService,
   httpAuthService,
@@ -22,6 +23,7 @@ import {
 import {
   mockAccountService,
   mockAnnouncementService,
+  mockAlertService,
   mockAuditService,
   mockRealtimeService,
   mockAuthService,
@@ -56,6 +58,7 @@ export function createServices(config: ServiceConfig, api: ApiClient = apiClient
     roleAssignments: pick('roleAssignments', () => httpRoleAssignmentService(api), mockRoleAssignmentService),
     users: pick('users', () => httpUserAdminService(api), mockUserAdminService),
     audit: pick('audit', () => httpAuditService(api), mockAuditService),
+    alerts: pick('alerts', () => httpAlertService(api), mockAlertService),
     realtime: pick('realtime', () => httpRealtimeService(), mockRealtimeService),
   };
 }

@@ -23,6 +23,7 @@ import { ProfilePage } from '../features/account/ProfilePage';
 import { AnnouncementsPage } from '../features/notifications/AnnouncementsPage';
 import { RoleAssignmentsPage } from '../features/roles/RoleAssignmentsPage';
 import { UsersPage } from '../features/users/UsersPage';
+import { AlertDetailPage, AlertListPage, OpenAlertsPage } from '../features/alerts/AlertPages';
 import { AuditPage } from '../features/audit/AuditPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { TaskDetailPage } from '../features/tasks/TaskDetailPage';
@@ -95,6 +96,9 @@ export function AppRoutes() {
         <Route path="roller" element={<RoleAssignmentsPage />} />
         <Route path="kullanicilar" element={<UsersPage />} />
         <Route path="denetim" element={<AuditPage />} />
+        <Route path="alarmlar" element={<OpenAlertsPage />} />
+        <Route path="alarmlar/:alertId" element={<AlertDetailPage />} />
+        <Route path="operasyonlar/:opId/alarmlar" element={<AlertListPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

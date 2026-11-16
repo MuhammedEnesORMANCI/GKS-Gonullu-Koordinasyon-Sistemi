@@ -448,3 +448,100 @@ export interface AssignmentView {
 export interface AssignmentAddRequest {
   userId: Uuid;
 }
+
+// ---- Acil alarm (§11.3, ADR-018) ----
+export type AlertState = 'DRAFT' | 'SENT' | 'OPEN' | 'CANCELLED' | 'CLOSED';
+export type AlertPriority = 'CRITICAL' | 'HIGH';
+export type AlertRecipientState = 'QUEUED' | 'SENT' | 'DELIVERED' | 'SEEN' | 'RESPONDED' | 'UNANSWERED' | 'FAILED';
+export type AlertResponseOption = 'RECEIVED' | 'NEED_HELP' | 'ON_MY_WAY';
+
+export interface AlertCounts {
+  total: number;
+  responded: number;
+  pending: number;
+  unanswered: number;
+  failed: number;
+  needHelp: number;
+}
+
+export interface AlertDraftRequest {
+  message: string;
+  requestedAction?: string;
+  priority?: AlertPriority;
+  targets: { userIds: Uuid[]; groupIds: Uuid[] };
+  correctsAlertId?: Uuid;
+}
+
+export interface AlertPreview {
+  alertId: Uuid;
+  operationId: Uuid;
+  operationName: string;
+  version: number;
+  audienceHash: string;
+  recipientCount: number;
+  recipients: (UserRef & { groups: GroupRef[] })[];
+  message?: string;
+  requestedAction?: string;
+  priority?: AlertPriority;
+  correctsAlertId?: Uuid;
+}
+
+export interface AlertView {
+  id: Uuid;
+  operationId: Uuid;
+  operationName?: string;
+  state: AlertState;
+  version: number;
+  message: string;
+  requestedAction?: string;
+  priority: AlertPriority;
+  responseOptions: AlertResponseOption[];
+  createdBy?: UserRef;
+  createdAt?: string;
+  sentBy?: UserRef;
+  sentAt?: string;
+  recipientCount?: number;
+  counts: AlertCounts;
+  deliveryDelayed: boolean;
+  cancelledBy?: UserRef;
+  cancelledAt?: string;
+  closedBy?: UserRef;
+  closedAt?: string;
+  closeReason?: 'MANUAL' | 'OPERATION_CLOSED';
+  correctsAlertId?: Uuid;
+  correctedByAlertId?: Uuid;
+}
+
+export interface AlertSummary {
+  id: Uuid;
+  operationId: Uuid;
+  operationName?: string;
+  state: AlertState;
+  message: string;
+  priority: AlertPriority;
+  createdAt?: string;
+  sentAt?: string;
+  counts: AlertCounts;
+}
+
+/** `null` = bilinmiyor / olmadı (AC-24.2). */
+export interface AlertRecipientView {
+  id: Uuid;
+  user: UserRef;
+  group: GroupRef | null;
+  state: AlertRecipientState;
+  reminderCount: number;
+  responseOption: AlertResponseOption | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  seenAt: string | null;
+  respondedAt: string | null;
+  respondedAtDevice: string | null;
+  failureReason: string | null;
+}
+
+export interface AlertResendResult {
+  alert: AlertView;
+  requeuedCount: number;
+  skippedCount: number;
+}

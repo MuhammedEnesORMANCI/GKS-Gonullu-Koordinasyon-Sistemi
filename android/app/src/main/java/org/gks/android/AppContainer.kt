@@ -6,6 +6,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import org.gks.android.data.AlertRepository
 import org.gks.android.data.AnnouncementRepository
 import org.gks.android.data.ApiCaller
 import org.gks.android.data.AuthRepository
@@ -40,6 +41,7 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val invitationRepository by lazy { InvitationRepository(api, installationId::get, caller) }
 	val volunteerRepository by lazy { VolunteerRepository(api, caller) }
 	val notificationRepository by lazy { NotificationRepository(api, caller) }
+	val alertRepository by lazy { AlertRepository(api, caller) }
 	val managementRepository by lazy { ManagementRepository(api, caller) }
 	val taskManagementRepository by lazy { TaskManagementRepository(api, caller) }
 	val announcementRepository by lazy { AnnouncementRepository(api, caller) }

@@ -50,7 +50,14 @@ public final class ApiProblems {
 		CAPACITY_BELOW_ACCEPTED(409, "capacity-below-accepted", "Kapasite mevcut kabul sayısının altına indirilemez"),
 		ASSIGNMENT_NOT_PENDING(409, "assignment-not-pending", "Atama yanıt bekleme durumunda değil"),
 		VERSION_CONFLICT(409, "version-conflict", "Kayıt sürümü uyuşmuyor"),
+		/** AL-05: önizlemeden sonra hedef kitle değişti; yeni önizleme {@code preview} uzantısında (TD-05, AC-20.8). */
+		AUDIENCE_CHANGED(409, "audience-changed", "Hedef kitle önizlemeden sonra değişti"),
+		ALERT_NOT_OPEN(409, "alert-not-open", "Alarm açık değil"),
+		/** LC-03: paylaşım durdurulmuş; cihaz ön plan servisini kapatır (TD-18). */
+		LOCATION_SHARING_STOPPED(409, "location-sharing-stopped", "Konum paylaşımı durduruldu"),
 		INVITATION_INVALID(410, "invitation-invalid", "Davet geçersiz veya süresi dolmuş"),
+		/** VS-02: alarm alıcı üst sınırı (500). */
+		AUDIENCE_TOO_LARGE(422, "audience-too-large", "Hedef kitle üst sınırı aşıyor"),
 		IDEMPOTENCY_KEY_MISMATCH(422, "idempotency-key-mismatch", "Aynı idempotency anahtarı farklı bir istekle kullanıldı"),
 		ACCOUNT_LOCKED(423, "account-locked", "Hesap geçici olarak kilitlendi"),
 		/** Altyapı (veritabanı) geçici olarak erişilemez; oturum sona ermiş sayılmaz (LD-48). */

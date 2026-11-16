@@ -1,6 +1,7 @@
 package org.gks.android.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -92,6 +93,10 @@ import org.gks.android.ui.management.TaskFormScreen
 import org.gks.android.ui.management.TaskFormViewModel
 import org.gks.android.ui.management.VolunteersScreen
 import org.gks.android.ui.management.VolunteersViewModel
+import org.gks.android.ui.alerts.AlertDetailScreen
+import org.gks.android.ui.alerts.AlertDetailViewModel
+import org.gks.android.ui.alerts.OpenAlertsBand
+import org.gks.android.ui.alerts.OpenAlertsViewModel
 import org.gks.android.ui.notifications.InboxScreen
 import org.gks.android.ui.notifications.InboxViewModel
 import org.gks.android.ui.notifications.NotificationDetailScreen
@@ -146,6 +151,8 @@ private object Routes {
 	fun managedOperation(id: String) = "management/operation/$id"
 	fun editOperation(id: String) = "management/operation/$id/edit"
 	fun notification(id: String) = "notification/$id"
+	const val ALERT = "alert/{id}"
+	fun alert(id: String) = "alert/$id"
 	fun task(id: String) = "task/$id"
 	fun operation(id: String) = "operation/$id"
 	fun group(id: String) = "group/$id"
@@ -158,6 +165,7 @@ private object Routes {
 		PROFILE -> R.string.profile_edit
 		PASSWORD -> R.string.password_change
 		NOTIFICATION -> R.string.title_notification
+		ALERT -> R.string.title_alert
 		MANAGED_OPERATION -> R.string.title_operation
 		EDIT_OPERATION -> R.string.operation_edit
 		NEW_OPERATION -> R.string.operation_create
@@ -218,6 +226,18 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 		}
 	}
 
+	// Açık alarmlar (AL-08): FCM yokken ön plandayken yoklanır (ADR-018).
+	val alertsVm = containerViewModel { OpenAlertsViewModel(it.alertRepository) }
+	val openAlerts by alertsVm.alerts.collectAsStateWithLifecycle()
+	LaunchedEffect(lifecycle) {
+		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+			while (true) {
+				alertsVm.refresh()
+				delay(OpenAlertsViewModel.POLL_MILLIS)
+			}
+		}
+	}
+
 	Scaffold(
 		topBar = {
 			TopAppBar(
@@ -231,7 +251,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				},
 				actions = {
 					if (topLevel) {
-						IconButton(onClick = { app.refreshContext(); unreadVm.refresh(); refreshTick++ }) {
+						IconButton(onClick = { app.refreshContext(); unreadVm.refresh(); alertsVm.refresh(); refreshTick++ }) {
 							Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh))
 						}
 					}
@@ -240,7 +260,10 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 		},
 		bottomBar = { if (topLevel) BottomBar(nav, route, unread, tabs) },
 	) { padding ->
-		NavHost(nav, startDestination = Tab.HOME.route, modifier = Modifier.padding(padding)) {
+		Column(Modifier.padding(padding)) {
+		// AND-03: açık alarm bandı her ekranın üstünde (alarm ekranının kendisinde gösterilmez).
+		if (route != Routes.ALERT) OpenAlertsBand(openAlerts) { nav.navigate(Routes.alert(it)) }
+		NavHost(nav, startDestination = Tab.HOME.route, modifier = Modifier.weight(1f)) {
 			composable(Tab.HOME.route) {
 				val vm = containerViewModel { HomeViewModel(it.volunteerRepository, it.invitationRepository) }
 				RefreshOn(refreshTick, vm::load)
@@ -437,6 +460,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 							"TASK" -> ({ nav.navigate(Routes.task(link.id)) })
 							"GROUP" -> ({ nav.navigate(Routes.group(link.id)) })
 							"OPERATION" -> ({ nav.navigate(Routes.operation(link.id)) })
+							"ALERT" -> ({ nav.navigate(Routes.alert(link.id)) })
 							// Operasyon daveti Ana sayfadaki "Bekleyen davetler" kartından yanıtlanır.
 							"INVITATION" -> ({
 								app.refreshContext()
@@ -481,6 +505,14 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 					onOpenGroup = { nav.navigate(Routes.group(it)) },
 				)
 			}
+			composable(Routes.ALERT) { backStack ->
+				val id = backStack.arguments?.getString("id").orEmpty()
+				AlertDetailScreen(
+					containerViewModel(key = "alert-$id") { AlertDetailViewModel(it.alertRepository, id) },
+					onResponded = alertsVm::refresh,
+				)
+			}
+		}
 		}
 	}
 }

@@ -180,6 +180,11 @@ export function OperationDetailPage() {
               <Button component={RouterLink} to={`/operasyonlar/${opId}/gorevler`}>
                 Görevler
               </Button>
+              {perms.can('alert.view', opId) && (
+                <Button component={RouterLink} to={`/operasyonlar/${opId}/alarmlar`} color="error">
+                  Acil alarmlar
+                </Button>
+              )}
             </Stack>
 
             {(canManage || perms.isAdm) && (

@@ -59,6 +59,19 @@ class JdbcNotifier implements Notifier {
 		return Optional.of(id);
 	}
 
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void resurface(UUID notificationId, java.util.Collection<UUID> users) {
+		if (users.isEmpty()) {
+			return;
+		}
+		store.markUnread(notificationId, users);
+		for (UUID user : users) {
+			realtime.publish(RealtimeBus.userTopic(user), "inbox.changed", null,
+					Map.of("change", "CREATED", "notificationId", notificationId));
+		}
+	}
+
 	/** ADR-004: {@code CRITICAL} ayrılmış kuyruk; diğerleri ortak kuyruk. */
 	static String queueClass(Priority priority) {
 		return priority == Priority.CRITICAL ? "CRITICAL" : "STANDARD";
