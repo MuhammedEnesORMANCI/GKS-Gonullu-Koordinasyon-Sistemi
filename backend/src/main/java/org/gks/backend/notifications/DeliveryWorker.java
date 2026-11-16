@@ -99,22 +99,23 @@ class DeliveryWorker {
 			case TRANSIENT_FAILURE -> {
 				if (delivery.sendTries() >= MAX_TRIES) {
 					// İş kaydı (alarm, duyuru) etkilenmez: gelen kutusu ve SSE teslimi sürer (ADR-022).
-					store.markFailed(delivery.id(), result.errorCode(), now);
-					log.warn("Push teslimi {} denemeden sonra başarısız: {}", MAX_TRIES, result.errorCode());
+					store.markFailed(delivery.id(), result.describe(), now);
+					log.warn("Push teslimi {} denemeden sonra başarısız: {}", MAX_TRIES, result.describe());
 				}
 				else {
-					store.retryAt(delivery.id(), result.errorCode(), now.plus(BACKOFF_BASE.multipliedBy(1L << delivery.sendTries())));
+					store.retryAt(delivery.id(), result.describe(), now.plus(BACKOFF_BASE.multipliedBy(1L << delivery.sendTries())));
+					log.warn("Push teslimi geçici hata, yeniden denenecek ({}. deneme): {}", delivery.sendTries(), result.describe());
 				}
 			}
 			case INVALID_TOKEN -> {
-				store.markFailed(delivery.id(), result.errorCode(), now);
+				store.markFailed(delivery.id(), result.describe(), now);
 				// ADR-022: FCM'nin geçersiz dediği belirteç otomatik pasifleşir; o cihaza bir daha gönderilmez.
 				devices.deactivate(delivery.deviceId(), "UNREGISTERED".equals(result.errorCode()) ? "FCM_UNREGISTERED" : "FCM_INVALID_TOKEN");
-				log.info("Push belirteci geçersiz ({}); cihaz pasifleştirildi", result.errorCode());
+				log.info("Push belirteci geçersiz ({}); cihaz pasifleştirildi", result.describe());
 			}
 			case REJECTED -> {
-				store.markFailed(delivery.id(), result.errorCode(), now);
-				log.warn("Push teslimi reddedildi: {}", result.errorCode());
+				store.markFailed(delivery.id(), result.describe(), now);
+				log.warn("Push teslimi reddedildi: {}", result.describe());
 			}
 		}
 	}

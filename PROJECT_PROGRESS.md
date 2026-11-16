@@ -70,7 +70,7 @@
 |---|---|
 | Backend access | 37/37 |
 | Backend identity | 131/131 |
-| Backend notifications | 28/28 |
+| Backend notifications | 34/34 |
 | Backend organization | 54/54 |
 | Backend tasks | 115/115 |
 | Backend groups | 62/62 |
@@ -79,7 +79,7 @@
 | Backend alerts | 6/6 |
 | Backend location | 4/4 |
 | Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **494/494** (FCM açılış düzeltmesi s34 dahil) |
+| **Backend toplam** | **500/500** (FCM düzeltmeleri dahil, s36) |
 | Web | tsc + eslint temiz, vitest **133/133** |
 | Android | **88/88**, `assembleDebug` başarılı (Firebase ile) |
 

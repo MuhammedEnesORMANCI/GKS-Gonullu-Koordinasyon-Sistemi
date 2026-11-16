@@ -16,7 +16,7 @@ class FcmPushGatewayTests {
 		assertThat(FcmPushGateway.classify("UNAVAILABLE").outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
 		assertThat(FcmPushGateway.classify("QUOTA_EXCEEDED").outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
 		assertThat(FcmPushGateway.classify("THIRD_PARTY_AUTH_ERROR").outcome()).isEqualTo(PushGateway.Outcome.REJECTED);
-		assertThat(FcmPushGateway.classify(null).outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
+		assertThat(FcmPushGateway.classify((String) null).outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
 	}
 
 	@Test

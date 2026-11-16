@@ -33,24 +33,34 @@ public interface PushGateway {
 	/**
 	 * @param outcome    gönderim sonucu
 	 * @param messageId  sağlayıcının ileti kimliği ({@code SENT})
-	 * @param errorCode  sağlayıcı hata kodu (ör. {@code UNREGISTERED}, {@code UNAVAILABLE})
+	 * @param errorCode  sağlayıcı hata kodu (ör. {@code UNREGISTERED}, {@code UNAVAILABLE}, {@code FCM_UNAUTHENTICATED})
+	 * @param httpStatus sağlayıcının HTTP durum kodu (yanıt alınamadıysa {@code null})
 	 */
-	record Result(Outcome outcome, String messageId, String errorCode) {
+	record Result(Outcome outcome, String messageId, String errorCode, Integer httpStatus) {
 		public static Result sent(String messageId) {
-			return new Result(Outcome.SENT, messageId, null);
+			return new Result(Outcome.SENT, messageId, null, null);
 		}
 
 		public static Result transientFailure(String errorCode) {
-			return new Result(Outcome.TRANSIENT_FAILURE, null, errorCode);
+			return new Result(Outcome.TRANSIENT_FAILURE, null, errorCode, null);
 		}
 
 		/** {@code errorCode}: {@code UNREGISTERED} (uygulama kaldırıldı / belirteç düştü) veya {@code INVALID_ARGUMENT}. */
 		public static Result invalidToken(String errorCode) {
-			return new Result(Outcome.INVALID_TOKEN, null, errorCode);
+			return new Result(Outcome.INVALID_TOKEN, null, errorCode, null);
 		}
 
 		public static Result rejected(String errorCode) {
-			return new Result(Outcome.REJECTED, null, errorCode);
+			return new Result(Outcome.REJECTED, null, errorCode, null);
+		}
+
+		Result withHttpStatus(Integer status) {
+			return new Result(outcome, messageId, errorCode, status);
+		}
+
+		/** Teslim satırına ve günlüğe yazılan özet, ör. {@code UNREGISTERED (HTTP 404)}; belirteç/anahtar içermez. */
+		String describe() {
+			return httpStatus == null ? errorCode : errorCode + " (HTTP " + httpStatus + ")";
 		}
 	}
 

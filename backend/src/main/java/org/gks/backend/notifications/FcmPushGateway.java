@@ -9,9 +9,13 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.ErrorCode;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.IncomingHttpResponse;
 import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
@@ -57,16 +61,32 @@ class FcmPushGateway implements PushGateway {
 			throw new IllegalStateException("Firebase hizmet hesabı anahtar dosyası okunamıyor (yol: GKS_FIREBASE_CREDENTIALS_FILE)");
 		}
 		try (InputStream in = new FileInputStream(file.toFile())) {
-			FirebaseOptions options = FirebaseOptions.builder().setCredentials(GoogleCredentials.fromStream(in)).build();
-			FirebaseApp app = FirebaseApp.getApps().stream().filter(a -> a.getName().equals("gks")).findFirst()
-				.orElseGet(() -> FirebaseApp.initializeApp(options, "gks"));
-			FirebaseMessaging messaging = FirebaseMessaging.getInstance(app);
+			FcmPushGateway gateway = create(GoogleCredentials.fromStream(in), null, new NetHttpTransport(), "gks");
 			log.info("FCM push etkin");
-			return new FcmPushGateway(messaging::send);
+			return gateway;
 		}
 		catch (IOException ex) {
 			throw new IllegalStateException("Firebase hizmet hesabı anahtarı yüklenemedi (" + ex.getClass().getSimpleName() + ")");
 		}
+	}
+
+	/**
+	 * Taşıyıcı açıkça {@link NetHttpTransport} (JDK HttpURLConnection): firebase-admin 9.4.3'ün varsayılanı
+	 * {@code ApacheHttp2Transport}, httpclient5 5.3 için yazılmış; Spring Boot sürüm yönetimi httpclient5'i 5.6'ya
+	 * yükseltiyor ve bu sürüm sıkıştırılmış yanıtı kendisi açıp {@code Content-Encoding: gzip} başlığını bırakıyor,
+	 * google-http-client gövdeyi ikinci kez açmaya çalışıp {@code ZipException: Not in GZIP format} veriyor
+	 * (16.11.2026; gerçek HTTP durumu kayboluyordu). Testte sahte FCM sunucusuna yönlendirilmiş taşıyıcı verilir.
+	 */
+	static FcmPushGateway create(GoogleCredentials credentials, String projectId, HttpTransport transport, String appName) {
+		FirebaseOptions.Builder options = FirebaseOptions.builder().setCredentials(credentials).setHttpTransport(transport);
+		if (projectId != null) {
+			options.setProjectId(projectId);
+		}
+		FirebaseOptions built = options.build();
+		FirebaseApp app = FirebaseApp.getApps().stream().filter(a -> a.getName().equals(appName)).findFirst()
+			.orElseGet(() -> FirebaseApp.initializeApp(built, appName));
+		FirebaseMessaging messaging = FirebaseMessaging.getInstance(app);
+		return new FcmPushGateway(messaging::send);
 	}
 
 	@Override
@@ -80,19 +100,36 @@ class FcmPushGateway implements PushGateway {
 			return Result.sent(sender.send(toFcm(message)));
 		}
 		catch (FirebaseMessagingException ex) {
-			MessagingErrorCode code = ex.getMessagingErrorCode();
-			return classify(code == null ? null : code.name());
+			Result result = classify(ex);
+			if (result.httpStatus() == null && ex.getCause() != null) {
+				// Yanıt alınamadı (ağ, TLS, gövde çözme): yalnızca hata sınıfı yazılır, ileti değil.
+				log.warn("FCM yanıtı alınamadı: {}", ex.getCause().getClass().getName());
+			}
+			return result;
 		}
 	}
 
+	/**
+	 * Önce FCM'ye özgü kod ({@link MessagingErrorCode}), yoksa genel Firebase kodu ({@code FCM_} önekiyle, ör.
+	 * {@code FCM_UNAUTHENTICATED}, {@code FCM_PERMISSION_DENIED}); HTTP durumu varsa eklenir.
+	 */
+	static Result classify(FirebaseMessagingException ex) {
+		MessagingErrorCode messaging = ex.getMessagingErrorCode();
+		ErrorCode general = ex.getErrorCode();
+		IncomingHttpResponse response = ex.getHttpResponse();
+		String code = messaging != null ? messaging.name() : general == null ? null : "FCM_" + general.name();
+		return classify(code).withHttpStatus(response == null ? null : response.getStatusCode());
+	}
+
 	static Result classify(String code) {
-		if (code == null) {
+		if (code == null || code.equals("FCM_UNKNOWN")) {
 			return Result.transientFailure("FCM_UNKNOWN");
 		}
 		return switch (code) {
 			case "UNREGISTERED", "INVALID_ARGUMENT", "SENDER_ID_MISMATCH" -> Result.invalidToken(code);
-			case "UNAVAILABLE", "INTERNAL", "QUOTA_EXCEEDED" -> Result.transientFailure(code);
-			default -> Result.rejected(code);
+			case "UNAVAILABLE", "INTERNAL", "QUOTA_EXCEEDED", "FCM_UNAVAILABLE", "FCM_INTERNAL", "FCM_DEADLINE_EXCEEDED",
+					"FCM_RESOURCE_EXHAUSTED" -> Result.transientFailure(code);
+			default -> Result.rejected(code);   // ör. FCM_UNAUTHENTICATED, FCM_PERMISSION_DENIED: yapılandırma sorunu
 		};
 	}
 
