@@ -141,8 +141,8 @@ class GroupCreateViewModel(private val repository: ManagementRepository, private
 		_state.update { it.copy(participants = Load.Loading) }
 		viewModelScope.launch {
 			_state.update {
-				when (val result = repository.participants(operationId)) {
-					is ApiResult.Success -> it.copy(participants = Load.Ready(result.value.sortedBy { p -> p.user.displayName.lowercase() }))
+				when (val result = repository.participantCandidates(operationId)) {
+					is ApiResult.Success -> it.copy(participants = Load.Ready(result.value))
 					is ApiResult.Failure -> it.copy(participants = Load.Failed(result.error.toUiText(GROUP_ERRORS)))
 				}
 			}
@@ -261,7 +261,7 @@ class ManagedGroupViewModel(
 	fun loadCandidates(operationId: String) {
 		_candidates.value = Load.Loading
 		viewModelScope.launch {
-			_candidates.value = when (val result = management.participants(operationId, notInGroup = groupId)) {
+			_candidates.value = when (val result = management.participantCandidates(operationId, notInGroup = groupId)) {
 				is ApiResult.Success -> Load.Ready(result.value)
 				is ApiResult.Failure -> Load.Failed(result.error.toUiText(GROUP_ERRORS))
 			}

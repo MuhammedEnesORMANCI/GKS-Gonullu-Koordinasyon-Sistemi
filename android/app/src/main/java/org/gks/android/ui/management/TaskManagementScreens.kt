@@ -197,7 +197,7 @@ class TaskFormViewModel(
 			}
 			val editableTargets = original == null || original.state == "DRAFT"
 			val groups = if (editableTargets) (management.groups(operationId) as? ApiResult.Success)?.value.orEmpty() else emptyList()
-			val people = if (editableTargets) (management.participants(operationId) as? ApiResult.Success)?.value.orEmpty() else emptyList()
+			val people = if (editableTargets) (management.participantCandidates(operationId) as? ApiResult.Success)?.value.orEmpty() else emptyList()
 			_state.value = TaskFormState(
 				loading = false,
 				original = original,
@@ -397,7 +397,7 @@ class ManagedTaskViewModel(
 	fun loadCandidates(active: Set<String>) {
 		_candidates.value = Load.Loading
 		viewModelScope.launch {
-			_candidates.value = when (val result = management.participants(operationId)) {
+			_candidates.value = when (val result = management.participantCandidates(operationId)) {
 				is ApiResult.Success -> Load.Ready(result.value.filter { it.user.id !in active }.sortedBy { it.user.displayName.lowercase() })
 				is ApiResult.Failure -> Load.Failed(result.error.toUiText(TASK_ERRORS))
 			}

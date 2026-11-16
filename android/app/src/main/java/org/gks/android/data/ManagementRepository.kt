@@ -124,6 +124,18 @@ class ManagementRepository(
 	suspend fun participants(operationId: String, notInGroup: String? = null): ApiResult<List<Participant>> =
 		caller.allPages { cursor -> api.participants(operationId, cursor, notInGroup = notInGroup) }
 
+	/**
+	 * Lider/üye/görev hedefi seçicileri: tüm sayfalar, yalnızca aktif hesaplar (RAPOR_7 madde 1). Devre dışı
+	 * hesap katılımcı kaydı dursa da sunucuda reddedilir; seçicide gösterilmez. Sıra: ada göre.
+	 */
+	suspend fun participantCandidates(operationId: String, notInGroup: String? = null): ApiResult<List<Participant>> =
+		when (val result = participants(operationId, notInGroup)) {
+			is ApiResult.Success -> ApiResult.Success(result.value
+				.filter { it.user.status == null || it.user.status == "ACTIVE" }
+				.sortedBy { it.user.displayName.lowercase() })
+			is ApiResult.Failure -> result
+		}
+
 	// ---------------------------------------------------------------- gruplar (GR-01 – GR-07)
 
 	suspend fun groups(operationId: String): ApiResult<List<GroupSummary>> =

@@ -90,8 +90,8 @@ class GroupService {
 		if (total > MEMBER_LIMIT) {
 			throw ApiException.groupFull(total, MEMBER_LIMIT);
 		}
-		requireParticipant(operation.id(), input.leaderUserId());
-		input.memberUserIds().forEach(member -> requireParticipant(operation.id(), member));
+		requireParticipant(operation.id(), input.leaderUserId(), "leaderUserId");
+		input.memberUserIds().forEach(member -> requireParticipant(operation.id(), member, "memberUserIds"));
 
 		UUID groupId = Ids.newId();
 		Instant now = clock.instant();
@@ -156,7 +156,7 @@ class GroupService {
 		if (store.activeRole(groupId, userId).isPresent()) {
 			throw ApiException.alreadyExists("ALREADY_MEMBER");
 		}
-		requireParticipant(group.operationId(), userId);
+		requireParticipant(group.operationId(), userId, "userId");
 		int count = store.activeMemberCount(groupId);
 		if (count >= MEMBER_LIMIT) {
 			throw ApiException.groupFull(count, MEMBER_LIMIT);
@@ -197,7 +197,7 @@ class GroupService {
 			return view(group, subject.userId(), null);
 		}
 		if (targetRole.isEmpty()) {
-			requireParticipant(group.operationId(), userId);
+			requireParticipant(group.operationId(), userId, "userId");
 			int count = store.activeMemberCount(groupId);
 			if (count >= MEMBER_LIMIT) {
 				throw ApiException.groupFull(count, MEMBER_LIMIT);
@@ -297,9 +297,16 @@ class GroupService {
 		}
 	}
 
-	private void requireParticipant(UUID operationId, UUID userId) {
+	/**
+	 * AC-09.7: lider/üye operasyon katılımcısı olmalı. Devre dışı hesap katılımcı kaydı dursa bile gruba alınamaz
+	 * (RAPOR_7 madde 1: seçicide görünen pasif hesap grup oluşturmayı bozuyordu).
+	 */
+	private void requireParticipant(UUID operationId, UUID userId, String field) {
 		if (!participation.isParticipant(operationId, userId)) {
 			throw ApiException.of(Code.NOT_A_PARTICIPANT);   // AC-09.7
+		}
+		if (!users.activeAmong(Set.of(userId)).contains(userId)) {
+			throw ApiException.validation(List.of(new FieldError(field, "NOT_ALLOWED_VALUE", "Hesap devre dışı; gruba eklenemez")));
 		}
 	}
 

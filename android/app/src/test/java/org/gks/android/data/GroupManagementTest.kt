@@ -41,6 +41,22 @@ class GroupManagementTest {
 	}
 
 	@Test
+	fun participantCandidatesReadAllPagesAndDropDisabledAccounts() = runBlocking {
+		backend.handler = { request ->
+			if (request.path!!.contains("cursor=c2")) MockResponse().json(200,
+				"""{"items":[{"user":{"id":"u3","displayName":"Zeynep","status":"ACTIVE"}},{"user":{"id":"u4","displayName":"Gökhan","status":"DISABLED"}}]}""")
+			else MockResponse().json(200,
+				"""{"items":[{"user":{"id":"u2","displayName":"mehmet","status":"ACTIVE"}},{"user":{"id":"u1","displayName":"Ayşe"}}],"nextCursor":"c2"}""")
+		}
+
+		val candidates = (repository.participantCandidates("o1", notInGroup = "g1") as ApiResult.Success).value
+
+		assertEquals(listOf("u1", "u2", "u3"), candidates.map { it.user.id })
+		assertEquals(2, backend.requests.size)
+		assertTrue(backend.requests.all { it.path!!.contains("notInGroup=g1") })
+	}
+
+	@Test
 	fun membershipLeaderRenameAndListCalls() = runBlocking {
 		backend.handler = { request ->
 			when {

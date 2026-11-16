@@ -16,6 +16,9 @@ export const Q = {
   operationsRoot: () => ['operations'] as const,
   operations: (f: OperationListFilter = {}) => ['operations', 'list', f] as const,
   operation: (id: string) => ['operations', id] as const,
+  /** Seçiciler için tüm sayfalar, yalnızca aktif hesaplar; `participants(id)` önekinin altında (aynı geçersizleştirme). */
+  participantCandidates: (id: string, notInGroup?: string) =>
+    ['operations', id, 'participants', 'candidates', notInGroup ?? null] as const,
   participants: (id: string, notInGroup?: string) =>
     notInGroup ? (['operations', id, 'participants', { notInGroup }] as const) : (['operations', id, 'participants'] as const),
   groups: (opId: string) => ['operations', opId, 'groups'] as const,

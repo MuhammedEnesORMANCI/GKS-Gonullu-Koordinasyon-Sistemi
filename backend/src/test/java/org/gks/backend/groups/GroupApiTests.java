@@ -171,6 +171,23 @@ class GroupApiTests {
 			assertThat(groupCount()).isZero();
 		}
 
+		/** RAPOR_7 madde 1: katılımcı kaydı duran devre dışı hesap lider/üye/yeni üye olamaz. */
+		@Test
+		void disabledAccountsCannotBeLeaderOrMember() throws Exception {
+			UUID disabled = user("Pasif");
+			jdbc.sql("update identity.users set status = 'DISABLED' where id = ?").param(disabled).update();
+
+			expectProblem(create(operationId, "Grup A", disabled), 400, "VALIDATION_FAILED")
+				.andExpect(jsonPath("$.errors[0].field").value("leaderUserId"));
+			expectProblem(create(operationId, "Grup B", user("Lider"), disabled), 400, "VALIDATION_FAILED")
+				.andExpect(jsonPath("$.errors[0].field").value("memberUserIds"));
+			assertThat(groupCount()).isZero();
+
+			UUID groupId = groupWith(user("Lider 2"));
+			expectProblem(addMember(groupId, disabled, coordinatorToken), 400, "VALIDATION_FAILED")
+				.andExpect(jsonPath("$.errors[0].field").value("userId"));
+		}
+
 		@Test
 		void moreThanFiftyMembersIsGroupFull() throws Exception {
 			UUID[] members = IntStream.range(0, 50).mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);

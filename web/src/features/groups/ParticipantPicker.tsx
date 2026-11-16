@@ -4,14 +4,37 @@ import { useQuery } from '@tanstack/react-query';
 import { messageFor } from '../../api/errorMessages';
 import { Q } from '../../app/queryKeys';
 import { useServices } from '../../services/registry';
-import type { ParticipantView, Uuid } from '../../services/types';
+import type { Page, ParticipantView, Uuid } from '../../services/types';
+
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
+
+type ParticipantLister = { list: (operationId: Uuid, p: { notInGroup?: Uuid; limit?: number; cursor?: string }) => Promise<Page<ParticipantView>> };
+
+/**
+ * Seçici adayları: tüm sayfalar okunur ve yalnızca aktif hesaplar döner (RAPOR_7 madde 1). Önceden tek sayfa
+ * okunuyor ve sorgu anahtarı katılımcı listesiyle (varsayılan 50'lik ilk sayfa) paylaşılıyordu; ilk dolduran
+ * ekran hangisiyse seçici onun sayfasını görüyordu. Devre dışı hesaplar sunucuda da reddedilir.
+ */
+export async function loadParticipantCandidates(service: ParticipantLister, operationId: Uuid, notInGroup?: Uuid) {
+  const items: ParticipantView[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const page = await service.list(operationId, { notInGroup, limit: PAGE_SIZE, cursor });
+    items.push(...page.items.filter((p) => p.user.status === undefined || p.user.status === 'ACTIVE'));
+    if (!page.nextCursor) break;
+    cursor = page.nextCursor;
+  }
+  const result: Page<ParticipantView> = { items };
+  return result;
+}
 
 /** OR-06 tabanlı kişi seçici: yalnızca operasyon katılımcıları listelenir (AC-09.7). */
 export function useParticipants(operationId: Uuid, notInGroup?: Uuid, enabled = true) {
   const services = useServices();
   return useQuery({
-    queryKey: Q.participants(operationId, notInGroup),
-    queryFn: () => services.participants.list(operationId, { notInGroup, limit: 100 }),
+    queryKey: Q.participantCandidates(operationId, notInGroup),
+    queryFn: () => loadParticipantCandidates(services.participants, operationId, notInGroup),
     enabled: enabled && !!operationId,
   });
 }
@@ -55,7 +78,7 @@ export function ParticipantSelect({
       getOptionLabel={label}
       isOptionEqualToValue={(a, b) => a.user.id === b.user.id}
       onChange={(_, v) => onChange(v ? v.user.id : null)}
-      noOptionsText="Uygun katılımcı yok"
+      noOptionsText="Uygun katılımcı yok — önce operasyona katılımcı ekleyin"
       renderInput={(params) => (
         <TextField
           {...params}
@@ -99,7 +122,7 @@ export function ParticipantMultiSelect({
       isOptionEqualToValue={(a, b) => a.user.id === b.user.id}
       getOptionDisabled={(o) => max !== undefined && value.length >= max && !value.includes(o.user.id)}
       onChange={(_, v) => onChange(v.map((p) => p.user.id))}
-      noOptionsText="Uygun katılımcı yok"
+      noOptionsText="Uygun katılımcı yok — önce operasyona katılımcı ekleyin"
       renderInput={(params) => (
         <TextField
           {...params}
