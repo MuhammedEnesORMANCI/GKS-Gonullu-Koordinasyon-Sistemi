@@ -46,6 +46,38 @@ describe('Genel Acil Alarm (ADR-026)', () => {
     expect(within(confirm).getByText('6')).toBeInTheDocument();
   });
 
+  it('kişi seçicisi sunucuda arar: ADM hiçbir operasyonda olmayan hesabı bulur, KOR bulamaz (RAPOR_7 madde 3)', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderApp({ route: '/panel', persona: 'ADM' });
+    await user.click(await screen.findByRole('button', { name: 'Genel Acil Alarm' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Genel Acil Alarm' });
+    await user.type(within(dialog).getByRole('combobox', { name: 'Kişiler' }), 'Teknik');
+    await user.click(await screen.findByRole('option', { name: 'Teknik (örnek)' }));
+    await user.type(within(dialog).getByRole('textbox', { name: 'Mesaj' }), 'Tatbikat');
+    await user.click(within(dialog).getByRole('button', { name: 'Önizle' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Genel acil alarmı onaylayın' });
+    expect(within(confirm).getByText('Teknik (örnek)')).toBeInTheDocument();
+    unmount();
+
+    renderApp({ route: '/panel', persona: 'KOR' });
+    await user.click(await screen.findByRole('button', { name: 'Genel Acil Alarm' }));
+    dialog = await screen.findByRole('dialog', { name: 'Genel Acil Alarm' });
+    await user.type(within(dialog).getByRole('combobox', { name: 'Kişiler' }), 'Teknik');
+    expect(await screen.findByText('Eşleşen kişi yok')).toBeInTheDocument();
+  });
+
+  it('kişi adayları sayfalanır ve aranır (örnek veri, sunucu sözleşmesiyle aynı)', async () => {
+    mockStore.persona = 'ADM';
+    const service = mockAlertService();
+    const first = await service.generalCandidates('', { limit: 2 });
+    expect(first.items).toHaveLength(2);
+    expect(first.nextCursor).toBeDefined();
+    const second = await service.generalCandidates('', { limit: 2, cursor: first.nextCursor });
+    expect(second.items.map((c) => c.id)).not.toEqual(first.items.map((c) => c.id));
+    expect((await service.generalCandidates('teknik')).items.map((c) => c.id)).toEqual([MOCK_IDS.tek]);
+    expect((await service.generalCandidates('')).items.some((c) => c.id === MOCK_IDS.adm)).toBe(false);   // gönderen yok
+  });
+
   it('TEK üst çubukta genel alarm düğmesini görmez', async () => {
     renderApp({ route: '/panel', persona: 'TEK' });
     await screen.findByRole('button', { name: 'Kullanıcı menüsü' });

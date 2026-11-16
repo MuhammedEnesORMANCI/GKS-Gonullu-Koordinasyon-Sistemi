@@ -75,6 +75,11 @@ final class AlertViews {
 	record Page<T>(List<T> items, String nextCursor) {
 	}
 
+	/** Genel alarm kişi seçicisi adayı (RAPOR_7 madde 3); yalnızca seçim için gereken alanlar. */
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	record GeneralCandidate(UUID id, String displayName, String fullName) {
+	}
+
 	record ResendResult(AlertView alert, int requeuedCount, int skippedCount) {
 	}
 

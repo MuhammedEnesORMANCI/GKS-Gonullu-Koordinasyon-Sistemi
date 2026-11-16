@@ -516,6 +516,13 @@ export interface GeneralAlertTargets {
   userCount: number;
 }
 
+/** RAPOR_7 madde 3: `GET /general-alerts/candidates` kişi adayı (sunucu tarafı arama + sayfalama). */
+export interface GeneralAlertCandidate {
+  id: Uuid;
+  displayName: string;
+  fullName?: string;
+}
+
 /** ADR-026 `POST /general-alerts`: hedefler birleştirilebilir; kurum geneli yalnızca ADM. */
 export interface GeneralAlertDraftRequest {
   message: string;

@@ -635,6 +635,13 @@
 	<string name="general_alert_organization">Tüm kurum (tüm etkin hesaplar)</string>
 	<string name="general_alert_no_operations">Seçilebilecek aktif operasyon yok.</string>
 	<string name="general_alert_web_hint">Grup ve kişi seçimi web panelinde de yapılabilir.</string>
+	<string name="general_alert_people">Kişiler</string>
+	<string name="general_alert_people_search">Kişi ara (ad veya e-posta)</string>
+	<string name="general_alert_people_hint_adm">Kurumdaki tüm etkin hesaplar. Siz alıcı olmazsınız.</string>
+	<string name="general_alert_people_hint_kor">Koordine ettiğiniz operasyonların katılımcı ve koordinatörleri. Siz alıcı olmazsınız.</string>
+	<string name="general_alert_people_selected">Seçilen %1$d kişi: %2$s</string>
+	<string name="general_alert_people_none">Eşleşen kişi yok.</string>
+	<string name="load_more_people">Daha fazla kişi</string>
 	<string name="general_alert_preview">Önizle</string>
 	<string name="general_alert_recipient_count">Tekilleştirilmiş alıcı sayısı: %1$d</string>
 	<string name="general_alert_confirm">Mesajı ve %1$d alıcıyı kontrol ettim; genel acil alarmı göndermek istiyorum.</string>

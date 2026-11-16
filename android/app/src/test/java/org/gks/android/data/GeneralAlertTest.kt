@@ -28,6 +28,26 @@ class GeneralAlertTest {
 		"recipients":[{"id":"u1","displayName":"Ayşe"},{"id":"u2","displayName":"Burak"}],"message":"Tatbikat","scope":"GENERAL"}"""
 	private val view = """{"id":"a1","scope":"GENERAL","state":"OPEN","message":"Tatbikat","counts":{"total":2,"pending":2}}"""
 
+	/** RAPOR_7 madde 3: kişi seçicisi sunucuda arar ve sayfalar; boş arama `q` göndermez. */
+	@Test
+	fun personCandidatesAreSearchedAndPagedOnTheServer() = runBlocking {
+		val backend = FakeBackend()
+		try {
+			val sessions = SessionManager(MemoryStore(StoredSession("access", "refresh", SESSION_ID, "2026-11-16T12:00:00Z")))
+			val repo = AlertManagementRepository(backend.api(sessions), ApiCaller(GksJson))
+			backend.handler = { MockResponse().json(200, """{"items":[{"id":"u1","displayName":"Ayşe","fullName":"Ayşe Yılmaz"}],"nextCursor":"c2"}""") }
+			val first = (repo.generalCandidates("  ") as ApiResult.Success).value
+			assertEquals("/api/v1/general-alerts/candidates?limit=100", backend.requests.last().path)
+			assertEquals("Ayşe Yılmaz", first.items.single().fullName)
+			assertEquals("c2", first.nextCursor)
+			repo.generalCandidates(" Ayşe ", cursor = "c2")
+			assertEquals("/api/v1/general-alerts/candidates?q=Ay%C5%9Fe&cursor=c2&limit=100", backend.requests.last().path)
+		}
+		finally {
+			backend.shutdown()
+		}
+	}
+
 	@Test
 	fun createAndSendCarryTargetsAndConfirmationWithIdempotencyKey() = runBlocking {
 		val backend = FakeBackend()

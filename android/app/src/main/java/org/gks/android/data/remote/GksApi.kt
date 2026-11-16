@@ -382,6 +382,14 @@ interface GksApi {
 
 	// ------------------------------------------------------------ acil alarm (yönetim: ADM/KOR, ADR-026)
 
+	/** RAPOR_7 madde 3: genel alarm kişi seçicisi (ADM kurumdaki tüm aktif hesaplar, KOR kendi operasyonları). */
+	@GET("api/v1/general-alerts/candidates")
+	suspend fun generalAlertCandidates(
+		@Query("q") query: String?,
+		@Query("cursor") cursor: String?,
+		@Query("limit") limit: Int = PAGE_LIMIT,
+	): Response<Page<PersonCandidate>>
+
 	/** ADR-026 Genel Acil Alarm taslağı + tekilleştirilmiş önizleme. */
 	@POST("api/v1/general-alerts")
 	suspend fun createGeneralAlert(@Body request: GeneralAlertDraftRequest): Response<AlertPreviewView>

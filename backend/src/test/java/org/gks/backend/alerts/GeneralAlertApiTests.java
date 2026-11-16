@@ -216,6 +216,78 @@ class GeneralAlertApiTests {
 		return id;
 	}
 
+	/**
+	 * RAPOR_7 madde 3: kişi seçicisi sunucuda arar ve sayfalar. ADM kurumdaki tüm aktif hesapları (hiçbir operasyonda
+	 * olmayanlar dahil, 100+ kişi, ikinci sayfa) görür; KOR yalnızca koordine ettiği kapanmamış operasyonların
+	 * katılımcı ve koordinatörlerini; devre dışı hesap ve gönderen listelenmez.
+	 */
+	@Test
+	void personPickerSearchesAndPagesOnTheServer() throws Exception {
+		String tag = "Picker" + UUID.randomUUID().toString().substring(0, 8);
+		List<UUID> many = new java.util.ArrayList<>();
+		for (int i = 0; i < 120; i++) {
+			many.add(plainUser(tag + "-" + "%03d".formatted(i)));
+		}
+		UUID disabled = plainUser(tag + "-pasif");
+		jdbc.sql("update identity.users set status = 'DISABLED' where id = ?").param(disabled).update();
+
+		String at = sessions.web(admin, true);
+		String first = candidates(at, "q", tag, "limit", "100").andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(100))
+			.andExpect(jsonPath("$.items[0].displayName").value(tag + "-000"))
+			.andExpect(jsonPath("$.items[0].email").doesNotExist())
+			.andReturn().getResponse().getContentAsString();
+		String cursor = JsonPath.read(first, "$.nextCursor");
+		String second = candidates(at, "q", tag, "limit", "100", "cursor", cursor).andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(20))
+			.andExpect(jsonPath("$.nextCursor").doesNotExist())
+			.andReturn().getResponse().getContentAsString();
+		assertThat(JsonPath.<String>read(second, "$.items[19].id")).isEqualTo(many.get(119).toString());
+		assertThat(JsonPath.<List<String>>read(second, "$.items[*].id")).doesNotContain(disabled.toString());
+		candidates(at, "q", tag.toUpperCase(java.util.Locale.ROOT) + "-11").andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(10));   // -110 … -119
+		candidates(at, "q", "Yönetici").andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[*].id", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(admin.toString()))));
+
+		// KOR: kendi (aktif + planlı) operasyonlarının kişileri; başka operasyon ve kurumdaki diğerleri yok.
+		UUID planned = operation();
+		jdbc.sql("update organization.operations set state = 'PLANNED', activated_at = null where id = ?").param(planned).update();
+		role(kor, "KOR", "OPERATION", planned);
+		UUID plannedVolunteer = plainUser(tag + "-planli");
+		role(plannedVolunteer, "GON", "OPERATION", planned);
+		String kt = sessions.web(kor, true);
+		String own = candidates(kt, "limit", "100").andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		assertThat(JsonPath.<List<String>>read(own, "$.items[*].id"))
+			.contains(v1.toString(), v2.toString(), v3.toString(), plannedVolunteer.toString())
+			.doesNotContain(outsider.toString(), kor.toString(), many.get(0).toString());
+		candidates(kt, "q", tag).andExpect(jsonPath("$.items.length()").value(1));   // yalnızca planlı operasyondaki
+		draft(kt, "{\"userIds\": [\"%s\"]}".formatted(plannedVolunteer)).andExpect(status().isCreated());
+
+		// Yetkisiz: gönüllü/MFA'sız; geçersiz istek.
+		candidates(sessions.android(v1)).andExpect(status().isForbidden());
+		candidates(sessions.web(kor, false)).andExpect(status().isForbidden());
+		candidates(at, "limit", "101").andExpect(status().isBadRequest());
+		candidates(at, "q", "x".repeat(101)).andExpect(status().isBadRequest());
+	}
+
+	ResultActions candidates(String token, String... params) throws Exception {
+		var request = get("/api/v1/general-alerts/candidates").with(authenticate(token));
+		for (int i = 0; i < params.length; i += 2) {
+			request = request.param(params[i], params[i + 1]);
+		}
+		return mvc.perform(request);
+	}
+
+	/** Parola özeti hesaplamadan doğrudan hesap (çok sayıda kişi için). */
+	UUID plainUser(String displayName) {
+		UUID id = UUID.randomUUID();
+		jdbc.sql("""
+				insert into identity.users (id, email, password_hash, full_name, display_name)
+				values (?, ?, '{argon2}kullanilmaz', ?, ?)""")
+			.params(id, id + "@example.org", displayName + " Soyadı", displayName).update();
+		return id;
+	}
+
 	ResultActions draft(String token, String targets) throws Exception {
 		return draft(token, targets, null);
 	}

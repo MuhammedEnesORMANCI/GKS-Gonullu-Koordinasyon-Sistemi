@@ -19,6 +19,7 @@ import org.gks.backend.alerts.AlertViews.AlertPreview;
 import org.gks.backend.alerts.AlertViews.AlertRecipientView;
 import org.gks.backend.alerts.AlertViews.AlertSummary;
 import org.gks.backend.alerts.AlertViews.AlertView;
+import org.gks.backend.alerts.AlertViews.GeneralCandidate;
 import org.gks.backend.alerts.AlertViews.MyAlertView;
 import org.gks.backend.alerts.AlertViews.Page;
 import org.springframework.http.ResponseEntity;
@@ -94,6 +95,21 @@ class AlertController {
 	ResponseEntity<AlertPreview> createGeneral(@RequestBody GeneralDraftRequest body, Authentication authentication) {
 		AlertPreview preview = service.createGeneral(management(authentication), generalDraft(body));
 		return ResponseEntity.created(URI.create("/api/v1/alerts/" + preview.alertId())).body(preview);
+	}
+
+	/** RAPOR_7 madde 3: Genel Acil Alarm kişi seçicisi (sunucu tarafı arama + sayfalama). */
+	@GetMapping("/api/v1/general-alerts/candidates")
+	Page<GeneralCandidate> generalCandidates(@RequestParam(required = false) String q,
+			@RequestParam(required = false) String limit, @RequestParam(required = false) String cursor,
+			Authentication authentication) {
+		Subject subject = management(authentication);
+		List<FieldError> errors = new ArrayList<>();
+		if (q != null && q.strip().length() > 100) {
+			errors.add(new FieldError("q", "TOO_LONG", "Arama en fazla 100 karakter olabilir"));
+		}
+		PageCursor page = PageCursor.parse(limit, cursor, errors);
+		requireValid(errors);
+		return service.generalCandidates(subject, q, page);
 	}
 
 	/** AL-03. */

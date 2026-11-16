@@ -22,6 +22,14 @@ public interface UserDirectory {
 	/** Verilen kimliklerden durumu {@code ACTIVE} olanlar. */
 	java.util.Set<UUID> activeAmong(Collection<UUID> userIds);
 
+	/**
+	 * Aktif hesaplarda sunucu tarafı arama ve sayfalama (RAPOR_7 madde 3–4). [restrictTo] {@code null} ise kurumdaki
+	 * tüm aktif hesaplar, değilse yalnızca bu kimlikler; [query] görünen ad, ad soyad veya e-postada büyük/küçük harf
+	 * duyarsız geçer; [excluded] hariç. Sıra: görünen ad, kimlik; [after] önceki sayfanın son kaydı.
+	 */
+	java.util.List<UserSummary> searchActive(Collection<UUID> restrictTo, String query, Collection<UUID> excluded, UUID after,
+			int limit);
+
 	/** Bilinmeyen kimlikler sonuçta yer almaz. */
 	Map<UUID, UserSummary> summaries(Collection<UUID> userIds);
 

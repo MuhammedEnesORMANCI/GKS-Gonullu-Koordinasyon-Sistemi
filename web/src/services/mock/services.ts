@@ -1439,6 +1439,30 @@ export function mockAlertService(): AlertService {
       }
       return respond(previewOf(created));
     },
+    generalCandidates: async (query, page = {}) => {
+      if (!allowed()) return fail(403, 'FORBIDDEN');
+      const pool = new Set<string>();
+      if (mockStore.persona === 'ADM') {
+        mockStore.users.forEach((u) => {
+          if (!u.status || u.status === 'ACTIVE') pool.add(u.id);
+        });
+      } else {
+        mockStore.operations.forEach((op) => {
+          if (!isCoordinatorOf(op.id) || op.state === 'COMPLETED' || op.state === 'CANCELLED') return;
+          (mockStore.participants.get(op.id) ?? []).forEach((p) => pool.add(p.userId));
+          op.coordinators.forEach((c) => pool.add(c.id));
+        });
+      }
+      pool.delete(me());
+      const q = query.trim().toLocaleLowerCase('tr');
+      const all = [...pool]
+        .map((id) => ({ id, displayName: name(id) }))
+        .filter((c) => !q || c.displayName.toLocaleLowerCase('tr').includes(q))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, 'tr') || a.id.localeCompare(b.id));
+      const start = page.cursor ? Number(page.cursor) : 0;
+      const end = start + (page.limit ?? 50);
+      return respond({ items: all.slice(start, end), nextCursor: end < all.length ? String(end) : undefined });
+    },
     createGeneral: async (request) => {
       if (!allowed()) return fail(403, 'FORBIDDEN');
       const t = request.targets;

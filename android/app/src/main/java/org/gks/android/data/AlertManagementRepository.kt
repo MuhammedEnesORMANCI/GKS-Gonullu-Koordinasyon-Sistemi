@@ -7,6 +7,8 @@ import org.gks.android.data.remote.AlertSummaryView
 import org.gks.android.data.remote.GeneralAlertDraftRequest
 import org.gks.android.data.remote.GksApi
 import org.gks.android.data.remote.ManagedAlertView
+import org.gks.android.data.remote.Page
+import org.gks.android.data.remote.PersonCandidate
 
 /**
  * ADM/KOR alarm yönetimi (Android, MFA'lı yönetim oturumu; ADR-014/026): Genel Acil Alarm ve alarm takip ekranı.
@@ -17,6 +19,10 @@ class AlertManagementRepository(
 	private val caller: ApiCaller,
 	private val keys: IdempotencyKeys = IdempotencyKeys(),
 ) {
+
+	/** Sunucu tarafı arama + sayfalama; boş arama gönderilmez. */
+	suspend fun generalCandidates(query: String, cursor: String? = null): ApiResult<Page<PersonCandidate>> =
+		caller.call { api.generalAlertCandidates(query.trim().ifEmpty { null }, cursor) }
 
 	suspend fun createGeneral(request: GeneralAlertDraftRequest): ApiResult<AlertPreviewView> =
 		caller.call { api.createGeneralAlert(request) }

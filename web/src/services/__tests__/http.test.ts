@@ -25,6 +25,16 @@ const U = '0192f000-2000-7000-8000-000000000002';
 const O = '0192f000-3000-7000-8000-000000000003';
 const T = '0192f000-5000-7000-8000-000000000004';
 
+describe('http genel alarm kişi adayları (RAPOR_7 madde 3)', () => {
+  it('GET /general-alerts/candidates?q&limit&cursor; boş arama gönderilmez', async () => {
+    const { client, calls } = api(200, { items: [] });
+    await httpAlertService(client).generalCandidates(' Ayşe ', { limit: 50, cursor: 'abc' });
+    await httpAlertService(client).generalCandidates('  ');
+    expect(calls[0]!.url).toBe('/api/v1/general-alerts/candidates?q=Ay%C5%9Fe&limit=50&cursor=abc');
+    expect(calls[1]!.url).toBe('/api/v1/general-alerts/candidates');
+  });
+});
+
 describe('http AuthService (ID-01, ID-02, ID-06)', () => {
   it('login: POST /auth/login, clientType=WEB, CSRF başlığı, Idempotency-Key yok', async () => {
     const { client, calls } = api(200, { mfaRequired: false, mustChangePassword: false });

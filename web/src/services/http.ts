@@ -24,6 +24,7 @@ import type {
 } from './contracts';
 import type {
   AlertPreview,
+  GeneralAlertCandidate,
   AlertRecipientView,
   AlertResendResult,
   AlertSummary,
@@ -209,6 +210,10 @@ export function httpAlertService(
     create: (operationId, request) => api.post<AlertPreview>(`/operations/${p(operationId)}/alerts`, request),
     preview: (id) => api.get<AlertPreview>(`/alerts/${p(id)}/preview`),
     createGeneral: (request) => api.post<AlertPreview>('/general-alerts', request),
+    generalCandidates: (query, page = {}) =>
+      api.get<Page<GeneralAlertCandidate>>('/general-alerts/candidates', {
+        query: { q: query.trim() || undefined, limit: page.limit, cursor: page.cursor },
+      }),
     send: (id, version, audienceHash, idempotencyKey, confirmed) =>
       api.post<AlertView>(`/alerts/${p(id)}/send`, { version, audienceHash, ...(confirmed !== undefined ? { confirmed } : {}) }, { idempotencyKey }),
     deleteDraft: (id) => api.delete(`/alerts/${p(id)}`),

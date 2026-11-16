@@ -23,6 +23,7 @@ import { Q } from '../../app/queryKeys';
 import { usePermissions } from '../../app/session';
 import { useIntentKey } from '../../app/useIntentKey';
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { ServerPersonPicker, type PersonOption } from '../../components/ServerPersonPicker';
 import { formatLatLon } from '../../components/map/geo';
 import { useServices } from '../../services/registry';
 import type { AlertPreview, GeneralAlertDraftRequest, Uuid } from '../../services/types';
@@ -47,7 +48,8 @@ export function GeneralAlertDialog({ onClose }: { onClose: () => void }) {
   const [organization, setOrganization] = useState(false);
   const [operationIds, setOperationIds] = useState<Uuid[]>([]);
   const [groupIds, setGroupIds] = useState<Uuid[]>([]);
-  const [userIds, setUserIds] = useState<Uuid[]>([]);
+  const [people, setPeople] = useState<PersonOption[]>([]);
+  const userIds = people.map((p) => p.id);
   const [location, setLocation] = useState(EMPTY_POINT);
   const [touched, setTouched] = useState(false);
   const [preview, setPreview] = useState<AlertPreview | null>(null);
@@ -66,13 +68,7 @@ export function GeneralAlertDialog({ onClose }: { onClose: () => void }) {
   const groupQueries = useQueries({
     queries: opList.map((o) => ({ queryKey: [...Q.groups(o.id), { includeArchived: false }], queryFn: () => services.groups.list(o.id, {}) })),
   });
-  const participantQueries = useQueries({
-    queries: opList.map((o) => ({ queryKey: Q.participants(o.id), queryFn: () => services.participants.list(o.id, {}) })),
-  });
   const groupOptions = groupQueries.flatMap((q, i) => (q.data?.items ?? []).map((g) => ({ ...g, opName: opList[i]?.name ?? '' })));
-  const people = new Map<Uuid, string>();
-  participantQueries.forEach((q) => q.data?.items.forEach((p) => people.set(p.user.id, p.user.displayName)));
-  const peopleOptions = [...people.entries()].map(([id, displayName]) => ({ id, displayName }));
 
   const point = parsePoint(location);
   const draft = useMutation({
@@ -187,15 +183,18 @@ export function GeneralAlertDialog({ onClose }: { onClose: () => void }) {
               noOptionsText="Grup yok"
               renderInput={(params) => <TextField {...params} label="Gruplar" />}
             />
-            <Autocomplete
-              multiple
-              options={peopleOptions}
-              value={peopleOptions.filter((p) => userIds.includes(p.id))}
-              getOptionLabel={(p) => p.displayName}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              onChange={(_, v) => setUserIds(v.map((p) => p.id))}
-              noOptionsText="Kişi yok"
-              renderInput={(params) => <TextField {...params} label="Kişiler" helperText="Siz alıcı olmazsınız." />}
+            {/* RAPOR_7 madde 3: sunucuda arama + sayfalama; ADM kurumdaki herkes, KOR kendi operasyonlarının kişileri. */}
+            <ServerPersonPicker
+              queryKey={Q.generalAlertCandidates()}
+              fetchPage={(q, page) => services.alerts.generalCandidates(q, page)}
+              label="Kişiler"
+              value={people}
+              onChange={setPeople}
+              helperText={
+                perms.isAdm
+                  ? 'Kurumdaki tüm etkin hesaplar; ada veya e-postaya göre arayın. Siz alıcı olmazsınız.'
+                  : 'Koordine ettiğiniz operasyonların katılımcı ve koordinatörleri. Siz alıcı olmazsınız.'
+              }
             />
             <PointPicker label="Olay yeri" value={location} onChange={setLocation} />
             <ErrorAlert error={draft.error} />

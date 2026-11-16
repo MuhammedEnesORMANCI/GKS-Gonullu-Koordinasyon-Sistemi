@@ -46,6 +46,7 @@ export const Q = {
   mapOperations: (states: string[]) => ['map', 'operations', states] as const,
   mapOperation: (opId: string) => ['map', 'operation', opId] as const,
   alertsRoot: () => ['alerts'] as const,
+  generalAlertCandidates: () => ['general-alert-candidates'] as const,
   alerts: (f: AlertFilter = {}) => ['alerts', 'list', f] as const,
   alert: (id: string) => ['alerts', id] as const,
   alertRecipients: (id: string) => ['alerts', id, 'recipients'] as const,

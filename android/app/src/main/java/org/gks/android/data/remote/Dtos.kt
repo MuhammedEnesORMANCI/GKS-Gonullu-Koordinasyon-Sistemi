@@ -650,6 +650,10 @@ data class GeneralAlertTargets(
 	val userIds: List<String> = emptyList(),
 )
 
+/** RAPOR_7 madde 3–4: sunucu tarafı aranan kişi adayı (genel alarm / operasyona katılımcı ekleme). */
+@Serializable
+data class PersonCandidate(val id: String, val displayName: String, val fullName: String? = null)
+
 /** ADR-026 `POST /general-alerts`. */
 @Serializable
 data class GeneralAlertDraftRequest(

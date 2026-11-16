@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +54,7 @@ import org.gks.android.data.remote.GeneralAlertDraftRequest
 import org.gks.android.data.remote.GeneralAlertTargets
 import org.gks.android.data.remote.ManagedAlertView
 import org.gks.android.data.remote.OperationView
+import org.gks.android.data.remote.PersonCandidate
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.Load
 import org.gks.android.ui.common.LoadContent
@@ -78,6 +81,12 @@ data class GeneralAlertState(
 	val action: String = "",
 	val organization: Boolean = false,
 	val operationIds: Set<String> = emptySet(),
+	/** RAPOR_7 madde 3: kişi seçimi sunucuda aranır ve sayfalanır. */
+	val personQuery: String = "",
+	val personResults: List<PersonCandidate> = emptyList(),
+	val personCursor: String? = null,
+	val personLoading: Boolean = false,
+	val people: Map<String, PersonCandidate> = emptyMap(),
 	val lat: String = "",
 	val lon: String = "",
 	val busy: Boolean = false,
@@ -95,10 +104,51 @@ class GeneralAlertViewModel(
 	private val _state = MutableStateFlow(GeneralAlertState())
 	val state: StateFlow<GeneralAlertState> = _state.asStateFlow()
 
+	private var search: Job? = null
+
 	init {
 		viewModelScope.launch {
 			(management.operations(listOf("ACTIVE")) as? ApiResult.Success)?.let { r -> _state.update { it.copy(operations = r.value) } }
 		}
+		searchPeople("")
+	}
+
+	/** Yazdıkça (300 ms bekleyip) sunucuda arar; önceki arama iptal edilir. */
+	fun searchPeople(query: String) {
+		_state.update { it.copy(personQuery = query) }
+		search?.cancel()
+		search = viewModelScope.launch {
+			if (query.isNotBlank()) delay(SEARCH_DEBOUNCE_MILLIS)
+			_state.update { it.copy(personLoading = true) }
+			val r = alerts.generalCandidates(query)
+			_state.update {
+				when (r) {
+					is ApiResult.Success -> it.copy(personLoading = false, personResults = r.value.items, personCursor = r.value.nextCursor)
+					is ApiResult.Failure -> it.copy(personLoading = false, personResults = emptyList(), personCursor = null, error = r.error.toUiText())
+				}
+			}
+		}
+	}
+
+	/** Sonraki sayfa (aynı arama). */
+	fun morePeople() {
+		val s = _state.value
+		val cursor = s.personCursor ?: return
+		if (s.personLoading) return
+		_state.update { it.copy(personLoading = true) }
+		viewModelScope.launch {
+			val r = alerts.generalCandidates(s.personQuery, cursor)
+			_state.update {
+				when (r) {
+					is ApiResult.Success -> it.copy(personLoading = false, personResults = it.personResults + r.value.items, personCursor = r.value.nextCursor)
+					is ApiResult.Failure -> it.copy(personLoading = false, error = r.error.toUiText())
+				}
+			}
+		}
+	}
+
+	fun togglePerson(person: PersonCandidate) = edit {
+		copy(people = if (person.id in people) people - person.id else people + (person.id to person))
 	}
 
 	fun edit(transform: GeneralAlertState.() -> GeneralAlertState) = _state.update { it.transform().copy(error = null, fieldError = null) }
@@ -114,7 +164,7 @@ class GeneralAlertViewModel(
 			s.message.isBlank() -> R.string.general_alert_message_required
 			s.message.trim().length > GENERAL_ALERT_MESSAGE_MAX -> R.string.general_alert_message_too_long
 			s.action.trim().length > GENERAL_ALERT_ACTION_MAX -> R.string.general_alert_action_too_long
-			!s.organization && s.operationIds.isEmpty() -> R.string.general_alert_targets_required
+			!s.organization && s.operationIds.isEmpty() && s.people.isEmpty() -> R.string.general_alert_targets_required
 			location.isFailure -> R.string.area_err_lat
 			else -> null
 		}
@@ -127,7 +177,7 @@ class GeneralAlertViewModel(
 			val request = GeneralAlertDraftRequest(
 				message = s.message.trim(),
 				requestedAction = s.action.trim().ifEmpty { null },
-				targets = GeneralAlertTargets(organization = s.organization, operationIds = s.operationIds.toList()),
+				targets = GeneralAlertTargets(organization = s.organization, operationIds = s.operationIds.toList(), userIds = s.people.keys.toList()),
 				eventLocation = location.getOrNull(),
 			)
 			when (val r = alerts.createGeneral(request)) {
@@ -163,6 +213,8 @@ class GeneralAlertViewModel(
 	}
 
 	companion object {
+		const val SEARCH_DEBOUNCE_MILLIS = 300L
+
 		/** Boş → null; yarım/hatalı → hata. */
 		fun eventLocation(lat: String, lon: String): Result<EventLocation?> {
 			val la = parseCoordinate(lat)
@@ -207,8 +259,23 @@ fun GeneralAlertScreen(viewModel: GeneralAlertViewModel, isAdmin: Boolean, onSen
 						Text(op.name)
 					}
 				}
-				Text(stringResource(R.string.general_alert_web_hint), style = MaterialTheme.typography.bodySmall,
-					color = MaterialTheme.colorScheme.onSurfaceVariant)
+				Text(stringResource(R.string.general_alert_people), style = MaterialTheme.typography.titleSmall)
+				OutlinedTextField(s.personQuery, viewModel::searchPeople, label = { Text(stringResource(R.string.general_alert_people_search)) },
+					singleLine = true, modifier = Modifier.fillMaxWidth(), enabled = !s.busy,
+					supportingText = { Text(stringResource(if (isAdmin) R.string.general_alert_people_hint_adm else R.string.general_alert_people_hint_kor)) })
+				if (s.people.isNotEmpty()) Text(stringResource(R.string.general_alert_people_selected, s.people.size, s.people.values.joinToString { it.displayName }))
+				(s.people.values.filter { p -> s.personResults.none { it.id == p.id } } + s.personResults).forEach { p ->
+					Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+						Checkbox(p.id in s.people, { viewModel.togglePerson(p) }, enabled = !s.busy)
+						Text(if (p.fullName != null && p.fullName != p.displayName) "${p.displayName} — ${p.fullName}" else p.displayName)
+					}
+				}
+				if (!s.personLoading && s.personResults.isEmpty()) {
+					Text(stringResource(R.string.general_alert_people_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+				}
+				if (s.personCursor != null) {
+					OutlinedButton(onClick = viewModel::morePeople, enabled = !s.personLoading && !s.busy) { Text(stringResource(R.string.load_more_people)) }
+				}
 				Text(stringResource(R.string.event_location_optional), style = MaterialTheme.typography.titleMedium)
 				val loc = GeneralAlertViewModel.eventLocation(s.lat, s.lon).getOrNull()
 				GksMap(

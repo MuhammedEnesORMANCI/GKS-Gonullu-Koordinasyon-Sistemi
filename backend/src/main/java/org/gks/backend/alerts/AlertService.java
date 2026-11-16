@@ -41,6 +41,7 @@ import org.gks.backend.alerts.AlertStore.MyRow;
 import org.gks.backend.alerts.AlertStore.RecipientRow;
 import org.gks.backend.alerts.AlertStore.Targets;
 import org.gks.backend.alerts.AlertViews.EventLocation;
+import org.gks.backend.alerts.AlertViews.GeneralCandidate;
 import org.gks.backend.alerts.AlertViews.GeneralTargets;
 import org.gks.backend.alerts.AlertViews.AlertPreview;
 import org.gks.backend.alerts.AlertViews.AlertRecipientView;
@@ -658,6 +659,34 @@ class AlertService {
 		return new GeneralScope(admin, coordinated);
 	}
 
+	/**
+	 * RAPOR_7 madde 3: Genel Acil Alarm kişi seçicisi, sunucu tarafı arama ve sayfalama. ADM: kurumdaki tüm aktif
+	 * hesaplar. KOR: koordine ettiği (kapanmamış) operasyonların tüm katılımcıları ve koordinatörleri. Gönderen hariç.
+	 * Önceden web yalnızca aktif operasyonların ilk katılımcı sayfasını yüklüyor, aramayı yüklü öğelerde yapıyordu.
+	 */
+	@Transactional(readOnly = true)
+	Page<GeneralCandidate> generalCandidates(Subject subject, String query, PageCursor page) {
+		GeneralScope scope = generalScope(subject);
+		Set<UUID> restrict = scope.admin() ? null : selectablePeople(scope);
+		List<UserDirectory.UserSummary> rows = users.searchActive(restrict, query, Set.of(subject.userId()), page.after(),
+				page.limit() + 1);
+		PageCursor.Slice<UserDirectory.UserSummary> slice = page.slice(rows, UserDirectory.UserSummary::id);
+		return new Page<>(slice.items().stream().map(u -> new GeneralCandidate(u.id(), u.displayName(), u.fullName())).toList(),
+				slice.nextCursor());
+	}
+
+	/** KOR'un kişi olarak seçebilecekleri: koordine ettiği kapanmamış operasyonların katılımcıları ve koordinatörleri. */
+	private Set<UUID> selectablePeople(GeneralScope scope) {
+		Set<UUID> result = new HashSet<>();
+		for (OperationRef op : operations.all()) {
+			if (!op.state().isClosed() && scope.coordinated().contains(op.id())) {
+				result.addAll(participation.participants(op.id()));
+				result.addAll(channels.coordinators(op.id()));
+			}
+		}
+		return result;
+	}
+
 	/** Seçilebilecek (aktif) operasyonlar: ADM tümü, KOR koordine ettikleri. */
 	private Set<UUID> allowedOperations(GeneralScope scope) {
 		Set<UUID> result = new LinkedHashSet<>();
@@ -721,11 +750,7 @@ class AlertService {
 				selectable = users.activeAmong(targets.userIds());
 			}
 			else {
-				selectable = new HashSet<>();
-				for (UUID op : allowed) {
-					selectable.addAll(participation.participants(op));
-					selectable.addAll(channels.coordinators(op));
-				}
+				selectable = selectablePeople(scope);   // seçici ile aynı küme (RAPOR_7 madde 3)
 			}
 			for (UUID user : targets.userIds()) {
 				if (!selectable.contains(user)) {

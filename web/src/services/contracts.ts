@@ -62,6 +62,7 @@ import type {
   UserSummary,
   Uuid,
   MapOperationView,
+  GeneralAlertCandidate,
   GeneralAlertDraftRequest,
 } from './types';
 
@@ -185,6 +186,8 @@ export interface AlertService {
   preview(alertId: Uuid): Promise<AlertPreview>;
   /** ADR-026 Genel Acil Alarm taslağı + tekilleştirilmiş önizleme. */
   createGeneral(request: GeneralAlertDraftRequest): Promise<AlertPreview>;
+  /** Genel alarm kişi seçicisi: ADM kurumdaki tüm aktif hesaplar, KOR kendi operasyonlarının kişileri (sunucuda arama). */
+  generalCandidates(query: string, page?: PageRequest): Promise<Page<GeneralAlertCandidate>>;
   /** AL-05 (Z). `409 AUDIENCE_CHANGED` → `error.details.preview`. Genel alarmda `confirmed: true` zorunlu. */
   send(alertId: Uuid, version: number, audienceHash: string, idempotencyKey: string, confirmed?: boolean): Promise<AlertView>;
   deleteDraft(alertId: Uuid): Promise<void>;
