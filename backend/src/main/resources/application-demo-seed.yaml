@@ -1,0 +1,14 @@
+# Görev 25: demo verisi aracı (scripts/dev/demo-seed.ps1). Zamanlanmış işler (bildirim teslimi, hatırlatma,
+# temizlik) çalışmaz, FCM kapalıdır: araç yalnızca veri ekler ve birkaç saniye içinde kapanır. Web sunucusu çalışan
+# backend'le çakışmasın diye rastgele boş bir porta bağlanır (istek alınmadan kapanır).
+server:
+  port: 0
+gks:
+  scheduling:
+    enabled: false
+  notifications:
+    push:
+      provider: none
+  demo:
+    password: ${GKS_DEMO_PASSWORD:}
+    confirm-local: ${GKS_DEMO_CONFIRM_LOCAL:false}
