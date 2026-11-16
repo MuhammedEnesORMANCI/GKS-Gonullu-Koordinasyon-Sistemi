@@ -67,8 +67,8 @@ const OPERATIONAL_PERMS = [
   'announcement.send.group',
 ];
 
-/** ADR-015/018: ADM'nin her operasyondaki izinleri = KOR seti − konum (backend `EffectivePermissions.ADM_OPERATION`). */
-const ADM_OPERATIONAL_PERMS = OPERATIONAL_PERMS.filter((p) => p !== 'location.view');
+/** ADR-015/018/020: ADM'nin her operasyondaki izinleri = KOR setinin tamamı (backend `EffectivePermissions.ADM_OPERATION`). */
+const ADM_OPERATIONAL_PERMS = [...OPERATIONAL_PERMS];
 
 const PERSONA_USER: Record<MockPersona, Uuid> = {
   ADM: MOCK_IDS.adm,
@@ -1292,11 +1292,11 @@ export function mockAlertService(): AlertService {
 
 // ------------------------------------------------------------- locations (LC-05)
 
-/** Örnek son konumlar (yalnızca KOR, K-15). Gerçek konum değildir. */
+/** Örnek son konumlar (KOR ve ADM, ADR-020). Gerçek konum değildir. */
 export function mockLocationService(): LocationService {
   return {
     list: async (operationId, filter = {}) => {
-      if (mockStore.persona !== 'KOR') return fail(403, 'FORBIDDEN');
+      if (mockStore.persona !== 'KOR' && mockStore.persona !== 'ADM') return fail(403, 'FORBIDDEN');
       const now = Date.now();
       const at = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
       const name = (n: number) => mockStore.users.get(MOCK_IDS.volunteer(n))?.displayName ?? `Gönüllü ${n}`;

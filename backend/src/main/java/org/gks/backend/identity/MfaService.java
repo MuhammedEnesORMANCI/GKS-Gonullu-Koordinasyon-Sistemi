@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import java.util.Map;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -38,9 +39,12 @@ class MfaService {
 	private final WebAccess webAccess;
 	private final TransactionTemplate transactions;
 	private final Clock clock;
+	private final IdentityAudit audit;
 
 	MfaService(MfaTickets tickets, Users users, TotpSecretCipher cipher, RefreshTokens refreshTokens,
-			AccessTokens accessTokens, WebAccess webAccess, TransactionTemplate transactions, Clock clock) {
+			AccessTokens accessTokens, WebAccess webAccess, TransactionTemplate transactions, Clock clock,
+			IdentityAudit audit) {
+		this.audit = audit;
 		this.tickets = tickets;
 		this.users = users;
 		this.cipher = cipher;
@@ -82,19 +86,40 @@ class MfaService {
 		if (code == null || !code.matches("^[0-9]{6}$")) {
 			throw ApiException.validation(List.of(new FieldError("code", "INVALID_FORMAT", "Kod 6 haneli olmalıdır")));
 		}
-		Outcome outcome = transactions.execute(status -> attempt(ticket, code));
+		MfaTickets.Ticket[] known = new MfaTickets.Ticket[1];
+		Outcome outcome;
+		try {
+			outcome = transactions.execute(status -> attempt(ticket, code, known));
+		}
+		catch (ApiException ex) {
+			failed(known[0], ex);
+			throw ex;
+		}
 		if (outcome.error() != null) {
+			failed(known[0], outcome.error());
 			throw outcome.error();   // sayaçlar commit edildikten sonra
 		}
 		return outcome.result();
 	}
 
+	/**
+	 * ADR-020: TOTP adımındaki başarısızlık {@code LOGIN_FAILED} ({@code stage=MFA}). Bilet geçersizse kullanıcı ve
+	 * istemci bilinmez; tahmin edilemeyen bilete yönelik deneme kaydedilmez.
+	 */
+	private void failed(MfaTickets.Ticket ticket, ApiException ex) {
+		if (ticket != null) {
+			audit.recordFailure(ticket.userId(), ticket.client(),
+					Map.of("reason", ex.code().name(), "stage", "MFA", "accountKnown", true), ex);
+		}
+	}
+
 	private record Outcome(LoginService.Result result, ApiException error) {
 	}
 
-	private Outcome attempt(String ticket, String code) {
+	private Outcome attempt(String ticket, String code, MfaTickets.Ticket[] known) {
 		Instant now = clock.instant();
 		MfaTickets.Ticket valid = tickets.lockValid(ticket, now).orElseThrow(() -> ApiException.of(Code.AUTH_MFA_REQUIRED));
+		known[0] = valid;
 		Users.Account account = users.find(valid.userId()).orElseThrow(() -> ApiException.of(Code.AUTH_MFA_REQUIRED));
 		if (account.status() == Users.Status.DISABLED) {
 			throw ApiException.of(Code.ACCOUNT_DISABLED);
@@ -119,6 +144,7 @@ class MfaService {
 				.orElseGet(() -> ApiException.validation(List.of(new FieldError("code", "INVALID_CODE", "Doğrulama kodu hatalı")))));
 		}
 		tickets.use(valid.id(), now);
+		boolean enrolling = !totp.enrolled();
 		users.acceptTotp(valid.userId(), step.getAsLong(), now);
 		users.resetFailures(valid.userId(), now);
 		// Rol bilet süresi içinde kaldırıldıysa MFA'lı oturum açılmaz (web: web rolü yok; Android: artık ADM/KOR değil,
@@ -132,6 +158,10 @@ class MfaService {
 		ClientType client = valid.client();
 		RefreshTokens.Issued refresh = refreshTokens.startSession(valid.userId(), client, valid.installationId(), true, now);
 		AccessTokens.Issued access = accessTokens.issue(valid.userId(), refresh.sessionId(), client, true, now);
+		if (enrolling) {
+			audit.record(valid.userId(), "SELF", client, "MFA_ENROLLED", refresh.sessionId(), Map.of());
+		}
+		audit.record(valid.userId(), "SELF", client, "LOGIN_SUCCEEDED", refresh.sessionId(), Map.of("mfa", true));
 		return new Outcome(LoginService.Result.session(client, account.mustChangePassword(), access, refresh, true), null);
 	}
 

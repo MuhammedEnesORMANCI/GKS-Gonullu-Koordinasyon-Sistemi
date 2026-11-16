@@ -54,7 +54,7 @@ class AuditController {
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	record AuditEntryView(UUID id, Ref actor, String actorBasis, String action, String resourceType, UUID resourceId,
-			UUID operationId, String operationName, String client, Instant at, Map<String, Object> details) {
+			UUID operationId, String operationName, String client, Instant at, Map<String, Object> details, String ip) {
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -103,7 +103,7 @@ class AuditController {
 			.map(r -> new AuditEntryView(r.id(), r.actorId() == null ? null : new Ref(r.actorId(), names.get(r.actorId())),
 					r.actorBasis(), r.action(), r.resourceType(), r.resourceId(), r.operationId(),
 					r.operationId() == null ? null : operationNames.get(r.operationId()), r.client(), r.at(),
-					r.details().isEmpty() ? null : r.details()))
+					r.details().isEmpty() ? null : r.details(), r.ip()))
 			.toList();
 		return new AuditPage(items, slice.nextCursor());
 	}

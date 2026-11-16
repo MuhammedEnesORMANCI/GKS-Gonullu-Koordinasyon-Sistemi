@@ -32,9 +32,7 @@ record Grants(List<Grant> grants) {
 	 * operasyonda KOR'un operasyon kapsamlı tüm yönetim izinlerine sahiptir. Operasyon kapsamlı yönetim kararları
 	 * yalnızca bu yöntemden (ve {@link #coordinator}) türer; kural tek yerde tutulur.
 	 * <p>
-	 * Acil alarm izinleri de bu yöntemden türer (ADR-018: ADM, KOR'un tüm alarm izinlerine sahiptir).
-	 * <b>Kapsam dışı:</b> konum ({@code location.view}, K-15); o karar konum modülünde verilir
-	 * ({@link EffectivePermissions#ADM_OPERATION}).
+	 * Acil alarm (ADR-018) ve konum görüntüleme (ADR-020) izinleri de bu yöntemden türer.
 	 */
 	boolean coordinates(UUID operationId) {
 		return has(Role.KOR, operationId) || has(Role.ADM);

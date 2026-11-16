@@ -10,10 +10,12 @@ import java.util.UUID;
  *
  * @param actorBasis işlemin dayandığı yetki: {@code KOR}, {@code ADM} (ADR-015: KOR ataması olmadan), {@code TEK},
  *                   {@code UYM}, {@code LEADER}, {@code SELF}, {@code SYSTEM}
- * @param details    yapısal ayrıntı; mesaj içeriği, parola, belirteç, koordinat <b>yazılmaz</b> (AC-27.2)
+ * @param details    yapısal ayrıntı; mesaj içeriği, parola, belirteç, TOTP kodu, koordinat <b>yazılmaz</b> (AC-27.2)
+ * @param actorId    yalnızca tanınmayan hesapla {@code LOGIN_FAILED} kaydında boş olabilir
+ * @param ip         isteğin uzak adresi (HTTP isteği dışında, ör. zamanlanmış işte boş)
  */
 public record AuditEvent(UUID actorId, String actorBasis, String client, String action, String resourceType,
-		UUID resourceId, UUID operationId, Map<String, Object> details, Instant at, String traceId) {
+		UUID resourceId, UUID operationId, Map<String, Object> details, Instant at, String traceId, String ip) {
 
 	public AuditEvent {
 		details = details == null ? Map.of() : Map.copyOf(details);

@@ -15,7 +15,6 @@ import java.util.UUID;
 
 import org.gks.backend.TestSessions;
 import org.gks.backend.TestcontainersConfiguration;
-import org.gks.backend.audit.LocationViews;
 import org.gks.backend.identity.NewUserAccount;
 import org.gks.backend.identity.UserAccounts;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +30,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * Konum (§10, K-15 – K-16, ADR-019): paylaşım yalnızca aktif operasyonda ve açık başlatmayla, durdurulabilir; konumu
- * yalnızca KOR görür (ADM görmez); görüntüleme 5 dk pencerede tek denetim kaydı; kapanışta paylaşım durur ve son konum
+ * Konum (§10, K-15 – K-16, ADR-019, ADR-020): paylaşım yalnızca aktif operasyonda ve açık başlatmayla, durdurulabilir;
+ * konumu KOR ve ADM görür; her görüntüleme ayrı denetim kaydı (koordinatsız); kapanışta paylaşım durur ve son konum
  * saklama süresi dolunca silinir.
  */
 @Import(TestcontainersConfiguration.class)
-// Arka plan pencere kapatma işi testte elle çağrılır.
-@SpringBootTest(properties = { "gks.audit.location-window-flush=PT1H", "gks.location.purge-interval=PT1H" })
+@SpringBootTest(properties = "gks.location.purge-interval=PT1H")
 @AutoConfigureMockMvc
 class LocationApiTests {
 
@@ -54,9 +52,6 @@ class LocationApiTests {
 
 	@Autowired
 	JwtEncoder jwtEncoder;
-
-	@Autowired
-	LocationViews views;
 
 	@Autowired
 	LocationService service;
@@ -115,7 +110,7 @@ class LocationApiTests {
 	}
 
 	@Test
-	void onlyCoordinatorSeesLocationsAndViewsAreAuditedOncePerWindow() throws Exception {
+	void coordinatorAndAdminSeeLocationsAndEveryViewIsAudited() throws Exception {
 		start(v1).andExpect(status().isOk());
 		Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 		measure(v1, now).andExpect(status().isNoContent());
@@ -130,19 +125,21 @@ class LocationApiTests {
 				.andExpect(jsonPath("$.notSharing[0].user.id").value(v2.toString()))
 				.andExpect(jsonPath("$.notSharing[0].state").value("OFF"));
 		}
-		list(admin).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));   // K-15
+		list(admin).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].user.id").value(v1.toString()));   // ADR-020
 		list(v1, sessions.android(v1)).andExpect(status().isForbidden());
+		list(v1, sessions.web(v1, false)).andExpect(status().isForbidden());
+		mvc.perform(get("/api/v1/operations/{id}/locations", operationId).param("freshness", "LIVE")
+			.with(authenticate(sessions.web(kor, true)))).andExpect(status().isOk());
 
-		assertThat(jdbc.sql("select query_count from audit.location_view_windows where actor_id = ? and operation_id = ?")
-			.params(kor, operationId).query(Integer.class).single()).isEqualTo(3);
-		jdbc.sql("update audit.location_view_windows set window_start = window_start - interval '6 minutes' where actor_id = ?")
-			.param(kor).update();
-		assertThat(views.flush()).isGreaterThanOrEqualTo(1);
-		String details = jdbc.sql("select details::text from audit.audit_entries where action = 'LOCATION_VIEWED' and actor_id = ?")
-			.param(kor).query(String.class).single();
-		assertThat(details).contains("\"queryCount\": 3").doesNotContain("41.0082").doesNotContain("28.97");
+		assertThat(jdbc.sql("select count(*) from audit.audit_entries where action = 'LOCATION_VIEWED' and actor_id = ?")
+			.param(kor).query(Integer.class).single()).as("her görüntüleme ayrı kayıt").isEqualTo(4);
 		assertThat(jdbc.sql("select actor_basis from audit.audit_entries where action = 'LOCATION_VIEWED' and actor_id = ?")
-			.param(kor).query(String.class).single()).isEqualTo("KOR");
+			.param(admin).query(String.class).single()).isEqualTo("ADM");
+		String details = jdbc.sql("""
+				select string_agg(details::text, ' ') from audit.audit_entries where action = 'LOCATION_VIEWED' and operation_id = ?""")
+			.param(operationId).query(String.class).single();
+		assertThat(details).contains("\"resultCount\": 1").contains("freshness").doesNotContain("41.0082").doesNotContain("28.97")
+			.doesNotContain(v1.toString());
 
 		jdbc.sql("update location.last_locations set measured_at = now() - interval '20 minutes', received_at = now() - interval '20 minutes' where user_id = ?")
 			.param(v1).update();
@@ -150,10 +147,12 @@ class LocationApiTests {
 	}
 
 	@Test
-	void locationStreamIsCoordinatorOnly() throws Exception {
+	void locationStreamIsForCoordinatorAndAdmin() throws Exception {
 		mvc.perform(get("/api/v1/stream").param("topics", "location:" + operationId).with(authenticate(sessions.web(kor, true)))
 			.accept(MediaType.TEXT_EVENT_STREAM)).andExpect(request().asyncStarted());
 		mvc.perform(get("/api/v1/stream").param("topics", "location:" + operationId).with(authenticate(sessions.web(admin, true)))
+			.accept(MediaType.TEXT_EVENT_STREAM)).andExpect(request().asyncStarted());
+		mvc.perform(get("/api/v1/stream").param("topics", "location:" + operationId).with(authenticate(sessions.android(v1)))
 			.accept(MediaType.TEXT_EVENT_STREAM)).andExpect(status().isForbidden());
 	}
 

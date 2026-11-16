@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+import java.util.Map;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiProblems.Code;
 import org.slf4j.Logger;
@@ -31,9 +32,11 @@ class SessionService {
 	private final Users users;
 	private final TransactionTemplate transactions;
 	private final Clock clock;
+	private final IdentityAudit audit;
 
 	SessionService(RefreshTokens refreshTokens, AccessTokens accessTokens, Users users, TransactionTemplate transactions,
-			Clock clock) {
+			Clock clock, IdentityAudit audit) {
+		this.audit = audit;
 		this.refreshTokens = refreshTokens;
 		this.accessTokens = accessTokens;
 		this.users = users;
@@ -87,6 +90,9 @@ class SessionService {
 					&& row.lastUsedAt() != null && !now.isAfter(row.lastUsedAt().plus(ROTATION_TOLERANCE));
 			if (!tolerated) {
 				refreshTokens.revokeSession(row.familyId(), "REUSE_DETECTED", now);
+				// ADR-020: zincir iptali denetimde (aynı işlemde, iptalle birlikte commit edilir).
+				audit.record(row.userId(), "SYSTEM", row.client(), "REFRESH_TOKEN_REUSED", row.familyId(),
+						Map.of("sessionRevoked", true));
 				log.warn("Yenileme belirteci tekrar kullanıldı; oturum {} iptal edildi", row.familyId());
 				return new Outcome(null, ApiException.of(Code.AUTH_SESSION_REVOKED));
 			}
@@ -98,20 +104,22 @@ class SessionService {
 	}
 
 	/** ID-06: bu oturum iptal; Android'de oturumun cihazı pasifleşir. */
-	void logout(UUID userId, UUID sessionId) {
+	void logout(UUID userId, UUID sessionId, ClientType client) {
 		transactions.executeWithoutResult(status -> {
 			Instant now = clock.instant();
 			refreshTokens.deactivateSessionDevices(userId, sessionId, now);
 			refreshTokens.revokeSession(sessionId, "LOGOUT", now);
+			audit.record(userId, "SELF", client, "LOGOUT", sessionId, Map.of());
 		});
 	}
 
 	/** ID-07: kullanıcının tüm oturumları iptal, tüm cihazları pasif (AC-06.4). */
-	void logoutAll(UUID userId) {
+	void logoutAll(UUID userId, UUID sessionId, ClientType client) {
 		transactions.executeWithoutResult(status -> {
 			Instant now = clock.instant();
 			refreshTokens.deactivateSessionDevices(userId, null, now);
 			refreshTokens.revokeUserSessions(userId, null, "LOGOUT_ALL", now);
+			audit.record(userId, "SELF", client, "LOGOUT_ALL", sessionId, Map.of());
 		});
 	}
 

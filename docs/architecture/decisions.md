@@ -23,6 +23,7 @@
 | ADR-017 | Gerçek zamanlı akış: tek örnek içi SSE, işlem sonrası yayın, bağlantı başına yetki | Kabul edildi (16.11.2026; proje sahibinin SSE isteği ve bağımlılık kuralı) | MVP |
 | ADR-018 | Acil alarm: ADM tam yetki, FCM'siz iletim (gelen kutusu + SSE), alıcı durumunun anlamı | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 | ADR-019 | Konum: açık başlatma, yalnızca KOR görür, kapanış sonrası 30 gün saklama, harita sağlayıcısı sonra | Kabul edildi (proje sahibi kararı, 16.11.2026; ADM'nin konum görmemesi Claude'un güvenli seçimi, onay bekliyor) | MVP |
+| ADR-020 | Konumu ADM de görür; her görüntüleme ayrı denetim kaydı; ayrı DB kullanıcısı; kimlik olayları denetimde | Kabul edildi (proje sahibi kararları, 16.11.2026) | MVP |
 
 ---
 
@@ -218,3 +219,15 @@
   5. Harita yok: web `LOCATION_MAP_PROVIDER` arayüzü (varsayılan `null`, tablo gösterilir); Android'de yalnızca kendi paylaşım durumu gösterilir.
   6. Android: ön plan servisi (`foregroundServiceType=location`), yalnızca çerçevenin `LocationManager`'ı (yeni bağımlılık yok), dakikada bir ölçüm; arka plan konum izni istenmez; izin verilmezse paylaşım başlatılmaz.
 - **Sonuçlar:** (+) kullanıcı denetiminde, en az veri; (+) bağımlılık eklenmedi. (−) `LocationManager` Play Services'in birleşik konumundan daha çok pil harcar ve iç mekânda zayıftır; (−) oturum kapanınca / hesap devre dışı kalınca paylaşım sunucuda kendiliğinden durmaz (`SESSION_ENDED`, `ACCOUNT_DISABLED` nedenleri henüz üretilmiyor; ölçümler yetkisiz kalır ve cihaz servisi oturum hatasında durur).
+
+
+## ADR-020 Konumu ADM de görür; her görüntüleme ayrı denetim kaydı; ayrı DB kullanıcısı; kimlik olayları denetimde
+
+- **Bağlam:** Proje sahibinin 16.11.2026 kararları (RAPOR_2 §5): ADM konumları görsün (ADR-015 ile tutarlı) ve ADM/KOR'un **her** konum görüntülemesi denetime yazılsın; uygulama kısıtlı DB kullanıcısıyla bağlansın, denetim tablolarında yalnızca `SELECT/INSERT`; kimlik olayları (başarılı/başarısız giriş, çıkış, MFA kurma/sıfırlama, yenileme belirtecinin tekrar kullanımı) IP ve istemci türüyle kaydedilsin.
+- **Karar:**
+  1. `location.view` → `Grants.coordinates` (KOR veya ADM); `ADM_OPERATION` = KOR setinin tamamı; SSE `location:{id}` konusu da aynı kural. ADR-019 madde 2 bununla değişti.
+  2. **LD-05/LD-44 kaldırıldı:** 5 dk pencere yerine her LC-05 çağrısı aynı işlemde tek `LOCATION_VIEWED` kaydı (`resultCount`, `filtersUsed`; koordinat ve kişi kimliği yok). `audit.location_view_windows` V15'te kaldırıldı (açık pencereler önce denetime yazıldı). Gerekçe: proje sahibi "her görüntüleme" istedi ve ara tablo uygulama kullanıcısının denetim şemasında `UPDATE/DELETE` yapmasını gerektiriyordu.
+  3. **DB kullanıcıları:** Flyway tablo sahibiyle (`POSTGRES_USER`), uygulama `GKS_DB_APP_USER` (varsayılan `gks_app`) ile. V15 rolü (yoksa `NOLOGIN`) oluşturur ve yetkileri verir; parola ortamdan `scripts/db/initdb/10-gks-app-user.sh` ile. Uygulama kullanıcısı tablo sahibi olmadığından V12 tetikleyicilerini kaldıramaz. Ayrıntı: `docs/operations/db-roles.md`.
+  4. **Kimlik olayları** (`resource_type = SESSION`): `LOGIN_SUCCEEDED` (`mfa`), `LOGIN_FAILED` (`reason` hata kodu, `accountKnown`, MFA adımındaysa `stage=MFA`; tanınmayan e-postada aktör boş, e-posta yazılmaz), `LOGOUT`, `LOGOUT_ALL`, `MFA_ENROLLED` (ilk doğru kodla kurulum kalıcılaşınca), `REFRESH_TOKEN_REUSED` (dayanak `SYSTEM`, zincir iptaliyle aynı işlemde). MFA sıfırlama yönetici işlemi olarak zaten `MFA_RESET`. `audit_entries.ip` (inet) tüm HTTP kaynaklı kayıtlarda doldurulur. Parola, belirteç, bilet ve TOTP değeri yazılmaz.
+  5. Giriş akışı bilinçli olarak işlemsizdir: kimlik kayıtları kendi kısa işleminde yazılır. Başarılı girişte kayıt yazılamazsa giriş başarısız olur; başarısız girişte kayıt yazılamazsa asıl hata kodu korunur (denetim hatası bastırılmış istisna olarak eklenir).
+- **Sonuçlar:** (+) her konum erişimi ayrı ve izlenebilir; (+) denetim kaydı uygulama hesabıyla değiştirilemez. (−) LOCATION_VIEWED hacmi artar (istemci en fazla 15 sn'de bir çeker). (−) Başarısız giriş seli denetim tablosunu büyütür (kilit ve hız sınırı mevcut). (−) Geçersiz/süresi dolmuş TOTP biletiyle yapılan istek kişiye bağlanamadığı için kaydedilmez. (−) IP, ters vekil arkasında `forward-headers-strategy` ayarı olmadan vekilin adresidir.

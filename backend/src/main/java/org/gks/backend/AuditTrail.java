@@ -1,5 +1,7 @@
 package org.gks.backend;
 
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import java.time.Clock;
 import java.util.Map;
 import java.util.UUID;
@@ -26,7 +28,13 @@ public class AuditTrail {
 	public void record(UUID actorId, String actorBasis, String client, String action, String resourceType, UUID resourceId,
 			UUID operationId, Map<String, Object> details) {
 		events.publishEvent(new AuditEvent(actorId, actorBasis, client, action, resourceType, resourceId, operationId,
-				details, clock.instant(), MDC.get(TraceIdFilter.MDC_KEY)));
+				details, clock.instant(), MDC.get(TraceIdFilter.MDC_KEY), remoteAddress()));
+	}
+
+	/** İstemci IP'si (ADR-020); ters vekil arkasında {@code server.forward-headers-strategy} ayarlanmalı. */
+	static String remoteAddress() {
+		return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes
+				? attributes.getRequest().getRemoteAddr() : null;
 	}
 
 }

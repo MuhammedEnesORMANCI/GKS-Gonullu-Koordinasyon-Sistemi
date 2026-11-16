@@ -110,14 +110,15 @@ class AuthController {
 	@PostMapping("/logout")
 	ResponseEntity<Void> logout(Authentication authentication) {
 		AuthenticatedSession session = session(authentication);
-		sessionService.logout(session.userId(), session.sessionId());
+		sessionService.logout(session.userId(), session.sessionId(), session.webSession() ? ClientType.WEB : ClientType.ANDROID);
 		return SessionResponses.cleared();
 	}
 
 	/** ID-07. */
 	@PostMapping("/logout-all")
 	ResponseEntity<Void> logoutAll(Authentication authentication) {
-		sessionService.logoutAll(session(authentication).userId());
+		AuthenticatedSession session = session(authentication);
+		sessionService.logoutAll(session.userId(), session.sessionId(), session.webSession() ? ClientType.WEB : ClientType.ANDROID);
 		return SessionResponses.cleared();
 	}
 

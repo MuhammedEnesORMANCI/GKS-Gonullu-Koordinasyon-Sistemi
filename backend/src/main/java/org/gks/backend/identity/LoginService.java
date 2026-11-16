@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import java.util.Map;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -39,9 +40,12 @@ class LoginService {
 	private final MfaTickets mfaTickets;
 	private final Clock clock;
 	private final String dummyHash;
+	private final IdentityAudit audit;
 
 	LoginService(Users users, UnknownAccountThrottle unknownAccounts, PasswordEncoder passwordEncoder,
-			RefreshTokens refreshTokens, AccessTokens accessTokens, WebAccess webAccess, MfaTickets mfaTickets, Clock clock) {
+			RefreshTokens refreshTokens, AccessTokens accessTokens, WebAccess webAccess, MfaTickets mfaTickets, Clock clock,
+			IdentityAudit audit) {
+		this.audit = audit;
 		this.users = users;
 		this.unknownAccounts = unknownAccounts;
 		this.passwordEncoder = passwordEncoder;
@@ -53,8 +57,30 @@ class LoginService {
 		this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
 	}
 
+	/**
+	 * Her sonuç denetime yazılır (ADR-020): başarıda {@code LOGIN_SUCCEEDED} (oturum açıldıysa; TOTP bekleyen girişte
+	 * kayıt ID-04'te), başarısızlıkta {@code LOGIN_FAILED} ve neden kodu. Tanınmayan e-postada aktör boştur; e-posta
+	 * yazılmaz.
+	 */
 	Result login(LoginRequest request) {
 		validate(request);
+		UUID[] actor = new UUID[1];
+		try {
+			Result result = authenticate(request, actor);
+			if (!result.mfaRequired()) {
+				audit.record(actor[0], "SELF", request.clientType(), "LOGIN_SUCCEEDED", result.refresh().sessionId(),
+						Map.of("mfa", false));
+			}
+			return result;
+		}
+		catch (ApiException ex) {
+			audit.recordFailure(actor[0], request.clientType(),
+					Map.of("reason", ex.code().name(), "accountKnown", actor[0] != null), ex);
+			throw ex;
+		}
+	}
+
+	private Result authenticate(LoginRequest request, UUID[] actor) {
 		String email = UserAccounts.normalizeEmail(request.email());
 		Instant now = clock.instant();
 		Instant lockUntil = now.plus(LOCK_DURATION);
@@ -70,6 +96,7 @@ class LoginService {
 		}
 
 		Users.Credentials user = found.get();
+		actor[0] = user.id();
 		if (user.lockedUntil() != null && user.lockedUntil().isAfter(now)) {
 			passwordEncoder.matches(request.password(), dummyHash);
 			throw ApiException.accountLocked(user.lockedUntil(), now);

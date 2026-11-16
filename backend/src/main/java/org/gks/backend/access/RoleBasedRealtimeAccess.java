@@ -20,7 +20,7 @@ class RoleBasedRealtimeAccess implements RealtimeAccess {
 
 	@Override
 	public Decision canFollowLocation(Subject subject, UUID operationId) {
-		return Grants.corporate(subject, store.grants(subject.userId()).has(Role.KOR, operationId), Role.KOR);
+		return Grants.coordinator(subject, store.grants(subject.userId()), operationId);
 	}
 
 	@Override

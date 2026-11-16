@@ -39,13 +39,10 @@ public class EffectivePermissions {
 
 	/** Katılımcı (GON); her istemcide. */
 	/**
-	 * ADR-015: ADM'nin her operasyonda taşıdığı operasyon kapsamlı izinler = {@link #KOR} eksi konum. Acil alarm
-	 * izinleri (gönderme, iptal, kapatma, yeniden gönderme, izleme) proje sahibi kararıyla (16.11.2026, ADR-018) ADM'ye
-	 * de verilir. Konum ({@code location.view}, K-15) ayrı karardır.
+	 * ADR-015: ADM'nin her operasyonda taşıdığı operasyon kapsamlı izinler = {@link #KOR}'un tamamı: acil alarm
+	 * (ADR-018) ve konum görüntüleme (ADR-020; her görüntüleme denetime yazılır) dahil.
 	 */
-	static final List<String> ADM_OPERATION = KOR.stream()
-		.filter(p -> !p.equals("location.view"))
-		.toList();
+	static final List<String> ADM_OPERATION = List.copyOf(KOR);
 
 	static final List<String> GON = List.of("task.respond", "location.share", "alert.respond");
 

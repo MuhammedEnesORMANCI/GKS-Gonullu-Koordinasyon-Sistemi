@@ -73,6 +73,10 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 				}
 			}
 	}
+	// ADR-020: yerel profil (Flyway tablo sahibiyle, uygulama kısıtlı kullanıcıyla). Ortamda profil verilmişse ezilmez.
+	if (System.getenv("SPRING_PROFILES_ACTIVE") == null) {
+		environment("SPRING_PROFILES_ACTIVE", "local")
+	}
 }
 
 tasks.withType<Test> {

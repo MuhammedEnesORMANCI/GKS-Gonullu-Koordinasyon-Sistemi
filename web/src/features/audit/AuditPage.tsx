@@ -50,6 +50,23 @@ export const ACTION_LABEL: Record<string, string> = {
   ASSIGNMENT_ADDED: 'Görev ataması eklendi',
   ASSIGNMENT_REMOVED: 'Görev ataması kaldırıldı',
   ANNOUNCEMENT_SENT: 'Duyuru gönderildi',
+  ALERT_DRAFTED: 'Alarm taslağı oluşturuldu',
+  ALERT_DRAFT_DELETED: 'Alarm taslağı silindi',
+  ALERT_SENT: 'Acil alarm gönderildi',
+  ALERT_CORRECTED: 'Alarm düzeltildi',
+  ALERT_RESPONDED: 'Alarma yanıt verildi',
+  ALERT_RESENT: 'Alarm yeniden gönderildi',
+  ALERT_CANCELLED: 'Alarm iptal edildi',
+  ALERT_CLOSED: 'Alarm kapatıldı',
+  LOCATION_SHARING_STARTED: 'Konum paylaşımı başlatıldı',
+  LOCATION_SHARING_STOPPED: 'Konum paylaşımı durduruldu',
+  LOCATION_VIEWED: 'Konumlar görüntülendi',
+  LOGIN_SUCCEEDED: 'Giriş yapıldı',
+  LOGIN_FAILED: 'Başarısız giriş',
+  LOGOUT: 'Çıkış yapıldı',
+  LOGOUT_ALL: 'Tüm oturumlardan çıkış',
+  MFA_ENROLLED: 'İki adımlı doğrulama kuruldu',
+  REFRESH_TOKEN_REUSED: 'Oturum belirteci tekrar kullanıldı (oturum kapatıldı)',
 };
 
 export const BASIS_LABEL: Record<ActorBasis, string> = {
@@ -169,19 +186,21 @@ export function AuditPage() {
                     <TableCell>Eylem</TableCell>
                     <TableCell>Operasyon</TableCell>
                     <TableCell>İstemci</TableCell>
+                    <TableCell>IP</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {items.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell>{formatDateTime(e.at)}</TableCell>
-                      <TableCell>{e.actor?.displayName ?? 'Sistem'}</TableCell>
+                      <TableCell>{e.actor?.displayName ?? (e.action === 'LOGIN_FAILED' ? 'Tanınmayan hesap' : 'Sistem')}</TableCell>
                       <TableCell>
                         <Chip size="small" label={BASIS_LABEL[e.actorBasis] ?? e.actorBasis} color={e.actorBasis === 'ADM' ? 'warning' : 'default'} />
                       </TableCell>
                       <TableCell>{ACTION_LABEL[e.action] ?? e.action}</TableCell>
                       <TableCell>{e.operationName ?? '—'}</TableCell>
                       <TableCell>{CLIENT_LABEL[e.client] ?? e.client}</TableCell>
+                      <TableCell>{e.ip ?? '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

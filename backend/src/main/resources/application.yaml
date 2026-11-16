@@ -39,6 +39,9 @@ spring:
     # Flyway geçmiş tablosu platform şemasında tutulur; modül şemaları V1 ile oluşur (TD-20).
     default-schema: platform
     schemas: platform
+    placeholders:
+      # V15 (ADR-020): uygulamanın bağlandığı kısıtlı rolün adı; yetkiler bu role verilir.
+      appUser: ${GKS_DB_APP_USER:gks_app}
 
   jackson:
     time-zone: UTC
@@ -112,3 +115,20 @@ logging:
   pattern:
     # Hata yanıtındaki traceId ile günlük satırını eşleştirmek için (§4.1).
     correlation: "[%X{traceId:-}] "
+
+---
+# Yerel geliştirme (bootRun; build.gradle.kts bu profili varsayılan açar). ADR-020: Flyway tablo sahibiyle
+# (POSTGRES_USER) migration yapar; uygulama kısıtlı kullanıcıyla (GKS_DB_APP_USER) bağlanır. compose.yaml'daki
+# postgres servisi Spring Boot Docker Compose bağlantısından hariç tutulduğu için bağlantı burada tanımlıdır.
+# Kurulum ve mevcut veritabanının güncellenmesi: docs/operations/db-roles.md
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://${GKS_DB_HOST:localhost}:${GKS_DB_PORT:5432}/${POSTGRES_DB}
+    username: ${GKS_DB_APP_USER:gks_app}
+    password: ${GKS_DB_APP_PASSWORD}
+  flyway:
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}

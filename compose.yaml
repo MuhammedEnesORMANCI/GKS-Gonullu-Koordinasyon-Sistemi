@@ -10,12 +10,20 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB .env dosyasında tanımlı olmalı}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER .env dosyasında tanımlı olmalı}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env dosyasında tanımlı olmalı}
+      # ADR-020: uygulamanın bağlandığı kısıtlı kullanıcı (scripts/db/initdb/10-gks-app-user.sh oluşturur).
+      GKS_DB_APP_USER: ${GKS_DB_APP_USER:-gks_app}
+      GKS_DB_APP_PASSWORD: ${GKS_DB_APP_PASSWORD:?GKS_DB_APP_PASSWORD .env dosyasında tanımlı olmalı}
       TZ: UTC
       PGTZ: UTC
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Yalnızca boş veri dizininde (ilk kurulum) çalışır; mevcut kurulumda elle çalıştırılır (docs/operations/db-roles.md).
+      - ./scripts/db/initdb:/docker-entrypoint-initdb.d:ro
+    labels:
+      # Spring Boot bağlantı bilgisini buradan (tablo sahibi) almasın; uygulama kısıtlı kullanıcıyla bağlanır (ADR-020).
+      org.springframework.boot.ignore: "true"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s

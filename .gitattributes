@@ -1,0 +1,2 @@
+# Kabuk betikleri Linux kapsayıcısında çalışır; Windows çıkışında da LF kalmalı.
+*.sh text eol=lf

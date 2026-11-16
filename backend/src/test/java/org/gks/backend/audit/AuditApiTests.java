@@ -139,13 +139,13 @@ class AuditApiTests {
 			jdbc.sql("insert into organization.operations (id, organization_id, name, created_by) values (?, ?, 'Geri alınacak', ?)")
 				.params(probe, ORGANIZATION_ID, admin).update();
 			events.publishEvent(new AuditEvent(admin, "ADM", "WEB", "gecersiz eylem", "OPERATION", probe, probe, Map.of(),
-					Instant.now(), null));   // ck_audit_entries_action ihlali
+					Instant.now(), null, null));   // ck_audit_entries_action ihlali
 		})).isNotNull();
 		assertThat(jdbc.sql("select count(*) from organization.operations where id = ?").param(probe).query(Integer.class).single())
 			.as("denetim yazılamazsa iş işlemi de geri alınır").isZero();
 
 		assertThatThrownBy(() -> events.publishEvent(new AuditEvent(admin, "ADM", "WEB", "OPERATION_UPDATED", "OPERATION", probe,
-				probe, Map.of(), Instant.now(), null))).isInstanceOf(IllegalTransactionStateException.class);
+				probe, Map.of(), Instant.now(), null, null))).isInstanceOf(IllegalTransactionStateException.class);
 	}
 
 	@Test
@@ -176,6 +176,30 @@ class AuditApiTests {
 	}
 
 	// ---------------------------------------------------------------- yardımcılar
+
+	/**
+	 * ADR-020: uygulamanın bağlandığı kısıtlı rol (V15, {@code gks_app}) denetim kaydını okuyup ekleyebilir ama
+	 * değiştiremez, silemez, boşaltamaz; tetikleyiciyi de kaldıramaz. İş tablolarında tam DML yetkisi vardır.
+	 */
+	@Test
+	void applicationRoleCanOnlyReadAndInsertAuditEntries() {
+		insertDirect();
+		transactions.executeWithoutResult(status -> {
+			jdbc.sql("set local role gks_app").update();
+			assertThat(jdbc.sql("select count(*) from audit.audit_entries").query(Integer.class).single()).isPositive();
+			insertDirect();
+			jdbc.sql("update tasks.tasks set updated_at = updated_at where false").update();
+			jdbc.sql("delete from platform.idempotency_keys where false").update();
+		});
+		for (String sql : new String[] { "update audit.audit_entries set action = 'DEGISTI'", "delete from audit.audit_entries",
+				"truncate audit.audit_entries", "alter table audit.audit_entries disable trigger tg_audit_entries_no_update_delete",
+				"drop trigger tg_audit_entries_no_truncate on audit.audit_entries" }) {
+			assertThatThrownBy(() -> transactions.executeWithoutResult(status -> {
+				jdbc.sql("set local role gks_app").update();
+				jdbc.sql(sql).update();
+			})).as(sql).rootCause().hasMessageMatching("(?s).*(permission denied|must be owner|yetki|sahibi).*");
+		}
+	}
 
 	String basis(String action, UUID actor) {
 		return jdbc.sql("select actor_basis from audit.audit_entries where action = ? and actor_id = ? and operation_id = ?")

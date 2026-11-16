@@ -37,7 +37,7 @@ const NOT_SHARING_LABEL: Record<string, string> = {
 };
 
 /**
- * WEB-08 son konumlar (LC-05). Yalnızca operasyonun KOR'u görür (K-15); harita sağlayıcısı seçilene kadar tablo.
+ * WEB-08 son konumlar (LC-05). Operasyonun KOR'u ve ADM görür (ADR-020); harita sağlayıcısı seçilene kadar tablo.
  * Geçmiş ve iz yoktur (K-16). Canlı: `location:{id}` olaylarıyla en fazla 15 sn'de bir yenilenir.
  */
 export function LocationPage() {
@@ -64,7 +64,7 @@ export function LocationPage() {
         Konum görüntülemeleriniz denetim kaydına yazılır. Gönüllüler paylaşımı kendileri başlatır ve istedikleri an durdurur.
       </Alert>
       {!canView ? (
-        <Alert severity="warning">Konumları yalnızca operasyonun koordinatörü görebilir.</Alert>
+        <Alert severity="warning">Konumları yalnızca operasyonun koordinatörü ve kurum yöneticisi görebilir.</Alert>
       ) : !active && scope.operation.data ? (
         <Alert severity="warning">Operasyon aktif değil; konum gösterilmez.</Alert>
       ) : (

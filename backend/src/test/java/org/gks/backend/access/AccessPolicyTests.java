@@ -290,7 +290,7 @@ class AccessPolicyTests {
 				assertThat(view.operations().get(operationId)).containsAll(EffectivePermissions.ADM_OPERATION)
 					.contains("task.manage", "announcement.send.group", "membership.add", "meeting_point.update")
 					.contains("alert.send", "alert.cancel", "alert.close", "alert.resend", "alert.view")   // ADR-018
-					.doesNotContain("location.view");   // K-15 ayrı karar
+					.contains("location.view");   // ADR-020
 				assertThat(view.operations().get(otherOperationId)).containsAll(EffectivePermissions.ADM_OPERATION);
 			}
 			assertThat(permissions.of(android(admin), Map.of()).operations()).isEmpty();

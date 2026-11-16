@@ -20,10 +20,10 @@ import org.gks.backend.ApiException;
 import org.gks.backend.ApiProblems.Code;
 import org.gks.backend.AuditTrail;
 import org.gks.backend.RealtimeBus;
+import org.gks.backend.access.ActingBasis;
 import org.gks.backend.access.LocationAccess;
 import org.gks.backend.access.Participation;
 import org.gks.backend.access.Subject;
-import org.gks.backend.audit.LocationViews;
 import org.gks.backend.groups.GroupMembers;
 import org.gks.backend.identity.UserDirectory;
 import org.gks.backend.location.LocationStore.LastLocation;
@@ -36,9 +36,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Konum paylaşımı (§10, K-15 – K-16, ADR-019). Gönüllü yalnızca {@code ACTIVE} operasyonda ve açıkça "paylaşımı
- * başlat" diyerek paylaşır, istediği an durdurur. Konumu yalnızca operasyonun KOR'u görür; her görüntüleme 5 dk'lık
- * pencerede tek denetim kaydına yazılır (LD-05). Geçmiş tutulmaz; son konum operasyon kapandıktan sonra
+ * Konum paylaşımı (§10, K-15 – K-16, ADR-019, ADR-020). Gönüllü yalnızca {@code ACTIVE} operasyonda ve açıkça
+ * "paylaşımı başlat" diyerek paylaşır, istediği an durdurur. Konumu operasyonun KOR'u ve ADM görür; her görüntüleme
+ * ayrı bir denetim kaydıdır. Geçmiş tutulmaz; son konum operasyon kapandıktan sonra
  * yapılandırılabilir süre (varsayılan 30 gün) saklanır.
  */
 @Service
@@ -55,14 +55,14 @@ class LocationService {
 	private final ParticipantDetails.Groups groups;
 	private final GroupMembers members;
 	private final UserDirectory users;
-	private final LocationViews views;
+	private final ActingBasis acting;
 	private final AuditTrail audit;
 	private final RealtimeBus realtime;
 	private final Clock clock;
 	private final Duration retention;
 
 	LocationService(LocationStore store, LocationAccess access, Participation participation, Operations operations,
-			ParticipantDetails.Groups groups, GroupMembers members, UserDirectory users, LocationViews views,
+			ParticipantDetails.Groups groups, GroupMembers members, UserDirectory users, ActingBasis acting,
 			AuditTrail audit, RealtimeBus realtime, Clock clock,
 			@Value("${gks.location.retention-after-close:P30D}") Duration retention) {
 		this.store = store;
@@ -72,7 +72,7 @@ class LocationService {
 		this.groups = groups;
 		this.members = members;
 		this.users = users;
-		this.views = views;
+		this.acting = acting;
 		this.audit = audit;
 		this.realtime = realtime;
 		this.clock = clock;
@@ -153,8 +153,8 @@ class LocationService {
 	}
 
 	/**
-	 * LC-05: yalnızca KOR (K-15); operasyon {@code ACTIVE} değilse konum gösterilmez (AC-08.2). Durdurmuş kişinin
-	 * koordinatı dönmez (N-04). Görüntüleme pencereye bu işlemde yazılır (LD-05, LD-44).
+	 * LC-05: KOR veya ADM (ADR-020); operasyon {@code ACTIVE} değilse konum gösterilmez (AC-08.2). Durdurmuş kişinin
+	 * koordinatı dönmez (N-04).
 	 */
 	@Transactional
 	LocationList list(Subject subject, UUID operationId, UUID groupId, String freshness) {
@@ -206,7 +206,15 @@ class LocationService {
 		if (freshness != null) {
 			filters.add("freshness");
 		}
-		views.viewed(subject.userId(), operationId, subject.client(), filters);
+		// ADR-020: her görüntüleme ayrı LOCATION_VIEWED kaydı (aynı işlemde; yazılamazsa konum yanıtlanmaz).
+		// Koordinat ve kişi kimliği yazılmaz; yalnızca süzgeç adları ve gösterilen kişi sayısı.
+		Map<String, Object> details = new java.util.LinkedHashMap<>();
+		details.put("resultCount", items.size());
+		if (!filters.isEmpty()) {
+			details.put("filtersUsed", List.copyOf(filters));
+		}
+		audit.record(subject.userId(), acting.operation(subject, operationId), subject.client(), "LOCATION_VIEWED",
+				"LOCATION", null, operationId, details);
 		return new LocationList(operationId, now, items, notSharing);
 	}
 

@@ -112,6 +112,8 @@ export interface AuditEntryView {
   client: 'WEB' | 'ANDROID' | 'SYSTEM';
   at: DateTime;
   details?: Record<string, unknown>;
+  /** Kimlik olaylarında ve HTTP isteğinden gelen kayıtlarda istemci IP'si (ADR-020). */
+  ip?: string;
 }
 
 /** AC-01 `RoleAssignmentCreateRequest` (rol ve kapsam türü eşleşmeli: ADM/TEK/UYM kurum, KOR/GON operasyon). */

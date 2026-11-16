@@ -33,8 +33,10 @@ class AuditStore {
 	void insert(AuditEvent e) {
 		jdbc.sql("""
 				insert into audit.audit_entries (id, actor_id, actor_basis, action, resource_type, resource_id, operation_id,
-				                                 client, trace_id, at, details)
-				values (:id, :actor, :basis, :action, :type, :resource, :operation, :client, :trace, :at, cast(:details as jsonb))""")
+				                                 client, trace_id, at, details, ip)
+				values (:id, :actor, :basis, :action, :type, :resource, :operation, :client, :trace, :at, cast(:details as jsonb),
+				        cast(:ip as inet))""")
+			.param("ip", e.ip())
 			.param("id", Ids.newId())
 			.param("actor", e.actorId())
 			.param("basis", e.actorBasis())
@@ -50,7 +52,7 @@ class AuditStore {
 	}
 
 	record Row(UUID id, UUID actorId, String actorBasis, String action, String resourceType, UUID resourceId,
-			UUID operationId, String client, Instant at, Map<String, Object> details) {
+			UUID operationId, String client, Instant at, Map<String, Object> details, String ip) {
 	}
 
 	record Filter(Instant from, Instant to, UUID actorId, Set<String> actions, String resourceType, UUID resourceId,
@@ -60,7 +62,7 @@ class AuditStore {
 	/** Zaman azalan (UUIDv7 kimlik sırası), imleçten önceki kayıtlar; {@code limit + 1} satır. */
 	List<Row> list(Filter f, UUID before, int limit) {
 		StringBuilder sql = new StringBuilder("""
-				select id, actor_id, actor_basis, action, resource_type, resource_id, operation_id, client, at, details
+				select id, actor_id, actor_basis, action, resource_type, resource_id, operation_id, client, at, details, host(ip) as ip
 				  from audit.audit_entries where true""");
 		if (f.from() != null) {
 			sql.append(" and at >= :from");
@@ -123,7 +125,7 @@ class AuditStore {
 			return new Row(rs.getObject("id", UUID.class), rs.getObject("actor_id", UUID.class), rs.getString("actor_basis"),
 					rs.getString("action"), rs.getString("resource_type"), rs.getObject("resource_id", UUID.class),
 					rs.getObject("operation_id", UUID.class), rs.getString("client"), rs.getTimestamp("at").toInstant(),
-					details == null ? Map.of() : json.readValue(details, MAP));
+					details == null ? Map.of() : json.readValue(details, MAP), rs.getString("ip"));
 		}).list();
 	}
 
