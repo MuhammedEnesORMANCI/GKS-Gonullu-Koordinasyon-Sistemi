@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Marka yapılandırması (TEK yer; web karşılığı web/src/config/brand.ts).
+  Logo: res/drawable/logo.png (veya logo.xml) proje sahibince konur; yoksa kısa ad metni yer tutucu olarak gösterilir.
+  Logo çizilmez, taklit edilmez.
+-->
+<resources>
+	<string name="brand_short_name" translatable="false">AFAD</string>
+	<string name="brand_organization" translatable="false">T.C. İçişleri Bakanlığı Afet ve Acil Durum Yönetimi Başkanlığı</string>
+	<string name="brand_system_name" translatable="false">Gönüllü Koordinasyon Sistemi</string>
+	<string name="brand_logo_drawable" translatable="false">logo</string>
+	<string name="brand_emergency_number" translatable="false">112</string>
+</resources>

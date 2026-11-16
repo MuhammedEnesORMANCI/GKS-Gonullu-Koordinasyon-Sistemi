@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<!-- Pencere teması; içerik renkleri Compose Material 3 temasından gelir (ui/theme). -->
-	<style name="Theme.Gks" parent="android:Theme.Material.Light.NoActionBar" />
+	<style name="Theme.Gks" parent="android:Theme.Material.Light.NoActionBar">
+		<!-- Tasarım sistemi (ui/theme/Theme.kt): lacivert durum çubuğu; içerik zemini Compose temasından. -->
+		<item name="android:statusBarColor">#FF071E3D</item>
+		<item name="android:windowBackground">@android:color/white</item>
+		<item name="android:colorAccent">#FFC2410C</item>
+	</style>
 </resources>

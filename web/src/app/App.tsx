@@ -4,8 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { trTR } from '@mui/material/locale';
+import { ThemeProvider } from '@mui/material/styles';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ServiceConfig } from '../config/services';
@@ -31,9 +30,10 @@ import { TaskDetailPage } from '../features/tasks/TaskDetailPage';
 import { TaskListPage } from '../features/tasks/TaskListPage';
 import { AppShell } from './AppShell';
 import { createQueryClient } from './queryClient';
+import { createAppTheme } from './theme';
 import { SessionProvider, useSession } from './session';
 
-const theme = createTheme({ palette: { primary: { main: '#1d4f91' } } }, trTR);
+const theme = createAppTheme();
 
 /** Kimlik gerektiren rotalar: bağlam yüklenene kadar iskelet; 401 → WEB-01; 503 → oturum korunur (LD-48). */
 function RequireSession({ children }: { children: ReactNode }) {
