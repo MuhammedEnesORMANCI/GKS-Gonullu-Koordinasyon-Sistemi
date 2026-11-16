@@ -2,6 +2,8 @@
 
 Son güncelleme: 16.11.2026 (commit `8469734` itibarıyla). Her senaryoda **Adımlar** ve **Beklenen** var. Sonucu kutuya işaretleyin; beklenenden farklıysa ekran görüntüsü ve saatle not alın (denetim kaydında saatle bulunur).
 
+> **16.11.2026 akşam (ADR-023):** web adresi artık **halka açık siteyi** açar; yönetim paneli **`/panel`** altındadır (giriş `/giris`). Aşağıdaki eski bölümlerde geçen panel adresleri (`/roller`, `/kullanicilar`, `/denetim`, `/alarmlar`, `/operasyonlar/...`) otomatik olarak `/panel/...`'e yönlenir; panel duyuruları `/panel/duyurular`. Yeni senaryolar §12–§15.
+
 Kısaltmalar: **W** = web (http://localhost:5173), **A** = Android, **ADM** kurum yöneticisi, **KOR** koordinatör, **GON** gönüllü, **TEK** teknik destek, **UYM** uyum.
 
 ---
@@ -194,6 +196,72 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 | F16 | Gönderen KOR1'in telefonu (A, aynı operasyonda) | Kendi gönderdiği alarm için ses çalmaz | [ ] |
 | F17 | gon1 çıkış yapar, alarm gönder | gon1 telefonuna bildirim gelmez | [ ] |
 | F18 | Uygulama kapalı, duyuru gönder | Normal öncelikli duyuru bildirimi; ses alarm sesi değil | [ ] |
+
+## 12. Tasarım (W + A)
+
+Ön koşul: logo dosyası `web/public/brand/logo.png` (veya `.svg`) ve Android `app/src/main/res/drawable/logo.png`. Hero görseli isteğe bağlı: `web/public/brand/hero.jpg`.
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| D1 | W: http://localhost:5173 | Lacivert/turuncu tema, beyaz/açık gri zemin, yuvarlak köşeli kartlar; logonun yanında kurum metni | [ ] |
+| D2 | W: logo dosyasını geçici olarak adlandırın, sayfayı yenileyin | Logo yerine "AFAD" yazılı yer tutucu (çerçeveli); düzen bozulmaz | [ ] |
+| D3 | W: `hero.jpg` yok | Hero alanında gradyan; metin okunaklı | [ ] |
+| D4 | W: yalnızca klavye (Tab / Shift+Tab / Enter) | Her bağlantı ve düğmede turuncu odak halkası; "İçeriğe geç" ilk Tab'da görünür | [ ] |
+| D5 | W: tarayıcı genişliği 375 px (telefon) | Menü ☰ çekmeceye döner; kartlar tek sütun; yatay kaydırma yok | [ ] |
+| D6 | W: tarayıcı yakınlaştırma %200 | Metin taşmaz, içerik okunur | [ ] |
+| D7 | A: uygulama (açık ve koyu tema) | Lacivert üst çubuk, turuncu vurgular; dinamik (duvar kâğıdı) renkleri kullanılmaz | [ ] |
+| D8 | A: `res/drawable/logo.png` yoksa | Logo yerine "AFAD" çerçeveli metin | [ ] |
+
+## 13. Halka açık site (W, giriş gerektirmez)
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| P1 | Gizli pencerede `/` | Üst menü (Afet Bilgisi, Hazırlık Rehberi, Duyurular, Gönüllülük, İletişim, **Giriş**), hero ("Afet Anında Ne Yapmalı?", "Hazırlık Rehberi"), 6 afet kartı, Hızlı Erişim, Duyurular, alt bilgi | [ ] |
+| P2 | Kart → Deprem; sonra Sel, Heyelan, Yangın, Kış Şartları, Diğer | Her sayfada Öncesinde / Sırasında / Sonrasında; "Rehberde aç" bağlantıları | [ ] |
+| P3 | `/rehber`, Hızlı Erişim → "Toplanma alanı" | Sayfa ilgili bölüme kayar (`#toplanma-alani`) | [ ] |
+| P4 | `/ne-yapmali` | Kırmızı "112" uyarısı ve numaralı adımlar | [ ] |
+| P5 | `/gonulluluk` | Davetle katılım açıklaması; **kayıt formu yok** | [ ] |
+| P6 | `/iletisim` | Yalnızca 112; uydurma telefon/adres yok | [ ] |
+| P7 | `/afet/olmayan`, `/rastgele` | "Sayfa bulunamadı" + ana sayfa düğmesi | [ ] |
+| P8 | Sekme başlığı ve sayfa kaynağı (meta description) | Her sayfada farklı başlık; açıklama dolu | [ ] |
+| P9 | ADM ile giriş yapıp `/` | Üst menüde **Panele git** (`/panel`); sayfada operasyon, kişi, konum, iç duyuru **yok** | [ ] |
+| P10 | Eski adresler: `/operasyonlar`, `/roller?rol=KOR`, `/alarmlar/<id>` | `/panel/...` adresine yönlenir (sorgu korunur) | [ ] |
+| P11 | Oturum açıkken backend'i durdurun, `/` | Halka açık sayfa açık kalır (girişe atmaz); duyurular "yüklenemedi" notu | [ ] |
+
+## 14. Kamu duyuruları ve yönetici paneli (W)
+
+**Önce:** backend yeniden başlatılmalı (V16 migration).
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| K1 | ADM: `/panel` | Sol lacivert menü (Özet, Operasyonlar, Acil Alarmlar, Bildirimler, Duyurular, Kamu Duyuruları, Davetler, Kullanıcılar, Roller, Denetim Kayıtları, Hesabım); üstte sayfa başlığı, aktif operasyon, bildirim sayacı, kullanıcı menüsü | [ ] |
+| K2 | Menüyü daralt (sol alttaki ‹) | Yalnızca ikonlar; üzerine gelince ipucu; sayfa yenilenince durum korunur | [ ] |
+| K3 | KOR / TEK / UYM ile giriş | KOR: Kamu Duyuruları, Kullanıcılar, Roller, Denetim yok. TEK: Kullanıcılar. UYM: Denetim Kayıtları | [ ] |
+| K4 | Özet: açık alarm varken | En üstte kırmızı bant ("N açık acil alarm", yanıt sayıları) → "Alarmlara git" | [ ] |
+| K5 | Özet kartları | Aktif operasyon, açık alarm (Yanıtladı / Bekliyor / Yardım gerekiyor), gönüllü sayısı, son duyurular, son denetim olayları (ADM/UYM), sistem durumu (FCM) | [ ] |
+| K6 | Özet açıkken telefondan alarma yanıt verin | Kart sayıları yenilemeden değişir (SSE) | [ ] |
+| K7 | ADM: Kamu Duyuruları → Yeni duyuru → kaydet | "Taslak oluşturuldu"; halka açık `/duyurular`'da **görünmez** | [ ] |
+| K8 | Yayımla → onay penceresi → Yayımla | "Yayında" rozeti; `/duyurular` ve ana sayfada görünür | [ ] |
+| K9 | Düzenle (yayındayken) → kaydet | Değişiklik sitede hemen görünür | [ ] |
+| K10 | Yayından kaldır → onay | Sitede kaybolur; taslağa döner | [ ] |
+| K11 | `/panel/denetim` | "Kamu duyurusu oluşturuldu / yayımlandı / düzenlendi / yayından kaldırıldı" kayıtları; başlık/metin yazılmaz | [ ] |
+| K12 | Halka açık uca dakikada 60'tan fazla istek (ör. sayfayı hızlı yenileme) | Sonraki istekler bir süre "yüklenemedi"; bir dakika sonra düzelir | [ ] |
+| K13 | Acil alarm detayı | Büyük durum kartı (açıkken kırmızı), büyük yanıt rozetleri, belirgin **İptal et** / **Kapat** (onay pencereli) | [ ] |
+| K14 | Operasyonlar listesi, operasyon detayı | Durum rozetleri her yerde aynı renkte (Aktif yeşil, Planlandı mavi, Askıda turuncu, İptal kırmızı) | [ ] |
+
+## 15. Android tasarım
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| T1 | Çıkış yapılmış: giriş ekranı | Lacivert başlık (logo + kurum metni), turuncu **Afet Rehberi (internetsiz)**, giriş formu | [ ] |
+| T2 | **Uçak modu açık**, giriş ekranından Afet Rehberi | Rehber açılır: Ne Yapmalı, 6 afet türü, hazırlık bölümleri; geri tuşu girişe döner | [ ] |
+| T3 | gon1 ile giriş: Ana Sayfa | Lacivert başlık, turuncu "Afet Anında Ne Yapmalı?", afet kartları, Hızlı Erişim (Görevlerim, Grubum, Bildirimlerim, Acil durum çantası, Aile afet planı, Toplanma alanı), ardından operasyon/davet kartları | [ ] |
+| T4 | Alt gezinme | Ana Sayfa, Rehberler, Duyurular, Hesap (kor1 MFA'lı oturumda + Yönetim) | [ ] |
+| T5 | Görevlerim / Grubum / Bildirimlerim (Hızlı Erişim) ve üst çubuktaki zil | İlgili ekran açılır, geri ok çalışır; zilde okunmamış sayısı | [ ] |
+| T6 | Açık alarm varken herhangi bir ekran | En üstte kırmızı bant; dokununca alarm ekranı | [ ] |
+| T7 | Duyurular sekmesi | Kamu duyuruları (K8'de yayımlanan); "Bildirimlerim" düğmesi gelen kutusunu açar | [ ] |
+| T8 | Uçak modunda Rehberler sekmesi | İçerik eksiksiz açılır | [ ] |
+| T9 | kor1: Yönetim → operasyon/görev listeleri | Durum rozetleri web ile aynı renklerde; onay pencereleri çalışır; görev/grup/duyuru akışları değişmeden | [ ] |
 
 ---
 

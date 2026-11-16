@@ -1,15 +1,15 @@
 # GKS — Proje İlerleme Durumu
 
-> Son güncelleme: 16.11.2026 (akşam: FCM + acil alarm bildirimi, ADR-022). Bir sonraki oturum bu dosyadan başlamalı; ayrıntılı kararlar `docs/architecture/design/team/TASKS.md` (LD-xx) ve `docs/architecture/decisions.md` (ADR-xx) dosyalarındadır.
+> Son güncelleme: 16.11.2026 (gece: tasarım sistemi, halka açık site, kamu duyuruları, panel ve Android yeniden tasarımı — ADR-023). Bir sonraki oturum bu dosyadan başlamalı; ayrıntılı kararlar `docs/architecture/design/team/TASKS.md` (LD-xx) ve `docs/architecture/decisions.md` (ADR-xx) dosyalarındadır.
 
 ## 1. Ortam ve çalışma kuralları
 
 | Bileşen | Konum / komut | Not |
 |---|---|---|
 | Backend | `backend/` — `./gradlew bootRun` (Spring Boot 4, Java 21, Gradle 9.8.2) | `.env` kök dizinden okunur; Postgres + Mailpit `compose.yaml` ile (Docker) |
-| Web | `web/` — `npm run dev` (Vite, 5173) | Testler: `npx vitest run --maxWorkers=1 --minWorkers=1`, `npx tsc -b`, `npx eslint src` |
+| Web | `web/` — `npm run dev` (Vite, 5173). **`/` halka açık site, `/panel` yönetim paneli, `/giris` giriş** (ADR-023) | Testler: `npx vitest run --maxWorkers=1 --minWorkers=1`, `npx tsc -b`, `npx eslint src` |
 | Android | `android/` — `JAVA_HOME=<JDK17> ./gradlew assembleDebug testDebugUnitTest` | Studio Hedgehog uyumlu: AGP 8.2.2, Gradle 8.5, Kotlin 1.9.22, SDK 34, Compose BOM 2024.02.00 (material3 1.2.0). `local.properties` → `gks.apiBaseUrl` |
-| Veritabanı | Flyway, son sürüm **V15** (ayrı uygulama kullanıcısı `gks_app`, ADR-020) | Veriler silinmez; yeni şema değişikliği V16'dan başlar. `bootRun` `local` profiliyle `gks_app` ile bağlanır, Flyway sahibi `POSTGRES_USER` |
+| Veritabanı | Flyway, son sürüm **V16** (kamu duyuruları, ADR-023); önceki: **V15** (ayrı uygulama kullanıcısı `gks_app`, ADR-020) | Veriler silinmez; yeni şema değişikliği V16'dan başlar. `bootRun` `local` profiliyle `gks_app` ile bağlanır, Flyway sahibi `POSTGRES_USER` |
 | Firebase | `android/app/google-services.json` (git dışı); hizmet hesabı anahtarı `.env` → `GKS_FIREBASE_CREDENTIALS_FILE`, `GKS_PUSH_PROVIDER=fcm` | Anahtar dosyası açılmaz/okunmaz; içerik günlüğe yazılmaz |
 
 **Bellek kuralı (zorunlu):** Backend testleri paket paket, `--max-workers=1 --tests "<paket>.*"`. Aynı anda tek bootRun. Çalışan bootRun varken backend testleri `--no-daemon` ile çalıştırılır (`gradlew --stop` aynı Gradle sürümündeki bootRun daemon'ını da kapatır). Android Gradle daemon'u iş bitince `./gradlew --stop` (farklı Gradle sürümü, bootRun'a dokunmaz).
@@ -47,6 +47,11 @@
 ## 3. Eksik modüller (önem sırasına göre)
 
 1. **Harita** — konum şu an tablo; sağlayıcı kararı (OSM/Leaflet, Google, MapLibre) ve bağımlılık gerekir. Bağlanma noktası: web `features/location/mapProvider.ts`.
+| **Tasarım sistemi (ADR-023, 16.11 gece)** | – | ✅ `app/theme.ts`, `config/brand.ts` | ✅ `ui/theme/` , `res/values/brand.xml` | Lacivert + turuncu, WCAG AA testli, sistem fontları; logo/hero dosyası proje sahibince (yoksa yer tutucu/gradyan) |
+| **Halka açık site (ADR-023)** | – | ✅ `features/public/`, içerik `src/content/*.json` | – | `/`, `/afet/:tur`, `/rehber`, `/ne-yapmali`, `/duyurular`, `/gonulluluk`, `/iletisim`; iç veri yok (testli); eski panel adresleri `/panel/...`e yönlenir |
+| **Kamu duyuruları (V16, ADR-023)** | ✅ `PublicAnnouncement*` | ✅ `/panel/kamu-duyurulari` + site | ✅ Duyurular sekmesi | ADM yönetir (taslak/yayında, denetimli); `GET /api/v1/public/announcements` kimliksiz, sayfalı, IP başına 60/dk |
+| **Panel yeniden tasarımı + Özet (WEB-02)** | – | ✅ `AppShell`, `dashboard/HomePage` | – | Daraltılabilir yan menü (izinlere göre), üst çubuk, Özet kartları (SSE), ortak durum rozeti |
+| **Android tasarım (ADR-023)** | – | – | ✅ `ui/guide/`, `ui/home/HomeLanding`, `ui/announcements/` | Alt gezinme Ana Sayfa/Rehberler/Duyurular/(Yönetim)/Hesap; internetsiz rehber (web içeriği gömülü), girişten önce de |
 2. Alarm: AL-02 taslak düzenleme yok (sil-yeniden oluştur); `alert:{id}` konusu ve 1 sn birleştirme yok; `deliveryDelayed` FCM varken de hâlâ `false` (push teslim durumundan hesaplanmıyor); alarm hatırlatmaları (AL) push'u yeniden tetiklemiyor; KOR/ADM için Android alarm yönetim ekranı yok (web'de).
 3. FCM kalanları: `REUSE_DETECTED` ile iptal edilen oturum cihazı kapatmıyor; FCM gerçek cihazda henüz denenmedi (MANUEL_TEST §11).
 4. Konum: `SESSION_ENDED`/`ACCOUNT_DISABLED` durdurma nedenleri üretilmiyor.
@@ -64,13 +69,13 @@
 - **ADR-019 (konum):** yalnızca KOR görür (ADM görmez — proje sahibinin onayı bekleniyor); saklama `gks.location.retention-after-close` (varsayılan `P30D`).
 - **`OperationClosed`** (organization): kapanış işleminde eşzamanlı yayımlanır; alerts (açık alarmları kapatır) ve location (paylaşımı durdurur, saklamayı başlatır) dinler.
 
-## 5. Test durumu (16.11.2026 akşam, tek seferde tam çalıştırma s31-b + Android s30-a1)
+## 5. Test durumu (16.11.2026 gece, tam backend s42, web 17. iş sonrası, Android s44)
 
 | Paket | Sonuç |
 |---|---|
 | Backend access | 37/37 |
 | Backend identity | 131/131 |
-| Backend notifications | 45/45 |
+| Backend notifications | 50/50 |
 | Backend organization | 54/54 |
 | Backend tasks | 115/115 |
 | Backend groups | 62/62 |
@@ -79,15 +84,15 @@
 | Backend alerts | 6/6 |
 | Backend location | 4/4 |
 | Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **511/511** (FCM düzeltmeleri dahil, s39) |
-| Web | tsc + eslint temiz, vitest **135/135** |
-| Android | **88/88**, `assembleDebug` başarılı (Firebase ile) |
+| **Backend toplam** | **516/516** |
+| Web | tsc + eslint temiz, vitest **180/180** (testTimeout 15 sn, RAPOR_5 §5) |
+| Android | **93/93**, `assembleDebug` başarılı; rehber içeriği APK içinde `assets/guide/` |
 
-Denenmeyenler (FCM): telefon bu oturumun sonunda bağlı değildi; FCM ile kilitli/kapalı telefona alarm, bildirimden yanıt ve izin ekranları gerçek cihazda denenmedi (MANUEL_TEST §11). Proje sahibi 16.11'de doğruladı: web girişi, alarm (aktif operasyonda), duyurular; telefonda uygulama açıkken SSE ve yerel bildirim. Harita ve gerçek GPS ölçümü denenmedi.
+Denenmeyenler (16.11 gece): yeni tasarım tarayıcıda/telefonda görülmedi (telefon çıkarılmıştı, `installDebug` yapılmadı); V16 dev DB'ye uygulanmadı (backend yeniden başlatılmadı). MANUEL_TEST §12–§15. FCM gerçek cihazda doğrulandı (proje sahibi). Proje sahibi 16.11'de doğruladı: web girişi, alarm (aktif operasyonda), duyurular; telefonda uygulama açıkken SSE ve yerel bildirim. Harita ve gerçek GPS ölçümü denenmedi.
 
 ## 6. Sonraki oturumda başlangıç adımları
 
-1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V15'e kadar uygulanmış olmalı. FCM için `.env`: `GKS_PUSH_PROVIDER=fcm`, `GKS_FIREBASE_CREDENTIALS_FILE=<yol>`.
-2. `.claude-runs/RAPOR_4.md` ve MANUEL_TEST §11 sonuçlarını oku.
+1. `docker ps` ile Postgres/Mailpit, `curl localhost:8080/actuator/health` ile backend kontrolü (tek bootRun). Flyway V16'ya kadar uygulanmış olmalı (V16 ilk yeniden başlatmada uygulanır). FCM için `.env`: `GKS_PUSH_PROVIDER=fcm`, `GKS_FIREBASE_CREDENTIALS_FILE=<yol>`.
+2. `.claude-runs/RAPOR_5.md` (tasarım, içerik doğrulama listesi, kararlar) ve MANUEL_TEST §12–§15 sonuçlarını oku.
 3. Kod yerleri: backend `backend/src/main/java/org/gks/backend/<modül>/`; Android `android/app/src/main/java/org/gks/android/` (`data/*Repository.kt`, `ui/alerts/`, `ui/location/`, `location/LocationSharingService.kt`); web `web/src/features/<ekran>/`, servisler `web/src/services/`, canlı akış `web/src/app/live.ts`.
 4. Yeni yönetim işlemi: yetki `access/` arayüzü, denetim `AuditTrail.record`, canlı güncelleme `RealtimeBus.publish`; web'de yeni servis için http + mock + `config/services.ts` anahtarı ve `screens.test.tsx` anahtar listesi.

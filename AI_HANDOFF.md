@@ -63,6 +63,10 @@ Modül sınırları `backend/src/test/java/org/gks/backend/ModularityTests.java`
 | Grup (GR-01…08) | ✅ | ✅ | ✅ gönüllü/lider ekranları + KOR grup yönetimi |
 | Görev (TK-01…12) | ✅ | ✅ | ✅ gönüllü kabul/ret + KOR görev yönetimi |
 | Bildirim gelen kutusu (NT-04/05/07/08) | ✅ | ✅ zil rozeti, `/bildirimler` | ✅ sekme, rozet, SSE + 30 sn yoklama yedeği |
+| Tasarım sistemi + halka açık site (ADR-023) | – | ✅ `app/theme.ts`, `config/brand.ts`, `features/public/`, içerik `src/content/*.json` | ✅ `ui/theme/`, `res/values/brand.xml` |
+| Kamu duyuruları (V16, ADR-023) | ✅ `notifications/PublicAnnouncement*`, `PublicRateLimiter` | ✅ `/panel/kamu-duyurulari`, site `/duyurular` | ✅ Duyurular sekmesi |
+| Panel yeniden tasarımı + Özet (WEB-02) | – | ✅ `app/AppShell.tsx` (`usePanelNav`), `features/dashboard/HomePage.tsx`, `components/panel/` | – |
+| Android yeniden tasarım + internetsiz rehber | – | – | ✅ `ui/guide/`, `ui/home/HomeLanding.kt`, `ui/announcements/`, `data/guide/GuideContent.kt` |
 | FCM push + cihaz kaydı (ID-26, ADR-022) | ✅ `identity/DeviceController`, `notifications/FcmPushGateway` | – | ✅ `alarm/` (`Alarms`, `AlarmPolicy`, `GksMessagingService`, `DeviceRegistrar`) |
 | Duyuru (NT-01/02/03/06) | ✅ | ✅ `/duyurular` | ✅ operasyon/grup/kişi hedefi, önizleme, >50 onay, geçmiş, kurum duyurusu |
 | Denetim kaydı (AU-01, ADR-016) | ✅ `audit/` (V12) | ✅ `/denetim` salt-okur | – |
@@ -188,6 +192,8 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 - `alarm/` (ADR-022): `Alarms` (tek giriş `onIncoming`: FCM ve SSE; `notificationId` ile tekilleştirme; kanal `alerts-critical-v2`; ısrarlı ses/hatırlatma `AlarmManager`; yanıt düğmeleri; `reconcile`), `AlarmPolicy` (saf durum makinesi, birim testli), `Incoming`/`RecentIds`, `AlarmActionReceiver`, `GksMessagingService`, `DeviceRegistrar` (`PUT /devices/{installationId}`). İzin ekranı/durumu `ui/notify/AlarmPermissions.kt`. Bildirime dokunma → `MainActivity.handleOpen` → `AppContainer.pendingOpen` → `MainShell` gezinmesi.
 - `domain/`: `HomeModel.kt`, `RolePanels.kt`, `ProfileChanges.kt`, `ManagementAccess.kt` (Yönetim sekmesi ve düğme görünürlüğü; `canAnnounce`, `canAnnounceOrganization`), `AnnouncementForm.kt` (hedef, kişi arama, doğrulama).
 
+**Tasarım (ADR-023, 16.11 gece):** alt gezinme `bottomTabs()` = Ana Sayfa, Rehberler, Duyurular, (Yönetim — yalnızca MFA'lı yönetim oturumu), Hesap. Görevler (`tasks`), Grubum (`groups`), Bildirimler (`notifications`) rota olarak durur; ana sayfadaki Hızlı Erişim ve üst çubuktaki bildirim zilinden açılır. Rehber içeriği `web/src/content/*.json`'dan Gradle `copyGuideContent` göreviyle `assets/guide/`a kopyalanır (internetsiz; girişten önce `GuideHost`). Logo `res/drawable/logo` çalışma anında aranır (`BrandLogo`). Ortak durum rozeti `ui/common/StatusBadge.kt`.
+
 **Navigasyon:** `ui/MainActivity.kt` (giriş/kayıt/MFA/bağlam yükleme durumları, `ui/AppViewModel.kt`) → `ui/MainShell.kt` (alt navigasyon + NavHost).
 - Gönüllü sekmeleri: Ana sayfa, Görevler, Grubum, Bildirimler, Hesap.
 - Yönetim oturumu sekmeleri: Ana sayfa, Görevler, **Yönetim**, Bildirimler, Hesap (Grubum, Ana sayfadaki grup kartlarından açılır).
@@ -204,15 +210,17 @@ Temel yol `/api/v1`. Uç kimlikleri ve şemalar: `docs/architecture/design/team/
 
 ## 8. Web
 
-Rotalar (`web/src/app/App.tsx`): `/giris`, `/` (panel), `/operasyonlar`, `/operasyonlar/:opId`, `.../gruplar`, `.../gruplar/:groupId`, `.../gorevler`, `.../gorevler/:taskId`, `/davetler`, `/hesabim`, `/bildirimler`, `/duyurular`, `/roller` (16.11, `role.assign`), `/kullanicilar` (16.11, `user.status.view`).
+Rotalar (`web/src/app/App.tsx`, ADR-023): **halka açık** `/`, `/afet/:tur`, `/rehber`, `/ne-yapmali`, `/duyurular` (kamu duyuruları), `/gonulluluk`, `/iletisim`; giriş `/giris`; **panel** `/panel` (Özet), `/panel/operasyonlar[/:opId[/gruplar|/gorevler|/alarmlar|/konum]]`, `/panel/davetler`, `/panel/hesabim`, `/panel/bildirimler`, `/panel/duyurular`, `/panel/kamu-duyurulari`, `/panel/roller`, `/panel/kullanicilar`, `/panel/denetim`, `/panel/alarmlar[/:id]`. Eski kök adresler `LEGACY_PANEL_PATHS` ile `/panel/...`'e yönlenir. Oturum sonu yalnızca panelde girişe götürür (`isPanelPath`).
+
+- Tema `app/theme.ts` (tek yer; `contrastRatio` testli), marka `config/brand.ts`, halka açık içerik `src/content/*.json` (koddan ayrı; Android da kullanır). Halka açık sayfalar iç servis çağırmaz (`public.test.tsx` vekil servislerle doğrular).
 
 - Servis katmanı: `web/src/services/contracts.ts` (arayüzler), `http.ts` (gerçek API), `mock/services.ts` (yalnızca `npm run dev:mock` tanıtımı; "Örnek veri" rozeti), `registry.tsx`, kaynak modu `web/src/config/services.ts` (varsayılan hepsi `http`).
 - API istemcisi: `web/src/api/client.ts` (CSRF, tek sekmede yenileme, 401/503 kuralları), hata iletileri `web/src/api/errorMessages.ts`.
-- Menü görünürlüğü `web/src/app/AppShell.tsx` (bağlam izinlerinden).
+- Menü görünürlüğü `web/src/app/AppShell.tsx` → `usePanelNav` (bağlam izinlerinden; `panel.test.tsx`).
 
 - Salt-okur bandı (`ReadOnlyBanner`) artık rol adından değil izinden: `usePermissions().isAdmReadOnly(op)` = ADM ve `task.manage` yok (ADR-015 sonrası normalde görünmez). Servis kaynakları `config/services.ts`: `roleAssignments`, `users` eklendi (http + mock).
 
-**Eksik web yönetim ekranları:** denetim kayıtları, acil alarm, konum haritası.
+**Eksik web yönetim ekranları:** konum haritası. Liste sayfaları ortak `StatusChip`/`EmptyState` kullanır; tek bir genel tablo bileşenine geçiş yapılmadı (RAPOR_5).
 
 ---
 
@@ -300,4 +308,4 @@ Tamamlananlar (16.11): Android duyuru yönetimi, ADR-015, tarih-saat seçici, we
 
 16.11 sabahı tamamlananlar ve commit'ler: denetim `5fd8771`, SSE `2b800a1`, acil alarm `9a79e24`, konum `0f51d86` (ayrıntı `.claude-runs/RAPOR_2.md`).
 
-Sonraki oturumlar: RAPOR_3 (ADR-020/021) ve RAPOR_4 (ADR-022, FCM). Firebase: `android/app/google-services.json` git dışıdır, asla commit edilmez; sunucu anahtarı yalnızca `.env`'deki `GKS_FIREBASE_CREDENTIALS_FILE` yolundan okunur, dosya açılmaz. Sıradaki iş proje sahibinin MANUEL_TEST §11 sonuçlarına ve harita sağlayıcısı kararına bağlıdır. Yeni bağımlılık/indirme yalnızca açık izinle.
+Sonraki oturumlar: RAPOR_3 (ADR-020/021), RAPOR_4 (ADR-022, FCM), RAPOR_5 (ADR-023 tasarım, halka açık site, kamu duyuruları). Firebase: `android/app/google-services.json` git dışıdır, asla commit edilmez; sunucu anahtarı yalnızca `.env`'deki `GKS_FIREBASE_CREDENTIALS_FILE` yolundan okunur, dosya açılmaz. Sıradaki iş proje sahibinin MANUEL_TEST §11 sonuçlarına ve harita sağlayıcısı kararına bağlıdır. Yeni bağımlılık/indirme yalnızca açık izinle.
