@@ -22,7 +22,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
-import { formatDateTime } from '../../components/format';
+import { OPERATION_STATE_LABEL, formatDateTime } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
 import type { AlertCounts, AlertSummary, AlertView } from '../../services/types';
 import { NoParticipantsHint } from '../operations/NoParticipantsHint';
@@ -76,7 +76,13 @@ export function AlertListPage() {
   const mock = useIsMock('alerts');
   const scope = useOperationScope(opId);
   const [creating, setCreating] = useState(false);
-  const canSend = scope.can('alert.send') && scope.operation.data?.state === 'ACTIVE';
+  const perms = usePermissions();
+  const state = scope.operation.data?.state;
+  // Hata kaydı (16.11): aktif olmayan operasyonda düğme hiç gösterilmiyordu; kullanıcı neden alarm
+  // oluşturamadığını göremiyordu. Artık düğme pasif görünür ve nedeni yazılır (AL-01: yalnızca ACTIVE).
+  const hasPermission = perms.can('alert.send', opId);
+  const notActive = !!state && state !== 'ACTIVE';
+  const canSend = hasPermission && state === 'ACTIVE';
   const query = useQuery({
     queryKey: Q.alerts({ operationId: opId }),
     queryFn: () => services.alerts.list({ operationId: opId }),
@@ -88,14 +94,25 @@ export function AlertListPage() {
         title={`Acil alarmlar${scope.operation.data ? ` — ${scope.operation.data.name}` : ''}`}
         mock={mock}
         actions={
-          canSend ? (
-            <Button variant="contained" color="error" onClick={() => setCreating(true)}>
+          hasPermission ? (
+            <Button variant="contained" color="error" onClick={() => setCreating(true)} disabled={!canSend}>
               Acil alarm gönder
             </Button>
           ) : undefined
         }
       />
       <ClosedOperationBanner show={scope.closed} />
+      {hasPermission && notActive && !scope.closed && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Acil alarm yalnızca <strong>Aktif</strong> durumdaki operasyonda gönderilebilir. Bu operasyon şu an{' '}
+          <strong>{OPERATION_STATE_LABEL[state!]}</strong>.{' '}
+          {perms.can('operation.manage', opId) ? (
+            <RouterLink to={`/operasyonlar/${opId}`}>Operasyon sayfasından durumu Aktif yapabilirsiniz.</RouterLink>
+          ) : (
+            'Operasyonu koordinatör veya kurum yöneticisi aktifleştirebilir.'
+          )}
+        </Alert>
+      )}
       {canSend && <NoParticipantsHint operationId={opId} purpose="Alarmı kişilere veya gruplara göndermek" />}
       <QueryState isPending={query.isPending} error={query.error} onRetry={() => void query.refetch()}>
         {() =>

@@ -35,6 +35,15 @@ describe('Acil alarm (WEB-09/10, ADR-018)', () => {
     expect(await screen.findByText('Açık')).toBeInTheDocument();
   });
 
+  it('aktif olmayan operasyonda gönderim düğmesi pasif ve nedeni yazılı (hata kaydı 16.11)', async () => {
+    renderApp({ route: `/operasyonlar/${MOCK_IDS.op2}/alarmlar`, persona: 'ADM' });
+    await waitFor(() =>
+      expect(screen.getAllByRole('alert').some((a) => /Acil alarm yalnızca Aktif durumdaki operasyonda gönderilebilir.*Planlandı/.test(a.textContent ?? ''))).toBe(true),
+    );
+    expect(screen.getByRole('button', { name: 'Acil alarm gönder' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: /durumu Aktif yapabilirsiniz/ })).toBeInTheDocument();
+  });
+
   it('ADM KOR ataması olmadan iptal eder; canlı olay listeyi yeniler', async () => {
     renderApp({ route: '/alarmlar', persona: 'ADM' });
     const user = userEvent.setup();
