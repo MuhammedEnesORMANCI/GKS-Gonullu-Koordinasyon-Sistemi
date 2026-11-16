@@ -44,4 +44,6 @@ export const Q = {
   alertRecipients: (id: string) => ['alerts', id, 'recipients'] as const,
   pushStatus: () => ['push-status'] as const,
   publicAnnouncements: (limit: number) => ['public-announcements', limit] as const,
+  channels: () => ['channels'] as const,
+  channelMessages: (channelId: string) => ['channels', channelId, 'messages'] as const,
 };

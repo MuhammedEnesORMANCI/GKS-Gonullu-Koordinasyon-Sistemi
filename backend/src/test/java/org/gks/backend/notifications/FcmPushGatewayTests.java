@@ -35,4 +35,19 @@ class FcmPushGatewayTests {
 		assertThat(m.toString()).doesNotContain("gizli-belirtec");
 	}
 
+
+	@Test
+	void messagePayloadCarriesOnlyChannelAndMessageIdsNeverContent() {
+		UUID channel = UUID.randomUUID();
+		UUID message = UUID.randomUUID();
+		PushGateway.Message m = new PushGateway.Message(UUID.randomUUID(), "gizli-belirtec", "MESSAGE", "channel:" + channel,
+				PushGateway.Priority.NORMAL, "Yeni mesaj", "CHANNEL", channel, "MESSAGE_POSTED", UUID.randomUUID(),
+				"Gizli içerik: 3. kat", null, message);
+		assertThat(FcmPushGateway.data(m)).containsEntry("type", "MESSAGE").containsEntry("channelId", channel.toString())
+			.containsEntry("messageId", message.toString()).containsEntry("priority", "NORMAL")
+			.doesNotContainKeys("title", "body", "sourceType", "inboxItemId")
+			.doesNotContainValue("Gizli içerik: 3. kat");
+		assertThat(FcmPushGateway.toFcm(m)).isNotNull();
+	}
+
 }

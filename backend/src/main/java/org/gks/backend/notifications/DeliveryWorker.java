@@ -127,13 +127,14 @@ class DeliveryWorker {
 			case "MEETING_POINT" -> "MEETING_POINT";
 			case "OPERATION_INVITE" -> "OPERATION_INVITE";
 			case "ALERT" -> "ALERT";
+			case "MESSAGE" -> "MESSAGE";
 			default -> "ANNOUNCEMENT";
 		};
 		String collapseKey = d.sourceId() == null ? null : d.sourceType().toLowerCase(Locale.ROOT) + ":" + d.sourceId();
 		PushGateway.Priority priority = "NORMAL".equals(d.priority()) || "LOW".equals(d.priority())
 				? PushGateway.Priority.NORMAL : PushGateway.Priority.HIGH;
 		return new PushGateway.Message(d.id(), token, type, collapseKey, priority, d.title(), d.sourceType(), d.sourceId(),
-				d.kind(), d.notificationId(), d.body(), d.inboxItemId());
+				d.kind(), d.notificationId(), d.body(), d.inboxItemId(), d.refId());
 	}
 
 }

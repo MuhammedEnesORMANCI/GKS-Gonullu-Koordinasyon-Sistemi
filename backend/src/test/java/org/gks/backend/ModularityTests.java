@@ -22,7 +22,7 @@ class ModularityTests {
 	void allTenApplicationModulesAreDetected() {
 		assertThat(modules.stream().map(ApplicationModule::getIdentifier).map(Object::toString))
 				.containsExactlyInAnyOrder("identity", "access", "organization", "groups", "tasks",
-						"location", "alerts", "notifications", "realtime", "audit");
+						"location", "alerts", "notifications", "realtime", "audit", "messaging");
 	}
 
 }

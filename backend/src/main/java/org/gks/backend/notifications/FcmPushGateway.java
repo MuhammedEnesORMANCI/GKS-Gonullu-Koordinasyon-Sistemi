@@ -181,6 +181,16 @@ class FcmPushGateway implements PushGateway {
 	/** Data alanları (hepsi metin): istemci `type`/`kind` ile karar verir, `notificationId` ile tekilleştirir. */
 	static Map<String, String> data(Message m) {
 		Map<String, String> data = new LinkedHashMap<>();
+		if ("MESSAGE".equals(m.type())) {
+			// ADR-024: mesaj bildiriminde içerik yok; yalnızca kanal ve mesaj kimliği (istemci içeriği kendisi çeker).
+			data.put("type", "MESSAGE");
+			put(data, "kind", m.kind());
+			put(data, "notificationId", m.notificationId());
+			put(data, "channelId", m.sourceId());
+			put(data, "messageId", m.refId());
+			data.put("priority", m.priority().name());
+			return data;
+		}
 		data.put("type", m.type());
 		put(data, "kind", m.kind());
 		put(data, "notificationId", m.notificationId());
@@ -198,8 +208,9 @@ class FcmPushGateway implements PushGateway {
 		AndroidConfig.Builder android = AndroidConfig.builder()
 			.setPriority(m.priority() == Priority.HIGH ? AndroidConfig.Priority.HIGH : AndroidConfig.Priority.NORMAL)
 			.setTtl((alert ? ALERT_TTL : DEFAULT_TTL).toMillis());
-		if (m.collapseKey() != null && alert) {
-			android.setCollapseKey(m.collapseKey());   // çevrimdışıyken yalnızca alarmın son durumu bekler
+		if (m.collapseKey() != null && (alert || "MESSAGE".equals(m.type()))) {
+			// Çevrimdışıyken alarmın son durumu / kanalın son mesaj bildirimi bekler (aynı kanaldakiler gruplanır).
+			android.setCollapseKey(m.collapseKey());
 		}
 		return com.google.firebase.messaging.Message.builder()
 			.setToken(m.token())

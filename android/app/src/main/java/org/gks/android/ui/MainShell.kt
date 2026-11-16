@@ -14,6 +14,11 @@ import org.gks.android.ui.announcements.PublicAnnouncementsViewModel
 import org.gks.android.ui.theme.GksPalette
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TopAppBarDefaults
+import org.gks.android.ui.messaging.ChatViewModel
+import org.gks.android.ui.messaging.ChatScreen
+import org.gks.android.ui.messaging.ChannelsViewModel
+import org.gks.android.ui.messaging.ChannelsScreen
+import androidx.compose.material.icons.filled.Email
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -135,6 +140,7 @@ enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVect
 	HOME("home", R.string.tab_home, Icons.Filled.Home),
 	GUIDES(GuideRoutes.LIST, R.string.tab_guides, Icons.Filled.Info, R.drawable.ic_tab_guide),
 	ANNOUNCEMENTS("announcements", R.string.tab_announcements, Icons.Filled.Notifications, R.drawable.ic_tab_megaphone),
+	MESSAGES("messages", R.string.tab_messages, Icons.Filled.Email),
 	TASKS("tasks", R.string.tab_tasks, Icons.AutoMirrored.Filled.List),
 	GROUPS("groups", R.string.tab_groups, Icons.Filled.Face),
 	MANAGEMENT("management", R.string.tab_management, Icons.Filled.Settings),
@@ -142,10 +148,19 @@ enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVect
 	ACCOUNT("account", R.string.tab_account, Icons.Filled.Person),
 }
 
-/** Alt gezinme sekmeleri; Yönetim yalnızca MFA'lı yönetim oturumunda (ADR-014). */
+/**
+ * Alt gezinme sekmeleri (en fazla 5). Gönüllü: Ana Sayfa, Rehberler, Mesajlar, Duyurular, Hesap. Yönetim oturumu
+ * (ADR-014): Ana Sayfa, Mesajlar, Duyurular, Yönetim, Hesap; Rehberler ana sayfadan (afet kartları, Hızlı Erişim).
+ */
 fun bottomTabs(management: Boolean): List<Tab> =
-	if (management) listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.MANAGEMENT, Tab.ACCOUNT)
-	else listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.ACCOUNT)
+	if (management) listOf(Tab.HOME, Tab.MESSAGES, Tab.ANNOUNCEMENTS, Tab.MANAGEMENT, Tab.ACCOUNT)
+	else listOf(Tab.HOME, Tab.GUIDES, Tab.MESSAGES, Tab.ANNOUNCEMENTS, Tab.ACCOUNT)
+
+/** Bildirime dokunma hedefi → rota (ADR-022/024). */
+fun openTarget(target: String): String? = when {
+	target.startsWith("channel:") -> "messages/" + target.removePrefix("channel:")
+	else -> null
+}
 
 private object Routes {
 	const val TASK = "task/{id}"
@@ -212,6 +227,7 @@ private object Routes {
 		MANAGED_ANNOUNCEMENT -> R.string.announcement_detail_title
 		GuideRoutes.HAZARD, GuideRoutes.SECTION -> R.string.tab_guides
 		GuideRoutes.EMERGENCY -> R.string.guide_what_to_do
+		"messages/{id}" -> R.string.tab_messages
 		else -> Tab.entries.firstOrNull { it.route == route }?.label ?: R.string.app_name
 	}
 }
@@ -276,7 +292,9 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			try {
 				container.realtime.events.collect { event ->
 					when (event.type) {
-						"inbox.changed", "resync" -> { unreadVm.refresh(); alertsVm.refresh() }
+						"inbox.changed", "resync" -> { unreadVm.refresh(); alertsVm.refresh(); container.messagingEvents.tryEmit(Unit) }
+						// ADR-024: yeni/değişen mesaj; kanal listesi ve açık sohbet tazelenir.
+						"message.created", "message.updated", "channel.updated" -> container.messagingEvents.tryEmit(Unit)
 						// Oturum sunucuda iptal edildi: bağlam yeniden okunur; 401 ile giriş ekranına dönülür.
 						"session.revoked" -> app.refreshContext()
 					}
@@ -284,6 +302,17 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			}
 			finally {
 				container.realtime.release()
+			}
+		}
+	}
+	// ADR-024: çevrimdışı kuyruk; ekran açıkken düzenli aralıkla (ve sohbet açılınca) gönderilmeyi dener.
+	LaunchedEffect(lifecycle) {
+		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+			while (true) {
+				if (container.messagingRepository.outbox.pending().isNotEmpty() && container.messagingRepository.flush() > 0) {
+					container.messagingEvents.tryEmit(Unit)
+				}
+				delay(20_000)
 			}
 		}
 	}
@@ -339,6 +368,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				target.startsWith("alert:") -> nav.navigate(Routes.alert(target.removePrefix("alert:")))
 				target.startsWith("inbox:") -> nav.navigate(Routes.notification(target.removePrefix("inbox:")))
 				target == "inbox" -> nav.navigate(Tab.NOTIFICATIONS.route)
+				openTarget(target) != null -> nav.navigate(openTarget(target)!!)
 			}
 		}
 		NavHost(nav, startDestination = Tab.HOME.route, modifier = Modifier.weight(1f)) {
@@ -354,6 +384,7 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 						add(QuickLink(section.title, icon) { nav.navigate(GuideRoutes.section(section.id)) })
 					}
 					if (management != null) add(QuickLink(stringResource(R.string.quick_management), rememberVectorPainter(Icons.Filled.Settings)) { nav.navigate(Tab.MANAGEMENT.route) })
+					add(QuickLink(stringResource(R.string.tab_guides), rememberVectorPainter(Icons.Filled.Info)) { nav.navigate(GuideRoutes.LIST) })
 				}
 				HomeTab(
 					context = main.context,
@@ -374,6 +405,21 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 				)
 			}
 			guideGraph(container.guideContent, nav, includeList = true)
+			composable(Tab.MESSAGES.route) {
+				val vm = containerViewModel { ChannelsViewModel(it.messagingRepository) }
+				RefreshOn(refreshTick, vm::load)
+				LaunchedEffect(vm) { container.messagingEvents.collect { vm.load() } }
+				ChannelsScreen(vm, onOpen = { nav.navigate("messages/$it") })
+			}
+			composable("messages/{id}") { backStack ->
+				val channelId = backStack.arguments?.getString("id").orEmpty()
+				val vm = containerViewModel(key = "chat-$channelId") { ChatViewModel(it.messagingRepository, channelId) }
+				LaunchedEffect(vm) { container.messagingEvents.collect { vm.refresh() } }
+				ChatScreen(vm, onOpened = { open ->
+					container.openChannel.value = open
+					if (open != null) container.messageNotifier.clear(open)
+				})
+			}
 			composable(Tab.ANNOUNCEMENTS.route) {
 				val vm = containerViewModel { PublicAnnouncementsViewModel(it.publicAnnouncementRepository) }
 				RefreshOn(refreshTick, vm::load)

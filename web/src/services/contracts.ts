@@ -10,6 +10,8 @@ import type {
   Freshness,
   PublicAnnouncement,
   PublicAnnouncementAdminView,
+  ChannelView,
+  MessageView,
   LocationListView,
   AuditEntryView,
   AnnouncementCreateRequest,
@@ -309,6 +311,9 @@ export type LiveEventType =
   | 'location.sharing.changed'
   | 'subscription.revoked'
   | 'session.revoked'
+  | 'message.created'
+  | 'message.updated'
+  | 'channel.updated'
   | 'resync';
 
 export interface LiveEvent {
@@ -337,6 +342,20 @@ export interface PublicAnnouncementService {
   unpublish(id: Uuid, version: number): Promise<PublicAnnouncementAdminView>;
 }
 
+/** Mesajlaşma (ADR-024): operasyon, koordinasyon ve grup kanalları; birebir mesaj yok. */
+export interface MessagingService {
+  channels(): Promise<ChannelView[]>;
+  /** Yeniden eskiye; `cursor` daha eski sayfa. */
+  messages(channelId: Uuid, page?: PageRequest): Promise<Page<MessageView>>;
+  /** `Idempotency-Key` zorunlu (UUID): aynı anahtarla tekrar aynı mesajı döndürür. */
+  send(channelId: Uuid, body: string, idempotencyKey: string): Promise<MessageView>;
+  remove(channelId: Uuid, messageId: Uuid): Promise<MessageView>;
+  hide(channelId: Uuid, messageId: Uuid): Promise<MessageView>;
+  markRead(channelId: Uuid, messageId: Uuid): Promise<void>;
+  mute(channelId: Uuid, muted: boolean): Promise<void>;
+  setAdminsOnly(channelId: Uuid, adminsOnly: boolean): Promise<void>;
+}
+
 export interface Services {
   auth: AuthService;
   account: AccountService;
@@ -356,4 +375,5 @@ export interface Services {
   locations: LocationService;
   realtime: RealtimeService;
   publicAnnouncements: PublicAnnouncementService;
+  messaging: MessagingService;
 }

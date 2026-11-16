@@ -575,3 +575,46 @@ data class DeviceView(val installationId: String, val active: Boolean, val regis
 @Serializable
 data class PublicAnnouncement(val id: String, val title: String, val body: String, val publishedAt: String)
 
+// ---- mesajlaşma (ADR-024) ----
+@Serializable
+data class ChannelView(
+	val id: String,
+	val kind: String,
+	val operationId: String,
+	val operationName: String = "",
+	val groupId: String? = null,
+	val groupName: String? = null,
+	val adminsOnly: Boolean = false,
+	val readOnly: Boolean = false,
+	val canWrite: Boolean = false,
+	val canModerate: Boolean = false,
+	val muted: Boolean = false,
+	val unread: Int = 0,
+	val lastMessageAt: String? = null,
+)
+
+@Serializable
+data class MessageSender(val id: String, val displayName: String = "")
+
+@Serializable
+data class MessageView(
+	val id: String,
+	val channelId: String,
+	val kind: String = "USER",
+	val sender: MessageSender? = null,
+	val body: String? = null,
+	val state: String = "VISIBLE",
+	val createdAt: String,
+	val mine: Boolean = false,
+	val deletable: Boolean = false,
+)
+
+@Serializable
+data class SendMessageRequest(val body: String)
+
+@Serializable
+data class ReadRequest(val messageId: String)
+
+@Serializable
+data class MuteRequest(val muted: Boolean)
+

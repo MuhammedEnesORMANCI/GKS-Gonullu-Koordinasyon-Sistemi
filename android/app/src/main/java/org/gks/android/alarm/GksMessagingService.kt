@@ -14,6 +14,11 @@ class GksMessagingService : FirebaseMessagingService() {
 	private val container get() = (application as GksApplication).container
 
 	override fun onMessageReceived(message: RemoteMessage) {
+		MessagePush.fromData(message.data)?.let { push ->
+			Alarms.ensureChannels(this)
+			runBlocking { container.messageNotifier.onPush(push) }
+			return
+		}
 		val incoming = Incoming.fromData(message.data) ?: return
 		Alarms.ensureChannels(this)
 		// onMessageReceived kendi arka plan iş parçacığındadır; bildirim çizilene kadar beklenir (süreç erken ölmesin).

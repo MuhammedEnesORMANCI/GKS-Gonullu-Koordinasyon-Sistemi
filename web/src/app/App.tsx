@@ -38,6 +38,7 @@ import { VolunteerPage } from '../features/public/VolunteerPage';
 import { ContactPage } from '../features/public/ContactPage';
 import { PublicNotFoundPage } from '../features/public/PublicNotFoundPage';
 import { PublicAnnouncementAdminPage } from '../features/publicAnnouncements/PublicAnnouncementAdminPage';
+import { MessagesPage } from '../features/messaging/MessagesPage';
 import { AppShell } from './AppShell';
 import { createQueryClient } from './queryClient';
 import { createAppTheme } from './theme';
@@ -142,6 +143,8 @@ export function AppRoutes() {
         <Route path="bildirimler" element={<NotificationsPage />} />
         <Route path="duyurular" element={<AnnouncementsPage />} />
         <Route path="kamu-duyurulari" element={<PublicAnnouncementAdminPage />} />
+        <Route path="mesajlar" element={<MessagesPage />} />
+        <Route path="mesajlar/:channelId" element={<MessagesPage />} />
         <Route path="roller" element={<RoleAssignmentsPage />} />
         <Route path="kullanicilar" element={<UsersPage />} />
         <Route path="denetim" element={<AuditPage />} />

@@ -49,6 +49,37 @@ class JdbcGroupMembers implements GroupMembers {
 	}
 
 	@Override
+	public List<GroupRef> groups(UUID operationId) {
+		return jdbc.sql("""
+				select id, operation_id, name from groups.groups
+				 where operation_id = :operationId and archived_at is null order by name, id""")
+			.param("operationId", operationId)
+			.query((rs, row) -> new GroupRef(rs.getObject("id", UUID.class), rs.getObject("operation_id", UUID.class),
+					rs.getString("name")))
+			.list();
+	}
+
+	@Override
+	public List<Membership> memberships(UUID userId) {
+		return jdbc.sql("""
+				select m.group_id, g.operation_id, m.role from groups.group_memberships m
+				  join groups.groups g on g.id = m.group_id
+				 where m.user_id = :userId and m.status = 'ACTIVE' and g.archived_at is null and g.operation_id is not null""")
+			.param("userId", userId)
+			.query((rs, row) -> new Membership(rs.getObject("group_id", UUID.class), rs.getObject("operation_id", UUID.class),
+					"LEADER".equals(rs.getString("role"))))
+			.list();
+	}
+
+	@Override
+	public List<UUID> leaders(UUID operationId) {
+		return jdbc.sql("""
+				select distinct m.user_id from groups.group_memberships m join groups.groups g on g.id = m.group_id
+				 where g.operation_id = :operationId and g.archived_at is null and m.status = 'ACTIVE' and m.role = 'LEADER'""")
+			.param("operationId", operationId).query(UUID.class).list();
+	}
+
+	@Override
 	public Map<UUID, String> names(Collection<UUID> groupIds) {
 		Map<UUID, String> names = new LinkedHashMap<>();
 		if (!groupIds.isEmpty()) {

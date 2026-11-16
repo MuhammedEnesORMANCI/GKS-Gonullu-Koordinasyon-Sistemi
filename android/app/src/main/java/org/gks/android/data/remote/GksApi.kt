@@ -95,6 +95,26 @@ interface GksApi {
 	@GET("api/v1/me/notifications")
 	suspend fun inbox(@Query("cursor") cursor: String?, @Query("limit") limit: Int = INBOX_PAGE): Response<Page<InboxItem>>
 
+	/** ADR-024: erişilebilir kanallar (okunmamış sayılarıyla). */
+	@GET("api/v1/channels")
+	suspend fun channels(): Response<List<ChannelView>>
+
+	@GET("api/v1/channels/{id}/messages")
+	suspend fun channelMessages(@Path("id") channelId: String, @Query("limit") limit: Int, @Query("cursor") cursor: String? = null): Response<Page<MessageView>>
+
+	/** Çevrimdışı kuyruk aynı anahtarla yeniden gönderir; sunucu aynı mesajı döndürür. */
+	@POST("api/v1/channels/{id}/messages")
+	suspend fun sendMessage(@Path("id") channelId: String, @Header(IDEMPOTENCY_HEADER) key: String, @Body body: SendMessageRequest): Response<MessageView>
+
+	@DELETE("api/v1/channels/{id}/messages/{messageId}")
+	suspend fun deleteMessage(@Path("id") channelId: String, @Path("messageId") messageId: String): Response<MessageView>
+
+	@POST("api/v1/channels/{id}/read")
+	suspend fun markChannelRead(@Path("id") channelId: String, @Body body: ReadRequest): Response<Unit>
+
+	@PUT("api/v1/channels/{id}/mute")
+	suspend fun muteChannel(@Path("id") channelId: String, @Body body: MuteRequest): Response<Unit>
+
 	/** ADR-023: kamu duyuruları (kimlik doğrulamasız uç; yalnızca yayındakiler). */
 	@GET("api/v1/public/announcements")
 	suspend fun publicAnnouncements(@Query("limit") limit: Int, @Query("cursor") cursor: String? = null): Response<Page<PublicAnnouncement>>

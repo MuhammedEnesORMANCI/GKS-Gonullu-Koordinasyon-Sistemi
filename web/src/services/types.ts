@@ -597,3 +597,36 @@ export interface PublicAnnouncementAdminView {
   publishedAt?: string;
 }
 
+// ---- mesajlaşma (ADR-024) ----
+export type ChannelKind = 'OPERATION' | 'COORDINATION' | 'GROUP';
+
+export interface ChannelView {
+  id: Uuid;
+  kind: ChannelKind;
+  operationId: Uuid;
+  operationName: string;
+  groupId?: Uuid;
+  groupName?: string;
+  adminsOnly: boolean;
+  readOnly: boolean;
+  canWrite: boolean;
+  canModerate: boolean;
+  muted: boolean;
+  unread: number;
+  lastMessageAt?: string;
+}
+
+export type MessageState = 'VISIBLE' | 'DELETED' | 'HIDDEN';
+
+export interface MessageView {
+  id: Uuid;
+  channelId: Uuid;
+  kind: 'USER' | 'SYSTEM';
+  sender?: { id: Uuid; displayName: string };
+  body?: string;
+  state: MessageState;
+  createdAt: string;
+  mine: boolean;
+  deletable: boolean;
+}
+

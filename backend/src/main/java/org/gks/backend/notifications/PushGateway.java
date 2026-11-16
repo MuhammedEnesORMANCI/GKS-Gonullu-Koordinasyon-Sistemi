@@ -21,7 +21,15 @@ public interface PushGateway {
 	 * gelen kutusu kaydı (bildirime dokununca açılan ayrıntı).
 	 */
 	record Message(UUID deliveryId, String token, String type, String collapseKey, Priority priority, String title,
-			String sourceType, UUID sourceId, String kind, UUID notificationId, String body, UUID inboxItemId) {
+			String sourceType, UUID sourceId, String kind, UUID notificationId, String body, UUID inboxItemId, UUID refId) {
+
+		/** Mesaj dışı bildirimler: ek kaynak kimliği yok. */
+		Message(UUID deliveryId, String token, String type, String collapseKey, Priority priority, String title,
+				String sourceType, UUID sourceId, String kind, UUID notificationId, String body, UUID inboxItemId) {
+			this(deliveryId, token, type, collapseKey, priority, title, sourceType, sourceId, kind, notificationId, body,
+					inboxItemId, null);
+		}
+
 		@Override
 		public String toString() {
 			return "PushMessage[delivery=" + deliveryId + ", type=" + type + "]";   // belirteç günlüğe yazılmaz

@@ -13,6 +13,7 @@ import type {
   OperationService,
   LocationService,
   ParticipantService,
+  MessagingService,
   PublicAnnouncementService,
   PushStatus,
   RealtimeService,
@@ -46,6 +47,8 @@ import type {
   ParticipantView,
   PublicAnnouncement,
   PublicAnnouncementAdminView,
+  ChannelView,
+  MessageView,
   RoleAssignmentView,
   TaskSummary,
   UserDetail,
@@ -379,6 +382,21 @@ export function httpPublicAnnouncementService(api: ApiClient): PublicAnnouncemen
     update: (id, content) => api.patch<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}`, content),
     publish: (id, version) => api.post<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}/publish`, { version }),
     unpublish: (id, version) => api.post<PublicAnnouncementAdminView>(`/public-announcements/${p(id)}/unpublish`, { version }),
+  };
+}
+
+export function httpMessagingService(api: ApiClient): MessagingService {
+  return {
+    channels: () => api.get<ChannelView[]>('/channels'),
+    messages: (channelId, page = {}) =>
+      api.get<Page<MessageView>>(`/channels/${p(channelId)}/messages`, { query: { limit: page.limit, cursor: page.cursor } }),
+    send: (channelId, body, idempotencyKey) =>
+      api.post<MessageView>(`/channels/${p(channelId)}/messages`, { body }, { idempotencyKey }),
+    remove: (channelId, messageId) => api.delete<MessageView>(`/channels/${p(channelId)}/messages/${p(messageId)}`),
+    hide: (channelId, messageId) => api.post<MessageView>(`/channels/${p(channelId)}/messages/${p(messageId)}/hide`),
+    markRead: (channelId, messageId) => api.post<void>(`/channels/${p(channelId)}/read`, { messageId }),
+    mute: (channelId, muted) => api.put<void>(`/channels/${p(channelId)}/mute`, { muted }),
+    setAdminsOnly: (channelId, adminsOnly) => api.patch<void>(`/channels/${p(channelId)}`, { adminsOnly }),
   };
 }
 

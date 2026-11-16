@@ -8,6 +8,10 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import org.gks.android.data.messaging.OutboxStore
+import org.gks.android.data.messaging.MessagingRepository
+import org.gks.android.data.messaging.MessageOutbox
+import org.gks.android.alarm.MessageNotifier
 import org.gks.android.data.AlertRepository
 import org.gks.android.data.AnnouncementRepository
 import org.gks.android.data.ApiCaller
@@ -71,6 +75,19 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val volunteerRepository by lazy { VolunteerRepository(api, caller) }
 	val notificationRepository by lazy { NotificationRepository(api, caller) }
 	val publicAnnouncementRepository by lazy { PublicAnnouncementRepository(api, caller) }
+	/** ADR-024: mesajlaşma; çevrimdışı kuyruk kalıcıdır (SharedPreferences). */
+	val messagingRepository by lazy {
+		val prefs = context.applicationContext.getSharedPreferences("gks_outbox", Context.MODE_PRIVATE)
+		MessagingRepository(api, caller, MessageOutbox(object : OutboxStore {
+			override fun read(): String? = prefs.getString("items", null)
+			override fun write(value: String) = prefs.edit().putString("items", value).apply()
+		}))
+	}
+	/** Açık sohbetin kanalı: bu kanal için bildirim gösterilmez. */
+	val openChannel = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+	val messageNotifier by lazy { MessageNotifier(context.applicationContext, messagingRepository, openChannel) }
+	/** Canlı akıştan mesaj olayı: kanal listesi ve açık sohbet tazelenir. */
+	val messagingEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 8)
 	/** ADR-023: gömülü (internetsiz) rehber içeriği; web/src/content ile aynı dosyalar. */
 	val guideContent by lazy { GuideContent.load(context.applicationContext.assets) }
 	val alertRepository by lazy { AlertRepository(api, caller) }

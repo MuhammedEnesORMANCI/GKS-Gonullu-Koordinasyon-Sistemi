@@ -278,4 +278,21 @@
   5. **Kamu duyuruları** (`notifications.public_announcements`, V16): ADM (MFA'lı yönetim oturumu, `public_announcement.manage`) oluşturur, düzenler, yayımlar, yayından kaldırır (`DRAFT`/`PUBLISHED`, `version` ile); her değişiklik aynı işlemde denetime (`PUBLIC_ANNOUNCEMENT_*`, içerik değil uzunluk/durum). `GET /api/v1/public/announcements` kimlik doğrulamasız, yalnızca yayındakilerin `id, title, body, publishedAt` alanları, sayfalı (≤ 50), IP başına dakikada `gks.public.rate-limit-per-minute` (varsayılan 60) → `429 RATE_LIMITED` + `Retry-After`. Oran sınırı bellek içi ve tek örnektir; çoklu örnekte vekil/ağ geçidinde sınır gerekir.
   6. Halka açık sayfalar iç servisleri (operasyon, kişi, konum, iç duyuru, alarm) **çağırmaz**; testle doğrulanır.
 - **Sonuç:** Yeni bağımlılık yok. Gönüllülük sayfası kayıt formu içermez (davetle katılım; açık kayıt proje sahibinin kararı).
+
+## ADR-024 Mesajlaşma: operasyon, koordinasyon ve grup kanalları
+
+- **Bağlam:** 16.11.2026: proje sahibi operasyon içi yazışmayı istedi. Doğrudan (birebir) mesaj ve ek dosya yok.
+- **Karar:**
+  1. **Kanallar otomatik** (`messaging` modülü, V17): operasyon başına `OPERATION` (tüm katılımcılar + KOR; ADM tümünü görür) ve `COORDINATION` (KOR, ADM, grup liderleri); grup başına `GROUP` (grubun etkin üyeleri ve lideri, o operasyonun KOR'u ve ADM). Kanal satırı ilk erişimde oluşur.
+  2. **Üyelik saklanmaz, her istekte hesaplanır:** grup/operasyon üyeliği kaybedilince erişim aynı anda kalkar. Okuyamayan kişi için kanal `404`.
+  3. Operasyon kanalında KOR/ADM "yalnızca yöneticiler yazabilir" açabilir (`PATCH /channels/{id}`, denetim `CHANNEL_SETTINGS_CHANGED`). Kapalı operasyonun kanalları salt okunur (`409 OPERATION_CLOSED`).
+  4. Mesaj 1..2000 karakter; `Idempotency-Key` zorunlu ve `(gönderen, anahtar)` tekil: aynı anahtarla tekrar aynı mesajı döndürür. Kişi başına dakikada `gks.messaging.rate-limit-per-minute` (30); sınır bellek içi, tek örnek.
+  5. Kendi mesajını `gks.messaging.delete-window` (5 dk) içinde silme; KOR/ADM gizleme ("Yönetici tarafından kaldırıldı", denetim `MESSAGE_HIDDEN`, içerik denetime yazılmaz). Silinen/gizlenen mesajın gövdesi API'den dönmez.
+  6. Okunmamış sayısı kanal başına okuma işaretinden (`last_read_id`, UUIDv7 sırası); kendi, silinmiş ve gizli mesajlar sayılmaz.
+  7. **Canlı:** SSE `message.created` / `message.updated` / `channel.updated` (okuyanların kullanıcı konusu + operasyon konusu); olay yalnızca kimlik taşır.
+  8. **FCM:** normal öncelik, collapse key kanal başına; yük yalnızca `type=MESSAGE, channelId, messageId, notificationId` (içerik Google'dan geçmez). Gelen kutusuna satır yazılmaz (`Notifier.pushOnly`). Gönderen, kanalı sessize alanlar alıcı değildir. Android içeriği uygulamadan çeker (alınamazsa "Yeni mesaj"), bildirimleri kanal başına gruplar, açık kanal için bildirim göstermez, bildirime dokununca kanalı açar.
+  9. **Android çevrimdışı kuyruk:** mesaj önce kalıcı kuyruğa (anahtarıyla) yazılır; ağ yok/5xx/429 → bekler, ekran açıkken 20 sn'de bir ve canlı olayda yeniden denenir (aynı anahtar); diğer 4xx → "Gönderilemedi", elle "Tekrar dene".
+  10. Sistem mesajları (`SystemMessages.post`, ör. genel alarm metni) kanala `SYSTEM` türüyle yazılır, push gönderilmez.
+  11. **Saklama:** operasyon kapanınca kanallar kapanır; `gks.messaging.retention-after-close` (P90D) sonra kanal ve mesajlar zamanlanmış görevle silinir.
+- **Sınırlar:** Ek dosya, birebir mesaj, mesaj düzenleme, okundu bilgisi (kimin okuduğu) yok. ADM tüm kanalları okur ama otomatik push almaz (yalnızca operasyonda KOR/katılımcıysa). Oran sınırı çoklu örnekte paylaşılmaz.
 

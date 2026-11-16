@@ -92,7 +92,31 @@ export interface MockState {
   alerts: Map<Uuid, MockAlert>;
   /** Kamu duyuruları (örnek): halka açık site yalnızca yayındakileri görür. */
   publicAnnouncements: MockPublicAnnouncement[];
+  /** Mesaj kanalları ve mesajlar (örnek, ADR-024). */
+  channels: MockChannel[];
+  messages: MockMessage[];
   seq: number;
+}
+
+export interface MockChannel {
+  id: Uuid;
+  kind: 'OPERATION' | 'COORDINATION' | 'GROUP';
+  operationId: Uuid;
+  groupId?: Uuid;
+  adminsOnly: boolean;
+  muted: boolean;
+  lastReadId?: Uuid;
+}
+
+export interface MockMessage {
+  id: Uuid;
+  channelId: Uuid;
+  kind: 'USER' | 'SYSTEM';
+  senderId?: Uuid;
+  body: string;
+  createdAt: string;
+  deletedAt?: string;
+  hiddenAt?: string;
 }
 
 export interface MockPublicAnnouncement {
@@ -350,6 +374,16 @@ function seed(): MockState {
         id: '0192f000-7a00-7000-8000-000000000003', title: 'Taslak kamu duyurusu', body: 'Yayımlanmadı.', state: 'DRAFT',
         version: 1, createdAt: iso(-100), updatedAt: iso(-100),
       },
+    ],
+    channels: [
+      { id: id('7b00', 1), kind: 'OPERATION', operationId: MOCK_IDS.op1, adminsOnly: false, muted: false },
+      { id: id('7b00', 2), kind: 'COORDINATION', operationId: MOCK_IDS.op1, adminsOnly: false, muted: false },
+      { id: id('7b00', 3), kind: 'GROUP', operationId: MOCK_IDS.op1, groupId: MOCK_IDS.group1, adminsOnly: false, muted: false },
+    ],
+    messages: [
+      { id: id('7c00', 1), channelId: id('7b00', 1), kind: 'USER', senderId: MOCK_IDS.kor, body: 'Brifing saat 08:30\'da toplanma alanında.', createdAt: iso(-120) },
+      { id: id('7c00', 2), channelId: id('7b00', 1), kind: 'USER', senderId: MOCK_IDS.volunteer(1), body: 'Anlaşıldı, yoldayım.', createdAt: iso(-110) },
+      { id: id('7c00', 3), channelId: id('7b00', 3), kind: 'USER', senderId: MOCK_IDS.volunteer(2), body: 'Ekip hazır.', createdAt: iso(-60) },
     ],
     seq: 100,
   };

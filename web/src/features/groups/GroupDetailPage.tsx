@@ -27,6 +27,7 @@ import { useIntentKey } from '../../app/useIntentKey';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader, ReadOnlyBanner } from '../../components/PageHeader';
+import { ChannelLinkButton } from '../messaging/ChannelLinkButton';
 import { QueryState } from '../../components/QueryState';
 import { formatDateTime, fromLocalInput, toLocalInput } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
@@ -119,11 +120,14 @@ export function GroupDetailPage() {
         title={group?.name ?? 'Grup'}
         mock={mock}
         actions={
-          canUpdate ? (
-            <Button variant="outlined" onClick={() => setEditing(true)}>
-              Grup bilgisini düzenle
-            </Button>
-          ) : undefined
+          <>
+            <ChannelLinkButton operationId={opId} groupId={groupId} label="Grup kanalı" />
+            {canUpdate && (
+              <Button variant="outlined" onClick={() => setEditing(true)}>
+                Grup bilgisini düzenle
+              </Button>
+            )}
+          </>
         }
       />
       <ReadOnlyBanner show={scope.admReadOnly} />

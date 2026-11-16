@@ -25,20 +25,36 @@ public interface Notifier {
 	 */
 	void resurface(UUID notificationId, Collection<UUID> users);
 
-	enum Category { ALERT, TASK, ANNOUNCEMENT, MEETING_POINT, OPERATION_INVITE, SYSTEM }
+	/**
+	 * Yalnızca telefon bildirimi (ADR-024): gelen kutusuna düşmez, SSE olayı üretmez. Yükte içerik yoktur; başlık
+	 * sabittir ("Yeni mesaj"), istemci içeriği kendi çeker. {@code refId} yükte {@code messageId} olarak gider.
+	 * Çağıranın işleminde çalışır; aynı anahtarla ikinci çağrı yeni kayıt üretmez.
+	 */
+	void pushOnly(PushOnlyRequest request);
+
+	record PushOnlyRequest(String idempotencyKey, Category category, Kind kind, SourceType sourceType, UUID sourceId,
+			UUID refId, UUID operationId, Set<UUID> recipients, UUID createdBy) {
+
+		public PushOnlyRequest {
+			Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+			recipients = Set.copyOf(new LinkedHashSet<>(recipients));
+		}
+	}
+
+	enum Category { ALERT, TASK, ANNOUNCEMENT, MEETING_POINT, OPERATION_INVITE, SYSTEM, MESSAGE }
 
 	/** backend-api-design.md §12.4 {@code NotificationKind} (yalnızca bu aşamada üretilenler + duyuru). */
 	enum Kind {
 		TASK_ASSIGNED, TASK_UPDATED, TASK_CANCELLED, TASK_CAPACITY_FULL, TASK_ASSIGNMENT_REMOVED,
 		MEETING_POINT_UPDATED, GROUP_MEMBER_ADDED, ANNOUNCEMENT, OPERATION_INVITE, ALERT_SENT, ALERT_CANCELLED,
-		ALERT_CLOSED
+		ALERT_CLOSED, MESSAGE_POSTED
 	}
 
 	/** communication.md §1.2. {@code CRITICAL} ayrı kuyruktan iletilir. */
 	enum Priority { CRITICAL, HIGH, NORMAL, LOW }
 
 	/** İstemcinin bağlantıya çevirdiği kaynak ({@code NotificationInboxItem.link}). */
-	enum SourceType { TASK, GROUP, OPERATION, INVITATION, ALERT }
+	enum SourceType { TASK, GROUP, OPERATION, INVITATION, ALERT, CHANNEL }
 
 	/**
 	 * @param idempotencyKey kaynak olay anahtarı, ör. {@code task:{id}:PUBLISHED}

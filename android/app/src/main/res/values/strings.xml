@@ -565,4 +565,31 @@
 	<string name="announcements_my_inbox">Bildirimlerim (operasyon duyuruları dahil)</string>
 	<string name="public_announcements_title">Kamu duyuruları</string>
 	<string name="public_announcements_empty">Şu an yayında duyuru bulunmuyor.</string>
+	<!-- Mesajlaşma (ADR-024) -->
+	<string name="tab_messages">Mesajlar</string>
+	<string name="channel_messages">Mesajlar</string>
+	<string name="channel_group">Grup: %1$s</string>
+	<string name="channel_coordination">Koordinasyon</string>
+	<string name="channel_operation">Operasyon (tüm katılımcılar)</string>
+	<string name="channel_read_only">Salt okunur</string>
+	<string name="channel_muted">Sessiz</string>
+	<string name="channel_mute">Sessize al</string>
+	<string name="channel_unmute">Bildirimleri aç</string>
+	<string name="channel_read_only_note">Operasyon kapandı; kanal salt okunur.</string>
+	<string name="channel_admins_only_note">Bu kanala yalnızca yöneticiler yazabilir.</string>
+	<string name="messages_empty">Erişebildiğiniz mesaj kanalı yok.</string>
+	<string name="messages_none">Henüz mesaj yok.</string>
+	<string name="message_label">Mesaj</string>
+	<string name="message_send">Gönder</string>
+	<string name="message_queued">İnternet yok: mesaj kuyrukta, bağlantı gelince gönderilecek.</string>
+	<string name="message_pending">Gönderilmeyi bekliyor</string>
+	<string name="message_failed">Gönderilemedi</string>
+	<string name="message_retry">Tekrar dene</string>
+	<string name="message_system">Sistem</string>
+	<string name="message_hidden">Yönetici tarafından kaldırıldı</string>
+	<string name="message_deleted">Mesaj silindi</string>
+	<string name="message_me">Siz</string>
+	<string name="message_delete">Sil</string>
+	<string name="message_new">Yeni mesaj</string>
+	<string name="quick_announcements">Duyurular</string>
 </resources>

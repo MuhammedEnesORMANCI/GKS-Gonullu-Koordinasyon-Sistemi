@@ -21,4 +21,20 @@ public interface GroupMembers {
 	/** Grup adları (arşivlenmişler dahil); bilinmeyen kimlikler sonuçta yer almaz. */
 	Map<UUID, String> names(Collection<UUID> groupIds);
 
+	/** Operasyonun arşivlenmemiş grupları (ad sırasıyla). Mesajlaşma kanalları için (ADR-024). */
+	List<GroupRef> groups(UUID operationId);
+
+	/** Kişinin aktif grup üyelikleri (arşivlenmemiş gruplarda). */
+	List<Membership> memberships(UUID userId);
+
+	/** Operasyonun arşivlenmemiş gruplarındaki aktif liderler. */
+	List<UUID> leaders(UUID operationId);
+
+	record GroupRef(UUID id, UUID operationId, String name) {
+	}
+
+	/** @param leader üyelik rolü {@code LEADER} mı */
+	record Membership(UUID groupId, UUID operationId, boolean leader) {
+	}
+
 }

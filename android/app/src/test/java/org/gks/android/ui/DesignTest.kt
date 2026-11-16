@@ -54,8 +54,9 @@ class DesignTest {
 
 	@Test
 	fun bottomNavigationHasHomeGuidesAnnouncementsAccountAndManagementOnlyForManagementSession() {
-		assertEquals(listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.ACCOUNT), bottomTabs(management = false))
-		assertEquals(listOf(Tab.HOME, Tab.GUIDES, Tab.ANNOUNCEMENTS, Tab.MANAGEMENT, Tab.ACCOUNT), bottomTabs(management = true))
+		assertEquals(listOf(Tab.HOME, Tab.GUIDES, Tab.MESSAGES, Tab.ANNOUNCEMENTS, Tab.ACCOUNT), bottomTabs(management = false))
+		assertEquals(listOf(Tab.HOME, Tab.MESSAGES, Tab.ANNOUNCEMENTS, Tab.MANAGEMENT, Tab.ACCOUNT), bottomTabs(management = true))
+		assertTrue("en fazla 5 sekme", bottomTabs(true).size <= 5 && bottomTabs(false).size <= 5)
 		// Mevcut akışlar korunur: rota olarak duruyorlar (Hızlı Erişim ve bildirim zilinden açılır).
 		assertTrue(Tab.entries.containsAll(listOf(Tab.TASKS, Tab.GROUPS, Tab.NOTIFICATIONS)))
 		assertFalse(bottomTabs(true).contains(Tab.NOTIFICATIONS))

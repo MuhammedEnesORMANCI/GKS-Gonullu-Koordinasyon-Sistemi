@@ -72,6 +72,23 @@ class JdbcNotifier implements Notifier {
 		}
 	}
 
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void pushOnly(PushOnlyRequest request) {
+		if (request.recipients().isEmpty() || !push.enabled()) {
+			return;   // push yoksa kayıt gereksiz: mesaj zaten kanalda ve SSE ile iletiliyor
+		}
+		UUID id = Ids.newId();
+		Instant now = clock.instant();
+		NotificationRequest row = new NotificationRequest(request.idempotencyKey(), request.category(), request.kind(),
+				Priority.NORMAL, "Yeni mesaj", null, request.sourceType(), request.sourceId(), request.operationId(),
+				request.refId() == null ? Map.of() : Map.of("ref", request.refId().toString()), request.recipients(),
+				request.createdBy());
+		if (store.insertNotification(id, row, now)) {
+			store.insertPush(id, devices.activeDevices(request.recipients()), queueClass(Priority.NORMAL), now);
+		}
+	}
+
 	/** ADR-004: {@code CRITICAL} ayrılmış kuyruk; diğerleri ortak kuyruk. */
 	static String queueClass(Priority priority) {
 		return priority == Priority.CRITICAL ? "CRITICAL" : "STANDARD";

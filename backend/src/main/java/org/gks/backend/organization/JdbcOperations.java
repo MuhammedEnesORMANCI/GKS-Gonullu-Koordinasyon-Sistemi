@@ -1,6 +1,7 @@
 package org.gks.backend.organization;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +28,11 @@ class JdbcOperations implements Operations {
 	public Optional<OperationRef> find(UUID id) {
 		return jdbc.sql("select id, organization_id, name, state from organization.operations where id = :id")
 			.param("id", id).query(ROW).optional();
+	}
+
+	@Override
+	public List<OperationRef> all() {
+		return jdbc.sql("select id, organization_id, name, state from organization.operations order by name, id").query(ROW).list();
 	}
 
 	@Override

@@ -59,6 +59,12 @@ export function useLiveUpdates(): void {
     const lastLocationFetch = new Map<string, number>();
     const handle = (event: LiveEvent) => {
       switch (event.type) {
+        case 'message.created':
+        case 'message.updated':
+        case 'channel.updated':
+          // ADR-024: yalnızca kimlikler gelir; kanal listesi (okunmamış) ve açık sohbet yeniden çekilir.
+          void queryClient.invalidateQueries({ queryKey: Q.channels() });
+          break;
         case 'inbox.changed':
           void queryClient.invalidateQueries({ queryKey: Q.inboxRoot() });
           break;

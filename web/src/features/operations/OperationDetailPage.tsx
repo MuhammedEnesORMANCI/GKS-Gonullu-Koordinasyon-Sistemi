@@ -20,6 +20,7 @@ import { ErrorAlert } from '../../components/ErrorAlert';
 import { ClosedOperationBanner, PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
 import { StatusChip } from '../../components/panel/StatusChip';
+import { ChannelLinkButton } from '../messaging/ChannelLinkButton';
 import {
   formatDateTime,
   fromLocalInput,
@@ -171,7 +172,9 @@ export function OperationDetailPage() {
               </Stack>
             )}
 
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <ChannelLinkButton operationId={opId} />
+              <ChannelLinkButton operationId={opId} kind="COORDINATION" label="Koordinasyon kanalı" />
               <Button component={RouterLink} to={`/panel/operasyonlar/${opId}/gruplar`}>
                 Gruplar
               </Button>

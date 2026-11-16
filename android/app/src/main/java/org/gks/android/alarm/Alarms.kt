@@ -306,6 +306,7 @@ class Alarms(
 		/** Kanal ayarları sonradan değiştirilemediği için yeni kimlik (alarm sesi + Rahatsız Etmeyin); eski kanal silinir. */
 		const val CHANNEL_ALERTS = "alerts-critical-v2"
 		const val CHANNEL_ANNOUNCEMENTS = "announcements"
+		const val CHANNEL_MESSAGES = "messages"
 		private const val OLD_CHANNEL_ALERTS = "alerts-critical"
 		const val EXTRA_OPEN = "gks.open"
 		private const val KEY_SEEN = "seen"
@@ -327,6 +328,9 @@ class Alarms(
 				lockscreenVisibility = Notification.VISIBILITY_PRIVATE
 			})
 			manager.createNotificationChannel(NotificationChannel(CHANNEL_ANNOUNCEMENTS, context.getString(R.string.channel_announcements),
+				NotificationManager.IMPORTANCE_DEFAULT))
+			// ADR-024: mesajlar normal öncelik; kanal başına gruplanır.
+			manager.createNotificationChannel(NotificationChannel(CHANNEL_MESSAGES, context.getString(R.string.channel_messages),
 				NotificationManager.IMPORTANCE_DEFAULT))
 		}
 	}

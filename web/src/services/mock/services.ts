@@ -14,6 +14,7 @@ import type {
   OperationService,
   ParticipantService,
   PublicAnnouncementService,
+  MessagingService,
   RealtimeService,
   RoleAssignmentService,
   TaskService,
@@ -29,6 +30,7 @@ import type {
   GroupView,
   InboxItem,
   InvitationView,
+  MessageView,
   MeContext,
   MeProfile,
   OperationState,
@@ -41,7 +43,7 @@ import type {
   UserSummary,
   Uuid,
 } from '../types';
-import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockPersona, type MockPublicAnnouncement } from './store';
+import { fail, mockStore, MOCK_IDS, nextId, nowIso, respond, type MockMessage, type MockPersona, type MockPublicAnnouncement } from './store';
 
 /**
  * `mock` uygulamaları: sözleşmedeki kuralları (durum geçişleri, lider zorunluluğu, kapasite, sürüm)
@@ -1197,6 +1199,88 @@ async function lockPublic(id: string, version: number): Promise<MockPublicAnnoun
   if (!row) return fail(404, 'NOT_FOUND');
   if (row.version !== version) return fail(409, 'VERSION_CONFLICT', { currentVersion: row.version });
   return row;
+}
+
+export function mockMessagingService(): MessagingService {
+  const visible = () =>
+    mockStore.channels.filter((ch) => mockStore.persona === 'ADM' || isCoordinatorOf(ch.operationId));
+  const find = (channelId: string) => visible().find((ch) => ch.id === channelId);
+  const view = (m: MockMessage): MessageView => {
+    const state = m.hiddenAt ? 'HIDDEN' : m.deletedAt ? 'DELETED' : 'VISIBLE';
+    const mine = m.senderId === PERSONA_USER[mockStore.persona];
+    const sender = m.senderId ? mockStore.users.get(m.senderId) : undefined;
+    return {
+      id: m.id, channelId: m.channelId, kind: m.kind, state, createdAt: m.createdAt, mine,
+      sender: sender ? { id: sender.id, displayName: sender.displayName } : undefined,
+      body: state === 'VISIBLE' ? m.body : undefined,
+      deletable: mine && state === 'VISIBLE' && Date.now() - Date.parse(m.createdAt) < 5 * 60_000,
+    };
+  };
+  return {
+    channels: async () =>
+      respond(
+        visible().map((ch) => {
+          const op = mockStore.operations.get(ch.operationId);
+          const msgs = mockStore.messages.filter((m) => m.channelId === ch.id);
+          const unread = msgs.filter((m) => !m.deletedAt && !m.hiddenAt && m.senderId !== PERSONA_USER[mockStore.persona]
+            && (!ch.lastReadId || m.id > ch.lastReadId)).length;
+          return {
+            id: ch.id, kind: ch.kind, operationId: ch.operationId, operationName: op?.name ?? '', groupId: ch.groupId,
+            groupName: ch.groupId ? mockStore.groups.get(ch.groupId)?.name : undefined, adminsOnly: ch.adminsOnly,
+            readOnly: op ? isClosed(op.state) : true, canWrite: !!op && !isClosed(op.state),
+            canModerate: true, muted: ch.muted, unread, lastMessageAt: msgs.at(-1)?.createdAt,
+          };
+        }),
+      ),
+    messages: async (channelId) => {
+      if (!find(channelId)) return fail(404, 'NOT_FOUND');
+      const items = mockStore.messages.filter((m) => m.channelId === channelId).sort((a, b) => b.id.localeCompare(a.id)).map(view);
+      return respond({ items });
+    },
+    send: async (channelId, body, key) => {
+      const ch = find(channelId);
+      if (!ch) return fail(404, 'NOT_FOUND');
+      const cached = mockStore.idempotency.get(`msg:${key}`) as MockMessage | undefined;
+      if (cached) return respond(view(cached));
+      if (!body.trim()) return fail(400, 'VALIDATION_FAILED', undefined, [{ field: 'body', code: 'REQUIRED' }]);
+      const m: MockMessage = { id: nextId('7c00'), channelId, kind: 'USER', senderId: PERSONA_USER[mockStore.persona], body: body.trim(), createdAt: nowIso() };
+      mockStore.messages.push(m);
+      mockStore.idempotency.set(`msg:${key}`, m);
+      ch.lastReadId = m.id;
+      return respond(view(m));
+    },
+    remove: async (channelId, messageId) => {
+      const m = mockStore.messages.find((x) => x.id === messageId && x.channelId === channelId);
+      if (!m || !find(channelId)) return fail(404, 'NOT_FOUND');
+      if (m.senderId !== PERSONA_USER[mockStore.persona]) return fail(403, 'FORBIDDEN');
+      m.deletedAt = nowIso();
+      return respond(view(m));
+    },
+    hide: async (channelId, messageId) => {
+      const m = mockStore.messages.find((x) => x.id === messageId && x.channelId === channelId);
+      if (!m || !find(channelId)) return fail(404, 'NOT_FOUND');
+      m.hiddenAt = nowIso();
+      return respond(view(m));
+    },
+    markRead: async (channelId, messageId) => {
+      const ch = find(channelId);
+      if (!ch) return fail(404, 'NOT_FOUND');
+      if (!ch.lastReadId || messageId > ch.lastReadId) ch.lastReadId = messageId;
+      return respond(undefined);
+    },
+    mute: async (channelId, muted) => {
+      const ch = find(channelId);
+      if (!ch) return fail(404, 'NOT_FOUND');
+      ch.muted = muted;
+      return respond(undefined);
+    },
+    setAdminsOnly: async (channelId, adminsOnly) => {
+      const ch = find(channelId);
+      if (!ch) return fail(404, 'NOT_FOUND');
+      ch.adminsOnly = adminsOnly;
+      return respond(undefined);
+    },
+  };
 }
 
 export function mockRealtimeService(): RealtimeService {
