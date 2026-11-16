@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -34,14 +35,16 @@ public class RoleAssignments {
 	private final AccessDirectory.Scopes scopes;
 	private final ApplicationEventPublisher events;
 	private final Clock clock;
+	private final AuditTrail audit;
 
 	RoleAssignments(RoleAssignmentStore store, AccessDirectory.Users users, AccessDirectory.Scopes scopes,
-			ApplicationEventPublisher events, Clock clock) {
+			ApplicationEventPublisher events, Clock clock, AuditTrail audit) {
 		this.store = store;
 		this.users = users;
 		this.scopes = scopes;
 		this.events = events;
 		this.clock = clock;
+		this.audit = audit;
 	}
 
 	/** Açılış kurulumu için: kurumda aktif ADM ataması var mı? */
@@ -166,6 +169,9 @@ public class RoleAssignments {
 		catch (DuplicateKeyException ex) {
 			throw ApiException.alreadyExists("ROLE_ACTIVE");
 		}
+		audit.record(subject.userId(), "ADM", subject.client(), "ROLE_ASSIGNED", "ROLE_ASSIGNMENT", id,
+				scopeType == ScopeType.OPERATION ? scopeId : null,
+				Map.of("userId", userId, "role", role.name(), "scopeType", scopeType.name(), "scopeId", scopeId));
 		return view(store.find(id).orElseThrow());
 	}
 
@@ -185,6 +191,9 @@ public class RoleAssignments {
 		}
 		Instant now = clock.instant();
 		store.revoke(assignmentId, subject.userId(), now);
+		audit.record(subject.userId(), "ADM", subject.client(), "ROLE_REVOKED", "ROLE_ASSIGNMENT", assignmentId,
+				row.scopeType() == ScopeType.OPERATION ? row.scopeId() : null, Map.of("userId", row.userId(),
+						"role", row.role().name(), "scopeType", row.scopeType().name(), "scopeId", row.scopeId()));
 		if (row.role() == Role.GON) {
 			events.publishEvent(new ParticipationRevoked(row.scopeId(), row.userId(), subject.userId(), now));
 		}

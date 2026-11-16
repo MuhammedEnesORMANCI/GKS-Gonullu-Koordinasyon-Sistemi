@@ -34,6 +34,11 @@ public record Subject(UUID userId, boolean webSession, boolean mfaVerified) {
 		return this;
 	}
 
+	/** Denetim kaydının istemci alanı ({@code audit.audit_entries.client}). */
+	public String client() {
+		return webSession ? "WEB" : "ANDROID";
+	}
+
 	/** {@code x-client: [ANDROID]} uçları (görev yanıtı, kendi atamaları, davet kabulü). */
 	public Subject requireAndroid() {
 		if (webSession) {

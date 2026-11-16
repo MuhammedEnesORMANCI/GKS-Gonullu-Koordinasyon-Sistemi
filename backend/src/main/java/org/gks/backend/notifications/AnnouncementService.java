@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -49,10 +51,14 @@ class AnnouncementService {
 	private final Notifier notifier;
 	private final NotificationStore store;
 	private final Idempotency idempotency;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 
 	AnnouncementService(AnnouncementAccess access, Participation participation, GroupAudience groups,
 			AccessDirectory.Users users, AccessDirectory.Scopes scopes, Notifier notifier, NotificationStore store,
-			Idempotency idempotency) {
+			Idempotency idempotency, AuditTrail audit, ActingBasis acting) {
+		this.audit = audit;
+		this.acting = acting;
 		this.access = access;
 		this.participation = participation;
 		this.groups = groups;
@@ -119,6 +125,13 @@ class AnnouncementService {
 				Notifier.Kind.ANNOUNCEMENT, Notifier.Priority.NORMAL, title, body, null, null, audience.operationId(),
 				audience.expr(), audience.recipients(), subject.userId()))
 			.orElseThrow();
+		// LD-60 (7): ANNOUNCEMENT_SENT; başlık ve metin denetime yazılmaz (AC-27.2), yalnızca hedef türü ve sayılar.
+		String targetKind = target.organization() ? "ORGANIZATION"
+				: target.userIds().isEmpty() && target.groupIds().isEmpty() ? "OPERATION" : "SELECTED";
+		audit.record(subject.userId(), target.organization() ? acting.organization(subject)
+				: acting.operation(subject, audience.operationId()), subject.client(), "ANNOUNCEMENT_SENT", "NOTIFICATION", id,
+				audience.operationId(), Map.of("target", targetKind, "recipientCount", audience.recipients().size(),
+						"userCount", target.userIds().size(), "groupCount", target.groupIds().size()));
 		return idempotency.complete(idem, 202, view(store.announcement(id).orElseThrow(), true), RESOURCE, id);
 	}
 

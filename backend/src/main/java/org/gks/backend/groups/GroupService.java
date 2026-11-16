@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
@@ -59,9 +61,13 @@ class GroupService {
 	private final UserDirectory users;
 	private final GroupNotifications notifications;
 	private final Clock clock;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 
 	GroupService(GroupStore store, GroupAccess access, Participation participation, Operations operations,
-			UserDirectory users, GroupNotifications notifications, Clock clock) {
+			UserDirectory users, GroupNotifications notifications, Clock clock, AuditTrail audit, ActingBasis acting) {
+		this.audit = audit;
+		this.acting = acting;
 		this.store = store;
 		this.access = access;
 		this.participation = participation;
@@ -104,6 +110,8 @@ class GroupService {
 		initial.add(input.leaderUserId());
 		notifications.membersAdded(groupId, input.name(), operation.id(), "group:" + groupId + ":CREATED", initial,
 				subject.userId());
+		record(subject, "GROUP_CREATED", "GROUP", groupId, operation.id(), null,
+				Map.of("leaderUserId", input.leaderUserId(), "memberCount", initial.size()));
 		return view(store.find(groupId).orElseThrow(), subject.userId(), operation.name());
 	}
 
@@ -157,6 +165,7 @@ class GroupService {
 		store.insertMembership(Ids.newId(), groupId, userId, GroupRole.MEMBER, subject.userId(), now);
 		notifications.membersAdded(groupId, group.name(), group.operationId(),
 				"group:" + groupId + ":MEMBER:" + userId + ":" + now.toEpochMilli(), List.of(userId), subject.userId());
+		record(subject, "GROUP_MEMBER_ADDED", "GROUP_MEMBERSHIP", groupId, group.operationId(), null, Map.of("userId", userId));
 		return new GroupMemberView(ref(userId, users.displayNames(List.of(userId))), GroupRole.MEMBER, now);
 	}
 
@@ -171,6 +180,7 @@ class GroupService {
 			throw ApiException.of(Code.LEADER_REQUIRED);
 		}
 		store.endMembership(groupId, userId, subject.userId(), clock.instant());
+		record(subject, "GROUP_MEMBER_REMOVED", "GROUP_MEMBERSHIP", groupId, group.operationId(), null, Map.of("userId", userId));
 	}
 
 	/**
@@ -203,6 +213,7 @@ class GroupService {
 		else {
 			store.insertMembership(Ids.newId(), groupId, userId, GroupRole.LEADER, subject.userId(), now);
 		}
+		record(subject, "GROUP_LEADER_CHANGED", "GROUP", groupId, group.operationId(), null, Map.of("userId", userId));
 		return view(group, subject.userId(), null);
 	}
 
@@ -224,6 +235,14 @@ class GroupService {
 		catch (DuplicateKeyException ex) {
 			throw duplicateName(ex);
 		}
+		List<String> fields = new ArrayList<>();
+		if (input.name() != null) {
+			fields.add("name");
+		}
+		if (input.description() != null) {
+			fields.add("description");
+		}
+		record(subject, "GROUP_UPDATED", "GROUP", groupId, group.operationId(), role, Map.of("fields", fields));
 		return view(store.find(groupId).orElseThrow(), subject.userId(), null);
 	}
 
@@ -238,8 +257,20 @@ class GroupService {
 				subject.userId(), now);
 		notifications.meetingPointUpdated(groupId, group.name(), group.operationId(), input.address(), now,
 				store.activeMembers(groupId).stream().map(MemberRow::userId).toList(), subject.userId());
+		// Adres, açıklama ve koordinat denetime yazılmaz (AC-27.2).
+		record(subject, "MEETING_POINT_UPDATED", "MEETING_POINT", groupId, group.operationId(), role(subject, group), Map.of());
 		GroupRow updated = store.find(groupId).orElseThrow();
 		return meetingPoint(updated, users.displayNames(List.of(subject.userId())));
+	}
+
+	/** Denetim kaydı; KOR/ADM değilse ve grubun lideriyse dayanak {@code LEADER} (K-08). */
+	private void record(Subject subject, String action, String resourceType, UUID groupId, UUID operationId,
+			GroupRole membershipRole, Map<String, Object> details) {
+		String basis = acting.operation(subject, operationId);
+		if (basis.equals("SELF") && membershipRole == GroupRole.LEADER) {
+			basis = "LEADER";
+		}
+		audit.record(subject.userId(), basis, subject.client(), action, resourceType, groupId, operationId, details);
 	}
 
 	private void require(Subject subject, GroupAction action, GroupRow group) {

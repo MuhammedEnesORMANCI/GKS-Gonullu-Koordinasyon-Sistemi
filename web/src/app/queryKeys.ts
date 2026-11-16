@@ -1,5 +1,6 @@
 import type {
   AssignmentFilter,
+  AuditFilter,
   InvitationFilter,
   OperationListFilter,
   RoleAssignmentFilter,
@@ -34,4 +35,5 @@ export const Q = {
   usersRoot: () => ['users'] as const,
   users: (f: UserFilter = {}) => ['users', 'list', f] as const,
   user: (id: string) => ['users', id] as const,
+  audit: (f: AuditFilter = {}) => ['audit', f] as const,
 };

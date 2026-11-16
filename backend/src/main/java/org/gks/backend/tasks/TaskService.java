@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.PageCursor;
 import org.gks.backend.ApiException.FieldError;
@@ -72,12 +74,16 @@ class TaskService {
 	private final Idempotency idempotency;
 	private final TaskNotifications notifications;
 	private final Clock clock;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 
 	private static final Set<AssignmentStatus> ACTIVE = Set.of(AssignmentStatus.PENDING, AssignmentStatus.ACCEPTED);
 
 	TaskService(TaskStore store, TaskAccess access, Participation participation, Operations operations,
 			GroupMembers groups, UserDirectory users, Idempotency idempotency, TaskNotifications notifications,
-			Clock clock) {
+			Clock clock, AuditTrail audit, ActingBasis acting) {
+		this.audit = audit;
+		this.acting = acting;
 		this.store = store;
 		this.access = access;
 		this.participation = participation;
@@ -107,6 +113,7 @@ class TaskService {
 				fields.meetingPoint().orElse(null), fields.timeWindow().orElse(null), fields.capacity().orElse(null),
 				fields.responseWindowMinutes(), fields.targets(), subject.userId(), now);
 		store.insertStateChange(Ids.newId(), taskId, null, TaskState.DRAFT, subject.userId(), now);
+		record(subject, "TASK_CREATED", RESOURCE_TASK, taskId, operation.id(), Map.of("priority", String.valueOf(fields.priority())));
 		return idempotency.complete(idem, 201, fullView(store.find(taskId).orElseThrow()), RESOURCE_TASK, taskId);
 	}
 
@@ -156,6 +163,7 @@ class TaskService {
 			notifications.capacityFull(task, store.markPendingCapacityFull(taskId, now), now);
 		}
 		TaskRow updated = store.find(taskId).orElseThrow();
+		record(subject, "TASK_UPDATED", RESOURCE_TASK, taskId, task.operationId(), Map.of("version", updated.version()));
 		if (updated.state().isOpen()) {   // taslakta atanan yok; yayındaki görevde atananlara değişiklik (AC-13.5)
 			notifications.updated(updated, updated.version(), store.assignees(taskId, ACTIVE), subject.userId());
 		}
@@ -207,6 +215,7 @@ class TaskService {
 		store.setState(taskId, TaskState.PUBLISHED, subject.userId(), now);
 		store.insertStateChange(Ids.newId(), taskId, TaskState.DRAFT, TaskState.PUBLISHED, subject.userId(), now);
 		notifications.published(task, audience.keySet(), subject.userId());
+		record(subject, "TASK_PUBLISHED", RESOURCE_TASK, taskId, task.operationId(), Map.of("assignmentCount", audience.size()));
 		return idempotency.complete(idem, 200, fullView(store.find(taskId).orElseThrow()), RESOURCE_TASK, taskId);
 	}
 
@@ -232,6 +241,8 @@ class TaskService {
 		// İptal: yanıt bekleyen ve kabul edenler; ilerleme: yalnızca kabul edenler.
 		notifications.stateChanged(task, target, store.assignees(taskId,
 				target == TaskState.CANCELLED ? ACTIVE : Set.of(AssignmentStatus.ACCEPTED)), subject.userId());
+		record(subject, "TASK_STATE_CHANGED", RESOURCE_TASK, taskId, task.operationId(),
+				Map.of("from", task.state().name(), "to", target.name()));
 		return idempotency.complete(idem, 200, fullView(store.find(taskId).orElseThrow()), RESOURCE_TASK, taskId);
 	}
 
@@ -281,6 +292,8 @@ class TaskService {
 			}
 		}
 		notifications.assigned(task, assignmentId, userId, now, subject.userId());
+		record(subject, "ASSIGNMENT_ADDED", RESOURCE_ASSIGNMENT, assignmentId, task.operationId(),
+				Map.of("taskId", taskId, "userId", userId));
 		return idempotency.complete(idem, 201, assignmentView(store.findAssignment(assignmentId).orElseThrow()),
 				RESOURCE_ASSIGNMENT, assignmentId);
 	}
@@ -303,6 +316,15 @@ class TaskService {
 			store.decrementAccepted(taskId, now);
 		}
 		notifications.removed(found, assignmentId, assignment.userId(), now, subject.userId());
+		record(subject, "ASSIGNMENT_REMOVED", RESOURCE_ASSIGNMENT, assignmentId, found.operationId(),
+				Map.of("taskId", taskId, "userId", assignment.userId()));
+	}
+
+	/** Denetim kaydı (backend §12.5); dayanak KOR veya (ADR-015) ADM. */
+	private void record(Subject subject, String action, String resourceType, UUID resourceId, UUID operationId,
+			Map<String, Object> details) {
+		audit.record(subject.userId(), acting.operation(subject, operationId), subject.client(), action, resourceType,
+				resourceId, operationId, details);
 	}
 
 	/** TK-07. Gönüllü izdüşümünde yalnızca kendisine atanmış görevler ve {@code myAssignment} (§14 N-03 A). */

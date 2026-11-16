@@ -111,6 +111,7 @@ export function AppShell() {
     { label: 'Duyurular', to: '/duyurular', show: canAnnounce },
     { label: 'Roller', to: '/roller', show: perms.can('role.assign') },
     { label: 'Kullanıcılar', to: '/kullanicilar', show: perms.can('user.status.view') },
+    { label: 'Denetim kayıtları', to: '/denetim', show: perms.can('audit.view') },
     { label: 'Hesabım', to: '/hesabim', show: true },
   ];
   const opNav = opId

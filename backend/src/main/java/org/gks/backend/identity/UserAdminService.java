@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiProblems.Code;
 import org.gks.backend.PageCursor;
@@ -49,11 +51,13 @@ class UserAdminService {
 	private final PasswordEncoder passwordEncoder;
 	private final UserAdminMailer mailer;
 	private final Clock clock;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 	private final SecureRandom random = new SecureRandom();
 
 	UserAdminService(Users users, RefreshTokens tokens, UserAdminAccess access, Participation participation,
 			RoleAssignments roles, MeContextSources.Groups groups, PasswordEncoder passwordEncoder, UserAdminMailer mailer,
-			Clock clock) {
+			Clock clock, AuditTrail audit, ActingBasis acting) {
 		this.users = users;
 		this.tokens = tokens;
 		this.access = access;
@@ -63,6 +67,8 @@ class UserAdminService {
 		this.passwordEncoder = passwordEncoder;
 		this.mailer = mailer;
 		this.clock = clock;
+		this.audit = audit;
+		this.acting = acting;
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -171,6 +177,8 @@ class UserAdminService {
 		users.setStatus(userId, Users.Status.DISABLED, now);
 		tokens.deactivateUserDevices(userId, "ACCOUNT_DISABLED", now);
 		tokens.revokeUserSessions(userId, null, "ACCOUNT_DISABLED", now);
+		// Gerekçe metni yazılmaz; yalnızca verilip verilmediği (backend §5.2 ReasonRequest).
+		record(subject, "ACCOUNT_DISABLED", userId, Map.of("reasonGiven", reason != null && !reason.isBlank()));
 		return summaryFor(subject, userId);
 	}
 
@@ -183,6 +191,7 @@ class UserAdminService {
 			throw ApiException.invalidStateTransition(user.status().name(), Users.Status.ACTIVE.name());
 		}
 		users.setStatus(userId, Users.Status.ACTIVE, clock.instant());
+		record(subject, "ACCOUNT_ENABLED", userId, Map.of());
 		return summaryFor(subject, userId);
 	}
 
@@ -194,6 +203,7 @@ class UserAdminService {
 		Instant now = clock.instant();
 		tokens.deactivateUserDevices(userId, "LOGOUT", now);
 		tokens.revokeUserSessions(userId, null, "ADMIN_REVOKE", now);
+		record(subject, "SESSIONS_REVOKED", userId, Map.of());
 	}
 
 	/**
@@ -213,6 +223,7 @@ class UserAdminService {
 		users.resetPasswordByAdmin(userId, passwordEncoder.encode(temporary), now);
 		tokens.deactivateUserDevices(userId, "LOGOUT", now);
 		tokens.revokeUserSessions(userId, null, "PASSWORD_CHANGED", now);
+		record(subject, "PASSWORD_RESET_BY_ADMIN", userId, Map.of());   // geçici parola yazılmaz
 		String email = user.email();
 		String name = user.displayName();
 		afterCommit(() -> mailer.sendTemporaryPassword(email, name, temporary));
@@ -234,12 +245,17 @@ class UserAdminService {
 		users.clearTotp(userId, now);
 		tokens.deactivateUserDevices(userId, "LOGOUT", now);
 		tokens.revokeUserSessions(userId, null, "MFA_RESET", now);
+		record(subject, "MFA_RESET", userId, Map.of());
 	}
 
 	// ---------------------------------------------------------------- yardımcılar
 
 	private Users.Managed locked(UUID userId) {
 		return users.managed(userId, true).orElseThrow(() -> ApiException.of(Code.NOT_FOUND));
+	}
+
+	private void record(Subject subject, String action, UUID userId, Map<String, Object> details) {
+		audit.record(subject.userId(), acting.organization(subject), subject.client(), action, "USER", userId, null, details);
 	}
 
 	private static void notSelf(Subject subject, UUID userId) {

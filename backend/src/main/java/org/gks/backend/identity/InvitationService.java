@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -66,11 +68,14 @@ class InvitationService {
 	private final Idempotency idempotency;
 	private final Notifier notifier;
 	private final Clock clock;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 
 	InvitationService(Invitations invitations, InvitationCodes codes, InvitationMailer mailer, Users users,
 			UserAccounts accounts, RefreshTokens refreshTokens, AccessTokens accessTokens, RoleAssignments roles,
 			Participation participation, OperationAccess operationAccess, AccessDirectory.Scopes scopes,
-			AccessDirectory.Users directory, Idempotency idempotency, Notifier notifier, Clock clock) {
+			AccessDirectory.Users directory, Idempotency idempotency, Notifier notifier, Clock clock, AuditTrail audit,
+			ActingBasis acting) {
 		this.invitations = invitations;
 		this.codes = codes;
 		this.mailer = mailer;
@@ -86,6 +91,8 @@ class InvitationService {
 		this.idempotency = idempotency;
 		this.notifier = notifier;
 		this.clock = clock;
+		this.audit = audit;
+		this.acting = acting;
 	}
 
 	/** §5 {@code InvitationView}. */
@@ -222,6 +229,10 @@ class InvitationService {
 					"\"" + scopeName + "\" operasyonuna katılmaya davet edildiniz. Kabul veya reddetmek için açın.",
 					Notifier.SourceType.INVITATION, id, input.scopeId(), List.of(userId), subject.userId()));
 		}
+		boolean operationScope = input.scopeType().equals("OPERATION");
+		audit.record(subject.userId(), operationScope ? acting.operation(subject, input.scopeId()) : acting.organization(subject),
+				subject.client(), "INVITATION_CREATED", "INVITATION", id, operationScope ? input.scopeId() : null,
+				Map.of("scopeType", input.scopeType(), "kind", kind.name()));   // e-posta denetime yazılmaz
 		String email = input.email();
 		afterCommit(() -> {
 			if (kind == Invitations.Kind.NEW_USER) {
@@ -274,6 +285,10 @@ class InvitationService {
 			throw ApiException.invalidStateTransition(status, Invitations.Status.REVOKED);
 		}
 		invitations.revoke(id);
+		boolean operationScope = row.scopeType().equals("OPERATION");
+		audit.record(subject.userId(), operationScope ? acting.operation(subject, row.scopeId()) : acting.organization(subject),
+				subject.client(), "INVITATION_REVOKED", "INVITATION", id, operationScope ? row.scopeId() : null,
+				Map.of("scopeType", row.scopeType()));
 		return view(invitations.find(id).orElseThrow());
 	}
 

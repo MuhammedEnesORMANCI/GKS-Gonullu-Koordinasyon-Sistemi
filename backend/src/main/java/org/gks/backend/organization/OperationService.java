@@ -14,6 +14,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.gks.backend.access.ActingBasis;
+import org.gks.backend.AuditTrail;
 import org.gks.backend.ApiException;
 import org.gks.backend.ApiException.FieldError;
 import org.gks.backend.ApiProblems.Code;
@@ -48,10 +50,14 @@ class OperationService {
 	private final Idempotency idempotency;
 	private final JdbcClient jdbc;
 	private final Clock clock;
+	private final AuditTrail audit;
+	private final ActingBasis acting;
 
 	OperationService(OperationRepository operations, OperationAccess access, RoleAssignments roles, UserDirectory users,
 			ParticipantDetails.Groups groups, ParticipantDetails.Assignments assignments, Idempotency idempotency,
-			JdbcClient jdbc, Clock clock) {
+			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting) {
+		this.audit = audit;
+		this.acting = acting;
 		this.operations = operations;
 		this.access = access;
 		this.roles = roles;
@@ -75,6 +81,8 @@ class OperationService {
 		Instant now = clock.instant();
 		operations.insert(id, input.name(), input.description(), input.plannedEndAt(), subject.userId(), now);
 		roles.assignCoordinators(id, input.coordinatorIds(), subject.userId());
+		audit.record(subject.userId(), acting.organization(subject), subject.client(), "OPERATION_CREATED", "OPERATION", id, id,
+				Map.of("coordinatorIds", input.coordinatorIds()));
 		return idempotency.complete(idem, 201, views(List.of(load(id)), subject).getFirst(), RESOURCE_OPERATION, id);
 	}
 
@@ -161,6 +169,18 @@ class OperationService {
 		if (operations.updateDetails(id, name, description, plannedEndAt, clock.instant(), CLOSED) == 0) {
 			throw ApiException.of(Code.OPERATION_CLOSED);   // okuma ile yazma arasında kapatıldı
 		}
+		List<String> changed = new ArrayList<>();
+		if (update.name() != null) {
+			changed.add("name");
+		}
+		if (update.description() != null) {
+			changed.add("description");
+		}
+		if (update.plannedEndAt() != null) {
+			changed.add("plannedEndAt");
+		}
+		audit.record(subject.userId(), acting.operation(subject, id), subject.client(), "OPERATION_UPDATED", "OPERATION", id,
+				id, Map.of("fields", changed));
 		return views(List.of(load(id)), subject).getFirst();
 	}
 
@@ -179,6 +199,8 @@ class OperationService {
 			throw ApiException.invalidStateTransition(load(id).state(), target);   // eşzamanlı geçiş kazandı
 		}
 		// Kapanış zinciri (§7.3, OperationStateChanged → outbox) tüketen modüllerle birlikte eklenecek.
+		audit.record(subject.userId(), acting.operation(subject, id), subject.client(), "OPERATION_STATE_CHANGED", "OPERATION",
+				id, id, Map.of("from", current.name(), "to", target.name()));
 		return views(List.of(load(id)), subject).getFirst();
 	}
 

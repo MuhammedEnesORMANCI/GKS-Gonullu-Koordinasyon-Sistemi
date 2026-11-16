@@ -19,6 +19,7 @@
 | ADR-013 | Android'den kurumsal işlem yapılmaz; kurumsal işlemler yalnızca MFA'lı web oturumunda | **Yerine geçildi (ADR-014, 15.11.2026)** | MVP |
 | ADR-014 | Android yönetim oturumu: ADM/KOR için TOTP ile açılan, 12 sa mutlak, MFA'lı Android oturumu | Kabul edildi (proje sahibi isteği, 15.11.2026) | MVP |
 | ADR-015 | ADM, KOR ataması olmadan tüm operasyonlarda KOR'un operasyon yönetimi izinlerine sahiptir (K-07'nin ilgili kısmının yerine) | Kabul edildi (proje sahibi isteği, 16.11.2026) | MVP |
+| ADR-016 | Denetim kaydı aynı işlemde eşzamanlı yazılır; yalnızca ekleme; `actor_basis` | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 
 ---
 
@@ -167,3 +168,15 @@
 - **Güvenlik notu:** ADM hesabının ele geçirilmesinin etkisi büyür: artık tek bir ADM oturumu her operasyonda görev, grup ve duyuru işlemi yapabilir. Azaltımlar: ADM için TOTP zorunlu, MFA'lı oturum 12 sa mutlak, her istekte rol ve oturum iptali veritabanından denetlenir (LD-47, LD-55). **Audit modülü yazıldığında ADM'nin KOR ataması olmadan yaptığı her operasyon işlemi (görev, grup/üyelik, toplanma noktası, duyuru, koordinatör ve davet işlemleri) mutlaka denetim kaydına yazılmalıdır**; kayıtta işlemi yapanın o operasyonda KOR olmadığı ("ADM yetkisiyle") ayırt edilebilmelidir.
 - **Sonuçlar:** (+) ADM kendini KOR atamadan operasyona müdahale eder; K-07'deki "kendini KOR ata" adımı kalkar. (−) Denetim kaydı henüz olmadığı için ADM işlemleri şimdilik yalnızca kaynak tablolarındaki `created_by`/`added_by` alanlarından izlenebilir. (−) ADM'nin `/me/context` yanıtı operasyon sayısıyla büyür.
 - **Değişen kayıtlar:** K-07 (ADM için "kendini KOR ata" kuralı kalktı; konum/alarm için K-07 ve K-15 aynen geçerli), authorization.md §5.1/§5.4, TASKS.md LD-62. Testler: `AccessPolicyTests.AdminCoordinatesAllOperations`, `MobileManagementSessionTests.adminWithoutCoordinatorRoleCreatesTasksAndSendsOperationAnnouncements`, `coordinatorSendsAnnouncementFromAndroidOnlyInOwnOperation`.
+
+## ADR-016 Denetim kaydı: aynı işlemde eşzamanlı yazım, yalnızca ekleme, yetki dayanağı
+
+- **Bağlam:** K-26 ve NFR-05 denetim kaydını zorunlu kılar; tasarım (backend §12.5) outbox üzerinden zaman uyumsuz yazımı öngörüyordu. ADR-015 ile ADM'nin KOR ataması olmadan yaptığı operasyon işlemlerinin ayırt edilerek kaydedilmesi gerekti. Proje sahibi aynı işlemde, eşzamanlı ve yeni bağımlılıksız yazımı seçti (16.11.2026).
+- **Karar:**
+  1. Üretici modül iş işleminin içinde `org.gks.backend.AuditTrail.record(...)` çağırır; bu, ortak çekirdekteki `AuditEvent` olayını yayınlar. audit modülü `@EventListener` + `@Transactional(MANDATORY)` ile **aynı işlemde** `audit.audit_entries` tablosuna yazar. Yazma başarısız olursa iş işlemi geri alınır; işlem dışında yayınlanan olay hata verir. Outbox ve yeni bağımlılık yok.
+  2. Olay tipi ortak çekirdekte olduğundan üreticiler audit'e, audit üreticilere bağımlı değildir (ModularityTests). Okuma ucu (AU-01) yetkiyi access'ten alır (`AuditAccess`: ADM MFA'lı, UYM web).
+  3. `actor_basis` kolonu: `KOR`, `ADM` (ADR-015: KOR ataması olmadan), `TEK`, `UYM`, `LEADER`, `SELF`, `SYSTEM`. Değer access'teki `ActingBasis` ile, karar kuralıyla aynı mantıkla hesaplanır.
+  4. **Yalnızca ekleme:** uygulamada güncelleme/silme yolu yoktur; V12 tetikleyicileri `UPDATE`, `DELETE` ve `TRUNCATE`'i reddeder. (Ayrı, yalnızca `SELECT/INSERT` yetkili veritabanı rolü henüz yok; tek uygulama kullanıcısı tablo sahibi olduğu için tetikleyici devre dışı bırakılabilir — bu, ayrı DB rolüyle kapatılacak açık konudur.)
+  5. Kayıt içeriği: mesaj başlığı/metni, parola, belirteç, e-posta, adres ve koordinat yazılmaz (AC-27.2); yalnızca tür, kimlik ve sayılar.
+- **Sonuçlar:** (+) kayıt kaybı veya kayıtsız işlem yok; (+) ADM işlemleri `actor_basis = 'ADM'` ile süzülür; (−) denetim yazımı iş işleminin süresine eklenir (tek INSERT); (−) id (UUIDv7) sırası olay sırası kabul edilir, `at` ayrı tutulur.
+- **Kapsanan eylemler (V12, 16.11):** `ROLE_ASSIGNED/REVOKED`, `ACCOUNT_DISABLED/ENABLED`, `SESSIONS_REVOKED`, `PASSWORD_RESET_BY_ADMIN`, `MFA_RESET`, `INVITATION_CREATED/REVOKED`, `OPERATION_CREATED/UPDATED/STATE_CHANGED`, `GROUP_CREATED/UPDATED/MEMBER_ADDED/MEMBER_REMOVED/LEADER_CHANGED`, `MEETING_POINT_UPDATED`, `TASK_CREATED/UPDATED/PUBLISHED/STATE_CHANGED`, `ASSIGNMENT_ADDED/REMOVED`, `ANNOUNCEMENT_SENT` (LD-60 (7)). Kimlik olayları (giriş, çıkış, MFA doğrulama) ve gönüllü yanıtları henüz yok.

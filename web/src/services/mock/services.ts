@@ -1,6 +1,7 @@
 import type {
   AccountService,
   AnnouncementService,
+  AuditService,
   AuthService,
   GroupService,
   InvitationService,
@@ -15,6 +16,7 @@ import type {
 } from '../contracts';
 import type {
   AssignmentView,
+  AuditEntryView,
   EffectivePermissions,
   AnnouncementView,
   GroupView,
@@ -1068,6 +1070,36 @@ export function mockUserAdminService(): UserAdminService {
       if (!mockStore.mfaEnrolled.has(id)) return fail(409, 'INVALID_STATE_TRANSITION', { currentState: 'NOT_ENROLLED', requestedState: 'MFA_RESET' });
       mockStore.mfaEnrolled.delete(id);
       return respond(undefined);
+    },
+  };
+}
+
+// ------------------------------------------------------------- audit (AU-01)
+
+/** Örnek denetim kayıtları; ADM ve UYM görür (K-26). Gerçek kayıt değildir. */
+export function mockAuditService(): AuditService {
+  const items: AuditEntryView[] = [
+    { id: '0192f000-a000-7000-8000-000000000003', actor: { id: MOCK_IDS.adm, displayName: 'Yönetici (örnek)' }, actorBasis: 'ADM',
+      action: 'TASK_CREATED', resourceType: 'TASK', resourceId: MOCK_IDS.task1, operationId: MOCK_IDS.op1,
+      operationName: 'Deprem Arama Kurtarma — Merkez', client: 'WEB', at: '2026-11-15T09:10:00Z', details: { priority: 'HIGH' } },
+    { id: '0192f000-a000-7000-8000-000000000002', actor: { id: MOCK_IDS.kor, displayName: 'Koordinatör (örnek)' }, actorBasis: 'KOR',
+      action: 'ANNOUNCEMENT_SENT', resourceType: 'NOTIFICATION', operationId: MOCK_IDS.op1,
+      operationName: 'Deprem Arama Kurtarma — Merkez', client: 'ANDROID', at: '2026-11-15T09:00:00Z', details: { recipientCount: 6 } },
+    { id: '0192f000-a000-7000-8000-000000000001', actor: { id: MOCK_IDS.adm, displayName: 'Yönetici (örnek)' }, actorBasis: 'ADM',
+      action: 'ROLE_ASSIGNED', resourceType: 'ROLE_ASSIGNMENT', operationId: MOCK_IDS.op2, operationName: 'Sel Bölgesi Lojistik',
+      client: 'WEB', at: '2026-11-15T08:30:00Z', details: { role: 'KOR' } },
+  ];
+  return {
+    list: async (filter = {}) => {
+      if (mockStore.persona !== 'ADM' && mockStore.persona !== 'UYM') return fail(403, 'FORBIDDEN');
+      return respond({
+        items: items.filter(
+          (e) =>
+            (!filter.action || e.action === filter.action) &&
+            (!filter.actorBasis || e.actorBasis === filter.actorBasis) &&
+            (!filter.operationId || e.operationId === filter.operationId),
+        ),
+      });
     },
   };
 }

@@ -2,6 +2,7 @@ import type { ApiClient } from '../api/client';
 import type {
   AccountService,
   AnnouncementService,
+  AuditService,
   AuthService,
   GroupService,
   InvitationService,
@@ -17,6 +18,7 @@ import type {
 import type {
   AnnouncementPreview,
   AnnouncementView,
+  AuditEntryView,
   AssignmentView,
   GroupMemberView,
   GroupSummary,
@@ -152,6 +154,21 @@ export function httpUserAdminService(api: ApiClient): UserAdminService {
     resetMfa: async (id) => {
       await action(id, 'reset-mfa');
     },
+  };
+}
+
+export function httpAuditService(api: ApiClient): AuditService {
+  return {
+    list: (filter = {}) =>
+      api.get<Page<AuditEntryView>>('/audit-entries', {
+        query: {
+          action: filter.action,
+          actorBasis: filter.actorBasis,
+          operationId: filter.operationId,
+          limit: filter.limit,
+          cursor: filter.cursor,
+        },
+      }),
   };
 }
 

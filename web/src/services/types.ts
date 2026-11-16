@@ -97,6 +97,23 @@ export interface UserPage extends Page<UserSummary> {
   totalCount?: number;
 }
 
+/** AU-01 denetim kaydı (K-26). `actorBasis`: işlemin dayandığı yetki (ADR-015: `ADM` = KOR ataması olmadan). */
+export type ActorBasis = 'KOR' | 'ADM' | 'TEK' | 'UYM' | 'LEADER' | 'SELF' | 'SYSTEM';
+
+export interface AuditEntryView {
+  id: Uuid;
+  actor?: UserRef;
+  actorBasis: ActorBasis;
+  action: string;
+  resourceType: string;
+  resourceId?: Uuid;
+  operationId?: Uuid;
+  operationName?: string;
+  client: 'WEB' | 'ANDROID' | 'SYSTEM';
+  at: DateTime;
+  details?: Record<string, unknown>;
+}
+
 /** AC-01 `RoleAssignmentCreateRequest` (rol ve kapsam türü eşleşmeli: ADM/TEK/UYM kurum, KOR/GON operasyon). */
 export interface RoleAssignmentCreateRequest {
   userId: Uuid;

@@ -1,4 +1,6 @@
 import type {
+  ActorBasis,
+  AuditEntryView,
   AnnouncementCreateRequest,
   AnnouncementPreview,
   AnnouncementTarget,
@@ -148,6 +150,17 @@ export interface UserAdminService {
   resetMfa(id: Uuid): Promise<void>;
 }
 
+export interface AuditFilter extends PageRequest {
+  action?: string;
+  actorBasis?: ActorBasis;
+  operationId?: Uuid;
+}
+
+/** AU-01 `GET /audit-entries` (salt-okur; `audit.view`: ADM, UYM). Güncelleme/silme yoktur (K-26). */
+export interface AuditService {
+  list(filter?: AuditFilter): Promise<Page<AuditEntryView>>;
+}
+
 /** ID-11 `GET /me/context`. */
 export interface MeContextService {
   getContext(): Promise<MeContext>;
@@ -250,4 +263,5 @@ export interface Services {
   announcements: AnnouncementService;
   roleAssignments: RoleAssignmentService;
   users: UserAdminService;
+  audit: AuditService;
 }
