@@ -26,6 +26,11 @@ class RoleBasedAnnouncementAccess implements AnnouncementAccess {
 	}
 
 	@Override
+	public Decision canManagePublicAnnouncements(Subject subject) {
+		return Grants.corporate(subject, store.grants(subject.userId()).has(Role.ADM), Role.ADM);
+	}
+
+	@Override
 	public ListScope listScope(Subject subject) {
 		Grants grants = store.grants(subject.userId());
 		boolean admin = Grants.corporate(subject, grants.has(Role.ADM), Role.ADM).allowed();

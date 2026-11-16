@@ -54,6 +54,7 @@ class SecurityConfiguration {
 				.requireCsrfProtectionMatcher(SecurityConfiguration::requiresCsrf))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.GET, "/api/v1/ping").permitAll()          // ID-34
+				.requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()     // ADR-023 kamu duyuruları (oran sınırlı)
 				.requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()     // ID-01
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()   // ID-02
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/mfa/enroll", "/api/v1/auth/mfa").permitAll() // ID-03/04 (bilet)

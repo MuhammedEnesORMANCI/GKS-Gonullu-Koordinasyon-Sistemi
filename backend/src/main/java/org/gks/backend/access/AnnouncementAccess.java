@@ -16,6 +16,9 @@ public interface AnnouncementAccess {
 	/** NT-01/02: kurum geneli duyuru (K-09). */
 	Decision canSendToOrganization(Subject subject);
 
+	/** Kamu duyuruları (ADR-023): yalnızca ADM, MFA'lı yönetim oturumuyla ({@code public_announcement.manage}). */
+	Decision canManagePublicAnnouncements(Subject subject);
+
 	/** NT-03/06: gönderen kapsamı. {@code organization}: kurum geneli dahil tümü (ADM). */
 	ListScope listScope(Subject subject);
 

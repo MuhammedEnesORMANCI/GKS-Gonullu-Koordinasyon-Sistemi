@@ -60,6 +60,8 @@ public final class ApiProblems {
 		AUDIENCE_TOO_LARGE(422, "audience-too-large", "Hedef kitle üst sınırı aşıyor"),
 		IDEMPOTENCY_KEY_MISMATCH(422, "idempotency-key-mismatch", "Aynı idempotency anahtarı farklı bir istekle kullanıldı"),
 		ACCOUNT_LOCKED(423, "account-locked", "Hesap geçici olarak kilitlendi"),
+		/** Kimlik doğrulamasız uçlarda istemci başına oran sınırı aşıldı; {@code Retry-After} başlığı (ADR-023). */
+		RATE_LIMITED(429, "rate-limited", "Çok fazla istek; biraz sonra yeniden deneyin"),
 		/** Altyapı (veritabanı) geçici olarak erişilemez; oturum sona ermiş sayılmaz (LD-48). */
 		SERVICE_UNAVAILABLE(503, "service-unavailable", "Hizmet geçici olarak kullanılamıyor");
 

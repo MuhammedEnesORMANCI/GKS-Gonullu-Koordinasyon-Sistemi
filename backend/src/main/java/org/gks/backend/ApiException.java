@@ -124,6 +124,12 @@ public class ApiException extends RuntimeException {
 				Map.of());
 	}
 
+	/** {@code 429 RATE_LIMITED}: {@code Retry-After} başlığı (saniye). */
+	public static ApiException rateLimited(long retryAfterSeconds) {
+		return new ApiException(ApiProblems.Code.RATE_LIMITED, List.of(), Map.of(),
+				Map.of("Retry-After", Long.toString(Math.max(1, retryAfterSeconds))));
+	}
+
 	/** {@code 423 ACCOUNT_LOCKED}: {@code lockedUntil} uzantısı ve {@code Retry-After} başlığı (§4.1). */
 	public static ApiException accountLocked(Instant lockedUntil, Instant now) {
 		long seconds = Math.max(1, Duration.between(now, lockedUntil).toSeconds() + 1);

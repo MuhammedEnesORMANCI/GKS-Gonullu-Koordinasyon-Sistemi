@@ -25,7 +25,7 @@ public class EffectivePermissions {
 	/** ADM kurum kapsamı (yalnızca K1). {@code operation.manage}, {@code alert.view}, {@code group.view}: tüm operasyonlar. */
 	static final List<String> ADM = List.of("operation.create", "operation.manage", "invitation.create", "role.assign",
 			"user.status.view", "account.disable", "session.revoke", "audit.view", "mfa.reset", "password.reset",
-			"announcement.send.organization", "alert.view", "group.view");
+			"announcement.send.organization", "alert.view", "group.view", "public_announcement.manage");
 
 	static final List<String> TEK = List.of("user.status.view", "account.disable", "session.revoke");
 
