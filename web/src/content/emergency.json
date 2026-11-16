@@ -1,0 +1,14 @@
+{
+  "_dogrulama": "Yetkili kaynaklarla doğrulanmalı. Bu sayfadaki adımlar genel kabul görmüş temel davranışlardır; yayından önce yetkili birimce gözden geçirilmelidir.",
+  "title": "Afet Anında Ne Yapmalı?",
+  "intro": "Afet anında sakin kalmak ve doğru adımları sırayla uygulamak hayat kurtarır.",
+  "callout": "Hayati tehlike varsa hemen 112'yi arayın.",
+  "steps": [
+    { "title": "Kendinizi koruyun", "text": "Bulunduğunuz yerde en güvenli konuma geçin. Depremde Çök – Kapan – Tutun; selde yüksek yere çıkın; yangında dumandan uzaklaşın." },
+    { "title": "Sakin olun", "text": "Panik kararlarından kaçının; asansör kullanmayın, merdivenlere ve camlara koşmayın." },
+    { "title": "Yardım çağırın", "text": "Yaralı veya mahsur kalan varsa 112'yi arayın. Enkaz altındaysanız düdük çalın ya da boruya vurarak sesinizi duyurun." },
+    { "title": "Güvenli alana geçin", "text": "Tehlike geçtiğinde hasarlı yapılardan uzaklaşıp toplanma alanına gidin." },
+    { "title": "Ailenize haber verin", "text": "Aile afet planındaki buluşma noktasını ve irtibat kişisini kullanın; hatları meşgul etmemek için kısa mesajı tercih edin." },
+    { "title": "Resmi duyuruları takip edin", "text": "Yalnızca yetkili kurumların açıklamalarına güvenin; doğrulanmamış bilgileri paylaşmayın." }
+  ]
+}

@@ -53,14 +53,14 @@ describe('Operasyonlar: oluşturma, boş durum, katılımcılar', () => {
     renderApp({ route: `/operasyonlar/${MOCK_IDS.op1}`, persona: 'KOR' });
     const table = await screen.findByRole('table', { name: 'Katılımcı listesi' });
     expect(within(table).getByText('Ali Kaya')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Davet gönder' })).toHaveAttribute('href', `/davetler?kapsam=${MOCK_IDS.op1}`);
+    expect(screen.getByRole('link', { name: 'Davet gönder' })).toHaveAttribute('href', `/panel/davetler?kapsam=${MOCK_IDS.op1}`);
   });
 
   it('gruplar: katılımcı yoksa açıklama ve davet kısayolu, boş listede oluşturma düğmesi', async () => {
     mockStore.participants.set(MOCK_IDS.op2, []);
     renderApp({ route: `/operasyonlar/${MOCK_IDS.op2}/gruplar`, persona: 'KOR' });
     expect(await screen.findByText(/Bu operasyonda henüz katılımcı yok. Grup lideri/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Davet gönder' })).toHaveAttribute('href', `/davetler?kapsam=${MOCK_IDS.op2}`);
+    expect(screen.getByRole('link', { name: 'Davet gönder' })).toHaveAttribute('href', `/panel/davetler?kapsam=${MOCK_IDS.op2}`);
     expect(await screen.findByText(/Henüz grup yok./)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Grup oluştur' })).toHaveLength(2);
   });

@@ -26,7 +26,7 @@ export function NoParticipantsHint({ operationId, purpose }: { operationId: Uuid
       sx={{ mb: 2 }}
       action={
         canInvite ? (
-          <Button component={RouterLink} to={`/davetler?kapsam=${operationId}`} color="inherit" size="small">
+          <Button component={RouterLink} to={`/panel/davetler?kapsam=${operationId}`} color="inherit" size="small">
             Davet gönder
           </Button>
         ) : undefined

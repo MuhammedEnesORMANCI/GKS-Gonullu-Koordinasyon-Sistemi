@@ -61,7 +61,7 @@ describe('Canlı güncellemeler (RT-01)', () => {
 
   it('ADM kurum geneli konuya abone olur; oturum iptali oturumu sonlandırır', async () => {
     const end = vi.spyOn(sessionEvents, 'endSession');
-    renderApp({ route: '/', persona: 'ADM' });
+    renderApp({ route: '/panel', persona: 'ADM' });
     await waitFor(() => expect(mockLiveTopics().some((topics) => topics.includes('organization'))).toBe(true));
     act(() => emitMockLiveEvent({ type: 'session.revoked', data: { topic: `user:${MOCK_IDS.adm}` } }));
     expect(end).toHaveBeenCalledWith('AUTH_SESSION_REVOKED');

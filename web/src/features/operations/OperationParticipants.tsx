@@ -23,7 +23,7 @@ export function OperationParticipants({ operationId, canInvite }: { operationId:
     queryKey: Q.participants(operationId),
     queryFn: () => services.participants.list(operationId),
   });
-  const inviteLink = `/davetler?kapsam=${operationId}`;
+  const inviteLink = `/panel/davetler?kapsam=${operationId}`;
 
   return (
     <Paper sx={{ p: 2 }}>

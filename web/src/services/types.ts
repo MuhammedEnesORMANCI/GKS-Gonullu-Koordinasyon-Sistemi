@@ -574,3 +574,12 @@ export interface LocationListView {
   /** `WAITING`: paylaşım açık, henüz ölçüm yok (Ek). */
   notSharing: { user: UserRef; state: SharingState | 'WAITING' }[];
 }
+
+/** Halka açık (kamu) duyuru: kimlik doğrulamasız `GET /public/announcements` yalnızca yayındakileri döndürür. */
+export interface PublicAnnouncement {
+  id: Uuid;
+  title: string;
+  body: string;
+  publishedAt: string;
+}
+

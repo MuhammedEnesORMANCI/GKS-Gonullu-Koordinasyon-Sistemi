@@ -1,0 +1,53 @@
+{
+  "_dogrulama": "Yetkili kaynaklarla doğrulanmalı. Hazırlık önerileri genel kabul görmüş temel bilgilerdir; yayından önce yetkili birimce gözden geçirilmelidir.",
+  "title": "Hazırlık Rehberi",
+  "intro": "Afetlere hazırlık, afet anında ve sonrasında hayat kurtarır. Aşağıdaki adımları ailenizle birlikte planlayın.",
+  "sections": [
+    {
+      "id": "acil-durum-cantasi",
+      "title": "Acil Durum Çantası",
+      "icon": "bag",
+      "intro": "Her bireyin en az 72 saat yetecek temel ihtiyaçlarını içeren, kolay taşınabilir bir çanta hazırlayın.",
+      "items": [
+        "İçme suyu",
+        "Bozulmayan, pişirme gerektirmeyen yiyecekler",
+        "İlk yardım malzemeleri ve düzenli kullanılan ilaçlar",
+        "El feneri, yedek pil ve pilli radyo",
+        "Düdük (yardım çağırmak için)",
+        "Kimlik, tapu, sigorta gibi önemli belgelerin fotokopileri (su geçirmez kılıfta)",
+        "Bir miktar nakit para",
+        "Mevsime uygun yedek giysi, battaniye veya uyku tulumu",
+        "Hijyen malzemeleri (ıslak mendil, maske, el dezenfektanı)",
+        "Telefon şarj cihazı ve taşınabilir şarj aleti",
+        "Bebek, yaşlı ve engelli bireyler ile evcil hayvanlar için özel ihtiyaçlar"
+      ]
+    },
+    {
+      "id": "aile-afet-plani",
+      "title": "Aile Afet Planı",
+      "icon": "family",
+      "intro": "Afet anında aile bireyleri farklı yerlerde olabilir. Önceden yapılan plan, birbirinize ulaşmanızı kolaylaştırır.",
+      "items": [
+        "Ev dışında ve mahalle dışında birer buluşma noktası belirleyin.",
+        "İl dışında yaşayan bir irtibat kişisi seçin; herkes ona haber versin.",
+        "Önemli telefon numaralarını yazılı olarak da saklayın.",
+        "Her odada güvenli yerleri ve evden çıkış yollarını belirleyin.",
+        "Gaz, su ve elektriğin nasıl kapatılacağını herkes öğrensin.",
+        "Çocukların okul ve bakımevlerinin afet planlarını öğrenin.",
+        "Planı yılda en az bir kez ailece tatbik edin."
+      ]
+    },
+    {
+      "id": "toplanma-alani",
+      "title": "Toplanma Alanı",
+      "icon": "place",
+      "intro": "Toplanma alanları, afet sonrasında güvenli biçimde bir araya gelinecek ve ilk bilgilendirmenin yapılacağı açık alanlardır.",
+      "items": [
+        "Evinize, işyerinize ve okula en yakın toplanma alanını önceden öğrenin.",
+        "Toplanma alanı bilgisini il/ilçe yetkili birimlerinden ve resmi kaynaklardan edinin.",
+        "Alana giden güzergâhı ailenizle birlikte yürüyerek deneyin.",
+        "Afet sonrasında yetkililerin yönlendirmelerine uyun."
+      ]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import { renderApp } from '../../test/renderApp';
 
 describe('uygulama kabuğu ve rol tabanlı menü', () => {
   it('KOR: operasyon menüsü ve örnek veri rozeti', async () => {
-    renderApp({ route: '/', persona: 'KOR' });
+    renderApp({ route: '/panel', persona: 'KOR' });
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     expect(within(nav).getByText('Operasyonlar')).toBeInTheDocument();
@@ -19,7 +19,7 @@ describe('uygulama kabuğu ve rol tabanlı menü', () => {
   });
 
   it('TEK: operasyon menüsü yok', async () => {
-    renderApp({ route: '/', persona: 'TEK' });
+    renderApp({ route: '/panel', persona: 'TEK' });
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     expect(within(nav).getByText('Panel')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('uygulama kabuğu ve rol tabanlı menü', () => {
 
   it('me/context 503 → oturum korunur, yeniden deneme bandı', async () => {
     const meContext = { getContext: vi.fn(async () => Promise.reject(new ApiError({ type: 't', title: '', status: 503, code: 'SERVICE_UNAVAILABLE', extensions: {} }))) };
-    renderApp({ route: '/', overrides: { meContext } });
+    renderApp({ route: '/panel', overrides: { meContext } });
     expect(
       await screen.findByText('Sunucuya şu an ulaşılamıyor. Biraz sonra yeniden denenecek.', undefined, { timeout: 6000 }),
     ).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('uygulama kabuğu ve rol tabanlı menü', () => {
 
   it('contract ön ayarı: kaynak seçimi tek yapılandırmadan', () => {
     const s = createServices(CONTRACT_PRESET);
-    expect(Object.keys(s).sort()).toEqual(['account', 'alerts', 'announcements', 'audit', 'auth', 'groups', 'invitations', 'locations', 'meContext', 'notifications', 'operationList', 'operations', 'participants', 'realtime', 'roleAssignments', 'tasks', 'users']);
+    expect(Object.keys(s).sort()).toEqual(['account', 'alerts', 'announcements', 'audit', 'auth', 'groups', 'invitations', 'locations', 'meContext', 'notifications', 'operationList', 'operations', 'participants', 'publicAnnouncements', 'realtime', 'roleAssignments', 'tasks', 'users']);
     // Tüm kaynakların backend karşılığı var: varsayılan ön ayarda örnek veri kalmaz.
     expect(Object.values(CONTRACT_PRESET).every((mode) => mode === 'http')).toBe(true);
   });

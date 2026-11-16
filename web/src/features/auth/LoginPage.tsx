@@ -73,13 +73,13 @@ export function LoginPage() {
   }, [services]);
 
   if (session.status === 'authenticated') {
-    return <Navigate to={from ?? '/'} replace />;
+    return <Navigate to={from ?? '/panel'} replace />;
   }
 
   /** Oturum açıldı: bağlam okunur; `mustChangePassword` ise kabuk yerine parola ekranı gelir. */
   async function finishLogin() {
     await session.onLoggedIn();
-    navigate(from ?? '/', { replace: true });
+    navigate(from ?? '/panel', { replace: true });
   }
 
   /** MFA adımından girişe dönüş (bilet geçersiz, süresi dolmuş veya hesap kilitlendi). */

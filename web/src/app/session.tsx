@@ -83,6 +83,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const silent = reason === 'AUTH_UNAUTHENTICATED' && !hadSession.current;
       hadSession.current = false;
       setNotice(silent ? null : END_MESSAGES[reason]);
+      // Halka açık sayfalardaki ziyaretçi yerinde kalır; yalnızca panel (ve giriş) girişe yönlenir.
+      if (!isPanelPath(location.pathname) && location.pathname !== '/giris') return;
       const from = location.pathname === '/giris' ? undefined : location.pathname + location.search;
       navigate('/giris', { replace: true, state: from ? { from } : undefined });
     },
@@ -188,4 +190,9 @@ export function usePermissions() {
       isAdmReadOnly: (opId: Uuid) => has('ADM') && !can('task.manage', opId),
     };
   }, [context]);
+}
+
+/** Yönetim paneli adresi mi (`/panel` ve altı). Halka açık site oturum gerektirmez. */
+export function isPanelPath(pathname: string): boolean {
+  return pathname === '/panel' || pathname.startsWith('/panel/');
 }

@@ -13,6 +13,7 @@ import type {
   OperationListService,
   OperationService,
   ParticipantService,
+  PublicAnnouncementService,
   RealtimeService,
   RoleAssignmentService,
   TaskService,
@@ -1127,6 +1128,20 @@ export function emitMockLiveEvent(event: LiveEvent): void {
 /** Testler için: açık sahte akışların konuları. */
 export function mockLiveTopics(): string[][] {
   return [...liveListeners].map((l) => l.topics);
+}
+
+export function mockPublicAnnouncementService(): PublicAnnouncementService {
+  return {
+    listPublished: async (page = {}) => {
+      const limit = Math.min(page.limit ?? 20, 50);
+      const all = mockStore.publicAnnouncements
+        .filter((a) => a.state === 'PUBLISHED')
+        .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
+      const start = page.cursor ? Number(page.cursor) : 0;
+      const items = all.slice(start, start + limit).map(({ id, title, body, publishedAt }) => ({ id, title, body, publishedAt: publishedAt! }));
+      return respond({ items, nextCursor: start + limit < all.length ? String(start + limit) : undefined });
+    },
+  };
 }
 
 export function mockRealtimeService(): RealtimeService {

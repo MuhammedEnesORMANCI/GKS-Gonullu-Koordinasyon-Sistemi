@@ -8,6 +8,7 @@ import {
   httpAlertService,
   httpAuditService,
   httpLocationService,
+  httpPublicAnnouncementService,
   httpRealtimeService,
   httpAuthService,
   httpGroupService,
@@ -36,6 +37,7 @@ import {
   mockOperationListService,
   mockOperationService,
   mockParticipantService,
+  mockPublicAnnouncementService,
   mockRoleAssignmentService,
   mockTaskService,
   mockUserAdminService,
@@ -63,6 +65,7 @@ export function createServices(config: ServiceConfig, api: ApiClient = apiClient
     alerts: pick('alerts', () => httpAlertService(api), mockAlertService),
     locations: pick('locations', () => httpLocationService(api), mockLocationService),
     realtime: pick('realtime', () => httpRealtimeService(), mockRealtimeService),
+    publicAnnouncements: pick('publicAnnouncements', () => httpPublicAnnouncementService(api), mockPublicAnnouncementService),
   };
 }
 

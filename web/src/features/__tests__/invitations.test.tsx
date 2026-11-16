@@ -23,12 +23,12 @@ describe('Davetler (ID-12 – ID-14)', () => {
 
   it('menüde Davetler yalnızca davet izni olan rolde görünür', async () => {
     const user = userEvent.setup();
-    const { unmount } = renderApp({ route: '/', persona: 'KOR' });
+    const { unmount } = renderApp({ route: '/panel', persona: 'KOR' });
     await user.click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     expect(within(nav).getByRole('link', { name: 'Davetler' })).toBeInTheDocument();
     unmount();
-    renderApp({ route: '/', persona: 'TEK' });
+    renderApp({ route: '/panel', persona: 'TEK' });
     await user.click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const tekNav = await screen.findByRole('navigation', { name: 'Ana menü' });
     expect(within(tekNav).queryByRole('link', { name: 'Davetler' })).not.toBeInTheDocument();

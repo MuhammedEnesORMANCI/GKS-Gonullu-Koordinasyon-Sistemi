@@ -10,7 +10,7 @@ import { markMockLoggedIn, setMockPersona } from '../services/mock/services';
 import type { MockPersona } from '../services/mock/store';
 
 export function renderApp({
-  route = '/',
+  route = '/panel',
   persona = 'KOR',
   loggedIn = true,
   config = MOCK_PRESET,

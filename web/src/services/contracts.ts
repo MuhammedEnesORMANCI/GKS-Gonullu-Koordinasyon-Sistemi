@@ -8,6 +8,7 @@ import type {
   AlertSummary,
   AlertView,
   Freshness,
+  PublicAnnouncement,
   LocationListView,
   AuditEntryView,
   AnnouncementCreateRequest,
@@ -323,6 +324,12 @@ export interface RealtimeService {
   connect(topics: string[], onEvent: (event: LiveEvent) => void, onClosed: () => void): () => void;
 }
 
+/** Kamu duyuruları (ADR-023): halka açık site ve uygulama; iç duyurulardan ayrıdır. */
+export interface PublicAnnouncementService {
+  /** Kimlik doğrulamasız, yalnızca yayındakiler, yeniden eskiye. */
+  listPublished(page?: PageRequest): Promise<Page<PublicAnnouncement>>;
+}
+
 export interface Services {
   auth: AuthService;
   account: AccountService;
@@ -341,4 +348,5 @@ export interface Services {
   alerts: AlertService;
   locations: LocationService;
   realtime: RealtimeService;
+  publicAnnouncements: PublicAnnouncementService;
 }

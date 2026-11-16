@@ -37,7 +37,7 @@ export function QueryState({
           <Typography variant="h6" gutterBottom>
             Bu sayfayı görüntüleme yetkiniz yok
           </Typography>
-          <Button component={RouterLink} to="/" variant="outlined">
+          <Button component={RouterLink} to="/panel" variant="outlined">
             Panele dön
           </Button>
         </Box>
@@ -49,7 +49,7 @@ export function QueryState({
           <Typography variant="h6" gutterBottom>
             Kayıt bulunamadı veya kaldırılmış.
           </Typography>
-          <Button component={RouterLink} to="/operasyonlar" variant="outlined">
+          <Button component={RouterLink} to="/panel/operasyonlar" variant="outlined">
             Listeye dön
           </Button>
         </Box>

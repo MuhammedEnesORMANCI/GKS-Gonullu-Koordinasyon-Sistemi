@@ -1,0 +1,146 @@
+{
+  "_dogrulama": "Yetkili kaynaklarla doğrulanmalı. Bu dosyadaki can güvenliği bilgileri genel kabul görmüş temel önerilerdir; yayından önce yetkili birimce (AFAD vb.) gözden geçirilmelidir.",
+  "hazards": [
+    {
+      "slug": "deprem",
+      "title": "Deprem",
+      "icon": "earthquake",
+      "summary": "Depreme hazırlık, deprem anında korunma ve deprem sonrasında güvenli davranış.",
+      "before": [
+        "Dolap, kitaplık ve ağır eşyaları duvara sabitleyin; ağır eşyaları alt raflara koyun.",
+        "Evinizde her oda için güvenli yerleri (sağlam masa altı, iç duvar dibi) belirleyin.",
+        "Acil durum çantanızı hazırlayın ve kolay ulaşılır bir yerde tutun.",
+        "Aile afet planı yapın: buluşma noktası ve il dışından bir irtibat kişisi belirleyin.",
+        "Bölgenizdeki toplanma alanını öğrenin.",
+        "Gaz, su ve elektrik vanalarının/sigortalarının yerini ve nasıl kapatılacağını öğrenin."
+      ],
+      "during": [
+        "Sakin olun; panikle merdivenlere, asansöre veya pencerelere koşmayın.",
+        "Çök – Kapan – Tutun: sağlam bir masanın altına girin ya da iç duvar dibine çökün, başınızı ve boynunuzu koruyun.",
+        "Pencerelerden, camlardan ve devrilebilecek eşyalardan uzak durun.",
+        "Dışarıdaysanız binalardan, direklerden ve elektrik hatlarından uzak, açık bir alana geçin.",
+        "Araç kullanıyorsanız güvenli bir yerde durun; köprü, viyadük ve tünellerden uzak kalın, araçta bekleyin."
+      ],
+      "after": [
+        "Sarsıntı bitince kendinizi ve çevrenizdekileri kontrol edin; yaralı varsa 112'yi arayın.",
+        "Gaz kokusu alırsanız kibrit, çakmak ve elektrik düğmesi kullanmayın; vanayı kapatıp ortamı terk edin.",
+        "Hasarlı binalara girmeyin; artçı sarsıntılara hazırlıklı olun.",
+        "Toplanma alanına gidin ve resmi duyuruları takip edin.",
+        "Telefon hatlarını acil olmayan aramalarla meşgul etmeyin; mümkünse kısa mesaj kullanın."
+      ]
+    },
+    {
+      "slug": "sel",
+      "title": "Sel",
+      "icon": "flood",
+      "summary": "Yoğun yağış ve taşkın riskine karşı hazırlık ve korunma.",
+      "before": [
+        "Oturduğunuz yerin taşkın riski taşıyıp taşımadığını öğrenin.",
+        "Değerli eşya ve belgeleri yüksek yerlerde, su geçirmez kılıflarda saklayın.",
+        "Hava durumu uyarılarını ve resmi duyuruları takip edin.",
+        "Tahliye güzergâhınızı ve yüksekte kalan güvenli alanları önceden belirleyin."
+      ],
+      "during": [
+        "Yüksek bir yere çıkın; dere yataklarından ve alçak alanlardan uzaklaşın.",
+        "Akan suya yürüyerek ya da araçla girmeyin; az derinlikteki akıntı bile insanı ve aracı sürükleyebilir.",
+        "Elektrik tesisatı suyla temas ettiyse elektriğe dokunmayın; mümkünse ana şalteri kapatın.",
+        "Yetkililer tahliye isterse beklemeden uyun."
+      ],
+      "after": [
+        "Yetkililer güvenli demeden evinize dönmeyin.",
+        "Sel suyu kirli olabilir; temas etmeyin, temas eden yiyecek ve içecekleri tüketmeyin.",
+        "Hasarlı yapılara, köprülere ve yollara girmeyin.",
+        "Elektrik ve gaz tesisatını uzman kontrolünden sonra kullanın."
+      ]
+    },
+    {
+      "slug": "heyelan",
+      "title": "Heyelan",
+      "icon": "landslide",
+      "summary": "Toprak kayması riskini tanıma ve güvenli davranış.",
+      "before": [
+        "Yaşadığınız bölgenin heyelan riskini öğrenin.",
+        "Duvar, zemin ve yollarda yeni çatlaklar, eğilen ağaç ve direkler gibi işaretlere dikkat edin.",
+        "Riskli işaretleri yetkili birimlere bildirin.",
+        "Tahliye güzergâhınızı belirleyin."
+      ],
+      "during": [
+        "Kayma yönünden hızla uzaklaşın; yamaçtan aşağı değil yana doğru kaçın.",
+        "Gürültü, çatırdama veya toprak akışı duyarsanız beklemeden alanı terk edin.",
+        "Dere yataklarından ve yamaç altlarından uzak durun."
+      ],
+      "after": [
+        "Heyelan alanına girmeyin; ikinci bir kayma olabilir.",
+        "Yaralı veya mahsur kalan varsa yerini yetkililere bildirin ve 112'yi arayın.",
+        "Hasarlı yol, su, gaz ve elektrik hatlarını yetkililere bildirin."
+      ]
+    },
+    {
+      "slug": "yangin",
+      "title": "Yangın",
+      "icon": "fire",
+      "summary": "Konut ve orman yangınlarına karşı önlem ve tahliye.",
+      "before": [
+        "Evinizde duman dedektörü ve yangın söndürücü bulundurun; kullanmayı öğrenin.",
+        "Elektrik tesisatını ve ocakları düzenli kontrol ettirin; prizleri aşırı yüklemeyin.",
+        "Ormanlık alanlarda ateş yakmayın, sigara izmariti ve cam atmayın.",
+        "Evden çıkış yollarını açık tutun ve aile tahliye planı yapın."
+      ],
+      "during": [
+        "Yangını fark edince hemen 112'yi arayın.",
+        "Dumanlı ortamda eğilerek ya da emekleyerek ilerleyin; ağzınızı ve burnunuzu nemli bir bezle kapatın.",
+        "Kapıyı açmadan önce elinizin tersiyle sıcaklığını kontrol edin; sıcaksa açmayın.",
+        "Asansör kullanmayın.",
+        "Giysiniz tutuşursa durun, yere yatın ve yuvarlanın."
+      ],
+      "after": [
+        "Yetkililer izin vermeden yanan alana veya binaya girmeyin.",
+        "Yanık ve duman soluma belirtisi olanlar için tıbbi yardım isteyin.",
+        "Elektrik ve gaz tesisatını uzman kontrolünden sonra kullanın."
+      ]
+    },
+    {
+      "slug": "kis",
+      "title": "Kış Şartları",
+      "icon": "winter",
+      "summary": "Yoğun kar, buzlanma ve soğuk hava koşullarına hazırlık.",
+      "before": [
+        "Hava durumu uyarılarını takip edin; zorunlu değilse yola çıkmayın.",
+        "Aracınızda kış lastiği, zincir, battaniye, su ve yiyecek bulundurun.",
+        "Isınma araçlarınızı ve bacalarınızı düzenli kontrol ettirin."
+      ],
+      "during": [
+        "Katmanlı ve kuru giyinin; başınızı, ellerinizi ve ayaklarınızı koruyun.",
+        "Sobalı ve kapalı ortamlarda karbonmonoksit zehirlenmesine karşı havalandırmayı ihmal etmeyin.",
+        "Yolda mahsur kalırsanız aracınızda kalın, egzozun karla tıkanmadığından emin olun ve 112'yi arayın.",
+        "Buzlu zeminde kısa adımlarla ve dikkatli yürüyün."
+      ],
+      "after": [
+        "Çatı ve saçaklarda biriken kar ve buz sarkıtlarına karşı dikkatli olun.",
+        "Yaşlı ve yalnız yaşayan komşularınızı kontrol edin.",
+        "Donma belirtileri (uyuşma, solukluk) için tıbbi yardım isteyin."
+      ]
+    },
+    {
+      "slug": "diger",
+      "title": "Diğer Afetler",
+      "icon": "other",
+      "summary": "Fırtına, çığ, tsunami, endüstriyel kazalar ve benzeri durumlarda genel ilkeler.",
+      "before": [
+        "Bölgenizdeki riskleri öğrenin ve resmi uyarıları takip edin.",
+        "Acil durum çantanızı ve aile afet planınızı hazır tutun.",
+        "Toplanma alanını ve tahliye güzergâhını bilin."
+      ],
+      "during": [
+        "Yetkililerin talimatlarına uyun; tahliye istenirse beklemeden uygulayın.",
+        "Kıyıda güçlü sarsıntı veya denizin aniden çekilmesi gibi tsunami işaretlerinde hemen yüksek yerlere çıkın.",
+        "Kimyasal sızıntı uyarısında kapalı bir alana girin, kapı ve pencereleri kapatın, havalandırmayı durdurun."
+      ],
+      "after": [
+        "Resmi duyuruları takip edin; doğrulanmamış bilgileri yaymayın.",
+        "Hasarlı yapılara girmeyin.",
+        "Yardıma ihtiyacı olanları 112'ye bildirin."
+      ]
+    }
+  ]
+}

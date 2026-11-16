@@ -105,7 +105,7 @@ export function GroupListPage() {
                   {query.data!.items.map((g) => (
                     <TableRow key={g.id} hover>
                       <TableCell>
-                        <RouterLink to={`/operasyonlar/${opId}/gruplar/${g.id}`}>{g.name}</RouterLink>
+                        <RouterLink to={`/panel/operasyonlar/${opId}/gruplar/${g.id}`}>{g.name}</RouterLink>
                       </TableCell>
                       <TableCell>{g.leader.displayName}</TableCell>
                       <TableCell align="right">
@@ -145,7 +145,7 @@ function GroupCreateDialog({ operationId, onClose }: { operationId: Uuid; onClos
       void queryClient.invalidateQueries({ queryKey: Q.groups(operationId) });
       void queryClient.invalidateQueries({ queryKey: Q.participants(operationId) });
       queryClient.setQueryData(Q.group(group.id), group);
-      navigate(`/operasyonlar/${operationId}/gruplar/${group.id}`);
+      navigate(`/panel/operasyonlar/${operationId}/gruplar/${group.id}`);
     },
     onError: (e) => {
       if (isApiError(e) && (e.code === 'NOT_A_PARTICIPANT' || e.code === 'OPERATION_CLOSED')) {

@@ -13,6 +13,7 @@ import type {
   OperationService,
   LocationService,
   ParticipantService,
+  PublicAnnouncementService,
   PushStatus,
   RealtimeService,
   RoleAssignmentService,
@@ -43,6 +44,7 @@ import type {
   OperationView,
   Page,
   ParticipantView,
+  PublicAnnouncement,
   RoleAssignmentView,
   TaskSummary,
   UserDetail,
@@ -366,6 +368,13 @@ const LIVE_EVENTS = [
  * RT-01: tarayıcının `EventSource`'u (çerezle kimlik, CSRF gerekmez). Geçici kopmada tarayıcı `Last-Event-ID` ile
  * kendisi yeniden bağlanır; sunucu bağlantıyı reddederse (401/403) akış kapanır ve `onClosed` çağrılır.
  */
+export function httpPublicAnnouncementService(api: ApiClient): PublicAnnouncementService {
+  return {
+    listPublished: (page = {}) =>
+      api.get<Page<PublicAnnouncement>>('/public/announcements', { query: { limit: page.limit, cursor: page.cursor } }),
+  };
+}
+
 export function httpRealtimeService(baseUrl: string = API_BASE): RealtimeService {
   return {
     connect: (topics, onEvent, onClosed) => {

@@ -1,0 +1,41 @@
+{
+  "_dogrulama": "Yetkili kaynaklarla doğrulanmalı. Sayfa metinleri yayından önce yetkili birimce gözden geçirilmelidir. Telefon, adres ve kurum bilgisi uydurulmaz; acil numara olarak yalnızca 112 yazılır.",
+  "meta": {
+    "description": "Afetlere hazırlık, afet anında yapılması gerekenler, kamu duyuruları ve gönüllülük hakkında bilgilendirme."
+  },
+  "hero": {
+    "title": "Afetlere hazırlıklı olmak hepimizin görevi",
+    "text": "Afet türlerine göre öncesinde, sırasında ve sonrasında yapılması gerekenleri öğrenin; acil durum çantanızı ve aile afet planınızı bugün hazırlayın."
+  },
+  "hazardsTitle": "Afet Türleri",
+  "quickAccessTitle": "Hızlı Erişim",
+  "quickAccess": [
+    { "label": "Acil durum çantası", "to": "/rehber#acil-durum-cantasi" },
+    { "label": "Aile afet planı", "to": "/rehber#aile-afet-plani" },
+    { "label": "Toplanma alanı", "to": "/rehber#toplanma-alani" },
+    { "label": "Afet anında ne yapmalı?", "to": "/ne-yapmali" },
+    { "label": "Kamu duyuruları", "to": "/duyurular" },
+    { "label": "Gönüllülük", "to": "/gonulluluk" }
+  ],
+  "announcementsTitle": "Duyurular",
+  "volunteer": {
+    "title": "Gönüllülük",
+    "intro": "Gönüllü Koordinasyon Sistemi, afet ve acil durumlarda gönüllülerin görevlendirilmesini ve iletişimini kolaylaştırır.",
+    "paragraphs": [
+      "Sisteme katılım davetle yapılır: gönüllüler, yetkili koordinatörlerin gönderdiği davet koduyla hesap oluşturur.",
+      "Herkese açık bir kayıt formu bulunmamaktadır.",
+      "Gönüllü olmak istiyorsanız bağlı olduğunuz kurum, sivil toplum kuruluşu veya yerel yetkili birimle iletişime geçin."
+    ]
+  },
+  "contact": {
+    "title": "İletişim",
+    "intro": "Hayati tehlike içeren her durumda Acil Çağrı Merkezi 112'yi arayın.",
+    "paragraphs": [
+      "Kurumsal iletişim bilgileri yetkili birim tarafından eklenecektir.",
+      "Bu sayfada yer alan bilgiler resmi kaynaklarla doğrulandıktan sonra güncellenecektir."
+    ]
+  },
+  "footer": {
+    "text": "Bu sitedeki bilgiler genel bilgilendirme amaçlıdır; afet anında yetkili kurumların talimatlarına uyun."
+  }
+}

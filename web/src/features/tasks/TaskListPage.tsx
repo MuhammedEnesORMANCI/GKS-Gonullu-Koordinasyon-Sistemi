@@ -98,7 +98,7 @@ export function TaskListPage() {
                   {query.data!.items.map((t) => (
                     <TableRow key={t.id} hover>
                       <TableCell>
-                        <RouterLink to={`/operasyonlar/${opId}/gorevler/${t.id}`}>{t.title}</RouterLink>
+                        <RouterLink to={`/panel/operasyonlar/${opId}/gorevler/${t.id}`}>{t.title}</RouterLink>
                       </TableCell>
                       <TableCell>
                         <Chip size="small" label={TASK_STATE_LABEL[t.state]} />
@@ -150,7 +150,7 @@ function TaskCreateDialog({ operationId, onClose }: { operationId: Uuid; onClose
       intent.reset();
       queryClient.setQueryData(Q.task(task.id), task);
       void queryClient.invalidateQueries({ queryKey: Q.tasksRoot(operationId) });
-      navigate(`/operasyonlar/${operationId}/gorevler/${task.id}`);
+      navigate(`/panel/operasyonlar/${operationId}/gorevler/${task.id}`);
     },
   });
   const errors = validateTaskForm(values, { requireTargets: true });

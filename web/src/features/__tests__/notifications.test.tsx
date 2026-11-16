@@ -67,7 +67,7 @@ describe('Duyurular (NT-01/02/03)', () => {
 
   it('KOR: önizlemeden sonra anahtarla gönderir', async () => {
     const announcements = announcementsWith(2);
-    renderApp({ route: '/duyurular', persona: 'KOR', overrides: { announcements } });
+    renderApp({ route: '/panel/duyurular', persona: 'KOR', overrides: { announcements } });
     const user = await fill();
     const send = screen.getByRole('button', { name: 'Duyuruyu gönder' });
     expect(send).toBeDisabled();   // önizleme olmadan gönderilmez
@@ -83,7 +83,7 @@ describe('Duyurular (NT-01/02/03)', () => {
 
   it('50 kişiden fazlasında açık onay ister (AC-11.3)', async () => {
     const announcements = announcementsWith(120);
-    renderApp({ route: '/duyurular', persona: 'KOR', overrides: { announcements } });
+    renderApp({ route: '/panel/duyurular', persona: 'KOR', overrides: { announcements } });
     const user = await fill();
     await user.click(screen.getByRole('button', { name: 'Alıcıları önizle' }));
     const send = screen.getByRole('button', { name: 'Duyuruyu gönder' });
@@ -95,7 +95,7 @@ describe('Duyurular (NT-01/02/03)', () => {
   });
 
   it('izni olmayan rolde menüde görünmez', async () => {
-    renderApp({ route: '/', persona: 'TEK' });
+    renderApp({ route: '/panel', persona: 'TEK' });
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Menüyü aç' }));
     const nav = await screen.findByRole('navigation', { name: 'Ana menü' });
     expect(within(nav).queryByText('Duyurular')).not.toBeInTheDocument();

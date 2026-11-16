@@ -53,7 +53,7 @@ function AlertTable({ items, showOperation }: { items: AlertSummary[]; showOpera
           {items.map((a) => (
             <TableRow key={a.id} hover>
               <TableCell>
-                <RouterLink to={`/alarmlar/${a.id}`}>{a.message}</RouterLink>
+                <RouterLink to={`/panel/alarmlar/${a.id}`}>{a.message}</RouterLink>
               </TableCell>
               {showOperation && <TableCell>{a.operationName ?? '—'}</TableCell>}
               <TableCell>
@@ -108,7 +108,7 @@ export function AlertListPage() {
           Acil alarm yalnızca <strong>Aktif</strong> durumdaki operasyonda gönderilebilir. Bu operasyon şu an{' '}
           <strong>{OPERATION_STATE_LABEL[state!]}</strong>.{' '}
           {perms.can('operation.manage', opId) ? (
-            <RouterLink to={`/operasyonlar/${opId}`}>Operasyon sayfasından durumu Aktif yapabilirsiniz.</RouterLink>
+            <RouterLink to={`/panel/operasyonlar/${opId}`}>Operasyon sayfasından durumu Aktif yapabilirsiniz.</RouterLink>
           ) : (
             'Operasyonu koordinatör veya kurum yöneticisi aktifleştirebilir.'
           )}
@@ -228,7 +228,7 @@ export function AlertDetailPage() {
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip color={ALERT_STATE_COLOR[a!.state]} label={ALERT_STATE_LABEL[a!.state]} />
               <Typography color="text.secondary">
-                <RouterLink to={`/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
+                <RouterLink to={`/panel/operasyonlar/${a!.operationId}/alarmlar`}>{a!.operationName ?? 'Operasyon'}</RouterLink>
                 {a!.sentAt ? ` · ${formatDateTime(a!.sentAt)} · ${a!.sentBy?.displayName ?? ''}` : ''}
               </Typography>
             </Stack>
@@ -249,7 +249,7 @@ export function AlertDetailPage() {
             )}
             {a!.correctedByAlertId && (
               <Alert severity="info">
-                Bu alarm düzeltildi: <RouterLink to={`/alarmlar/${a!.correctedByAlertId}`}>düzeltilmiş alarm</RouterLink>
+                Bu alarm düzeltildi: <RouterLink to={`/panel/alarmlar/${a!.correctedByAlertId}`}>düzeltilmiş alarm</RouterLink>
               </Alert>
             )}
             <PushStatusNotice status={push.data} />

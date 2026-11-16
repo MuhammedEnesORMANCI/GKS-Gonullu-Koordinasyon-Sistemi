@@ -22,6 +22,7 @@
  *   - alerts        AL-01 – AL-16 (acil alarm yönetimi; KOR ve ADM)
  *   - locations     LC-05 (son konumlar; yalnızca KOR)
  *   - realtime      RT-01 (SSE: gelen kutusu ve duyuruların canlı yenilenmesi)
+ *   - publicAnnouncements  kamu duyuruları (ADR-023; halka açık site, ADM yönetimi)
  *
  * `npm run dev:mock` (Vite `--mode mock`) veya `VITE_SERVICE_PRESET=mock` ile tüm kaynaklar örnek veriye geçer
  * (backend olmadan tutarlı tanıtım).
@@ -45,7 +46,8 @@ export type ServiceResource =
   | 'audit'
   | 'alerts'
   | 'locations'
-  | 'realtime';
+  | 'realtime'
+  | 'publicAnnouncements';
 
 export type ServiceConfig = Record<ServiceResource, ServiceMode>;
 
@@ -66,6 +68,7 @@ export const CONTRACT_PRESET: ServiceConfig = {
   alerts: 'http',
   locations: 'http',
   realtime: 'http',
+  publicAnnouncements: 'http',
 };
 
 export const MOCK_PRESET: ServiceConfig = {
@@ -85,6 +88,7 @@ export const MOCK_PRESET: ServiceConfig = {
   alerts: 'mock',
   locations: 'mock',
   realtime: 'mock',
+  publicAnnouncements: 'mock',
 };
 
 function selectPreset(): ServiceConfig {

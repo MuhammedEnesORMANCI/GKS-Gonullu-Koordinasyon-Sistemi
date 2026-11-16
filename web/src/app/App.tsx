@@ -28,6 +28,15 @@ import { LocationPage } from '../features/location/LocationPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { TaskDetailPage } from '../features/tasks/TaskDetailPage';
 import { TaskListPage } from '../features/tasks/TaskListPage';
+import { PublicLayout } from '../features/public/PublicLayout';
+import { PublicHomePage } from '../features/public/PublicHomePage';
+import { HazardPage } from '../features/public/HazardPage';
+import { GuidePage } from '../features/public/GuidePage';
+import { WhatToDoPage } from '../features/public/WhatToDoPage';
+import { PublicAnnouncementsPage } from '../features/public/PublicAnnouncementsPage';
+import { VolunteerPage } from '../features/public/VolunteerPage';
+import { ContactPage } from '../features/public/ContactPage';
+import { PublicNotFoundPage } from '../features/public/PublicNotFoundPage';
 import { AppShell } from './AppShell';
 import { createQueryClient } from './queryClient';
 import { createAppTheme } from './theme';
@@ -72,11 +81,48 @@ function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Eski panel adresleri (16.11.2026 öncesi kök altında): `/panel` altına aynı yol ve sorguyla yönlenir.
+ * Not: eski `/duyurular` artık halka açık duyurulardır; panel duyuruları `/panel/duyurular`.
+ */
+export const LEGACY_PANEL_PATHS = [
+  '/operasyonlar/*',
+  '/davetler',
+  '/hesabim',
+  '/bildirimler',
+  '/roller',
+  '/kullanicilar',
+  '/denetim',
+  '/alarmlar/*',
+] as const;
+
+function LegacyPanelRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/panel${location.pathname}${location.search}`} replace />;
+}
+
+/** Eski adres yönlendirme rotaları (uygulama ve testler aynı listeyi kullanır). */
+export function legacyPanelRoutes() {
+  return LEGACY_PANEL_PATHS.map((path) => <Route key={path} path={path} element={<LegacyPanelRedirect />} />);
+}
+
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Halka açık site: oturum gerektirmez, iç veri göstermez. */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<PublicHomePage />} />
+        <Route path="afet/:tur" element={<HazardPage />} />
+        <Route path="rehber" element={<GuidePage />} />
+        <Route path="ne-yapmali" element={<WhatToDoPage />} />
+        <Route path="duyurular" element={<PublicAnnouncementsPage />} />
+        <Route path="gonulluluk" element={<VolunteerPage />} />
+        <Route path="iletisim" element={<ContactPage />} />
+      </Route>
       <Route path="/giris" element={<LoginPage />} />
+      {legacyPanelRoutes()}
       <Route
+        path="/panel"
         element={
           <RequireSession>
             <AppShell />
@@ -101,7 +147,10 @@ export function AppRoutes() {
         <Route path="alarmlar/:alertId" element={<AlertDetailPage />} />
         <Route path="operasyonlar/:opId/alarmlar" element={<AlertListPage />} />
         <Route path="operasyonlar/:opId/konum" element={<LocationPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/panel" replace />} />
+      </Route>
+      <Route element={<PublicLayout />}>
+        <Route path="*" element={<PublicNotFoundPage />} />
       </Route>
     </Routes>
   );

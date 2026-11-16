@@ -83,7 +83,7 @@ export function OperationListPage() {
             component="form"
             onSubmit={(e) => {
               e.preventDefault();
-              if (UUID_RE.test(openId.trim())) navigate(`/operasyonlar/${openId.trim()}`);
+              if (UUID_RE.test(openId.trim())) navigate(`/panel/operasyonlar/${openId.trim()}`);
             }}
           >
             <TextField
@@ -136,7 +136,7 @@ export function OperationListPage() {
                     return (
                       <TableRow key={op.id} hover>
                         <TableCell>
-                          <RouterLink to={`/operasyonlar/${op.id}`}>{op.name}</RouterLink>
+                          <RouterLink to={`/panel/operasyonlar/${op.id}`}>{op.name}</RouterLink>
                         </TableCell>
                         <TableCell>
                           <Chip size="small" label={OPERATION_STATE_LABEL[op.state]} color={OPERATION_STATE_COLOR[op.state]} />
@@ -163,7 +163,7 @@ export function OperationListPage() {
             void queryClient.invalidateQueries({ queryKey: Q.operationsRoot() });
             // Yeni KOR ataması izinleri değiştirir (grup/görev/davet yönetimi açılır).
             void queryClient.invalidateQueries({ queryKey: Q.meContext() });
-            navigate(`/operasyonlar/${op.id}`);
+            navigate(`/panel/operasyonlar/${op.id}`);
           }}
         />
       )}

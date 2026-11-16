@@ -65,7 +65,7 @@ export function AppShell() {
   const contextMock = useIsMock('meContext');
   const listMock = useIsMock('operationList');
 
-  const match = matchPath('/operasyonlar/:opId/*', location.pathname);
+  const match = matchPath('/panel/operasyonlar/:opId/*', location.pathname);
   const urlOpId = match?.params.opId;
   const opId = urlOpId ?? readSelectedOp();
 
@@ -111,25 +111,25 @@ export function AppShell() {
   });
 
   const nav = [
-    { label: 'Panel', to: '/', show: true },
-    { label: 'Operasyonlar', to: '/operasyonlar', show: canOperations },
-    { label: 'Davetler', to: '/davetler', show: canInvite },
-    { label: 'Bildirimler', to: '/bildirimler', show: true },
-    { label: 'Duyurular', to: '/duyurular', show: canAnnounce },
-    { label: 'Acil alarmlar', to: '/alarmlar', show: canAlert },
-    { label: 'Roller', to: '/roller', show: perms.can('role.assign') },
-    { label: 'Kullanıcılar', to: '/kullanicilar', show: perms.can('user.status.view') },
-    { label: 'Denetim kayıtları', to: '/denetim', show: perms.can('audit.view') },
-    { label: 'Hesabım', to: '/hesabim', show: true },
+    { label: 'Panel', to: '/panel', show: true },
+    { label: 'Operasyonlar', to: '/panel/operasyonlar', show: canOperations },
+    { label: 'Davetler', to: '/panel/davetler', show: canInvite },
+    { label: 'Bildirimler', to: '/panel/bildirimler', show: true },
+    { label: 'Duyurular', to: '/panel/duyurular', show: canAnnounce },
+    { label: 'Acil alarmlar', to: '/panel/alarmlar', show: canAlert },
+    { label: 'Roller', to: '/panel/roller', show: perms.can('role.assign') },
+    { label: 'Kullanıcılar', to: '/panel/kullanicilar', show: perms.can('user.status.view') },
+    { label: 'Denetim kayıtları', to: '/panel/denetim', show: perms.can('audit.view') },
+    { label: 'Hesabım', to: '/panel/hesabim', show: true },
   ];
   const opNav = opId
     ? [
-        { label: 'Operasyon detayı', to: `/operasyonlar/${opId}`, show: canOperations },
-        { label: 'Gruplar', to: `/operasyonlar/${opId}/gruplar`, show: perms.isKorOf(opId) || perms.isAdm },
-        { label: 'Görevler', to: `/operasyonlar/${opId}/gorevler`, show: perms.isKorOf(opId) || perms.isAdm },
-        { label: 'Acil alarmlar', to: `/operasyonlar/${opId}/alarmlar`, show: perms.can('alert.view', opId) },
-        { label: 'Son konumlar', to: `/operasyonlar/${opId}/konum`, show: perms.can('location.view', opId) },
-        { label: 'Operasyon davetleri', to: `/davetler?kapsam=${opId}`, show: perms.can('invitation.create', opId) },
+        { label: 'Operasyon detayı', to: `/panel/operasyonlar/${opId}`, show: canOperations },
+        { label: 'Gruplar', to: `/panel/operasyonlar/${opId}/gruplar`, show: perms.isKorOf(opId) || perms.isAdm },
+        { label: 'Görevler', to: `/panel/operasyonlar/${opId}/gorevler`, show: perms.isKorOf(opId) || perms.isAdm },
+        { label: 'Acil alarmlar', to: `/panel/operasyonlar/${opId}/alarmlar`, show: perms.can('alert.view', opId) },
+        { label: 'Son konumlar', to: `/panel/operasyonlar/${opId}/konum`, show: perms.can('location.view', opId) },
+        { label: 'Operasyon davetleri', to: `/panel/davetler?kapsam=${opId}`, show: perms.can('invitation.create', opId) },
       ]
     : [];
 
@@ -164,7 +164,7 @@ export function AppShell() {
                   key={n.to}
                   component={RouterLink}
                   to={n.to}
-                  selected={n.to === `/operasyonlar/${opId}` ? location.pathname === n.to : isSelected(n.to)}
+                  selected={n.to === `/panel/operasyonlar/${opId}` ? location.pathname === n.to : isSelected(n.to)}
                   onClick={() => setMobileOpen(false)}
                 >
                   <ListItemText primary={n.label} />
@@ -210,7 +210,7 @@ export function AppShell() {
               value={operations.data?.items.some((o) => o.id === opId) ? opId : ''}
               onChange={(e) => {
                 writeSelectedOp(e.target.value);
-                navigate(`/operasyonlar/${e.target.value}`);
+                navigate(`/panel/operasyonlar/${e.target.value}`);
               }}
               sx={{
                 minWidth: 220,
@@ -234,7 +234,7 @@ export function AppShell() {
           <IconButton
             color="inherit"
             component={RouterLink}
-            to="/bildirimler"
+            to="/panel/bildirimler"
             aria-label={unreadCount > 0 ? `Bildirimler, ${unreadCount} okunmamış` : 'Bildirimler'}
           >
             <Badge badgeContent={unreadCount} color="error" max={99}>

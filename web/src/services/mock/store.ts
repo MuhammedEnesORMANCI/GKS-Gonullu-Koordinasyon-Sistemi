@@ -90,7 +90,20 @@ export interface MockState {
   idempotency: Map<string, unknown>;
   /** Acil alarmlar (örnek): alarm + alıcı satırları. */
   alerts: Map<Uuid, MockAlert>;
+  /** Kamu duyuruları (örnek): halka açık site yalnızca yayındakileri görür. */
+  publicAnnouncements: MockPublicAnnouncement[];
   seq: number;
+}
+
+export interface MockPublicAnnouncement {
+  id: Uuid;
+  title: string;
+  body: string;
+  state: 'DRAFT' | 'PUBLISHED';
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
 }
 
 const VOLUNTEERS: Array<[string, string]> = [
@@ -322,6 +335,22 @@ function seed(): MockState {
     mfaEnrolled: new Set([MOCK_IDS.adm, MOCK_IDS.kor]),
     idempotency: new Map(),
     alerts: seedAlerts(users),
+    publicAnnouncements: [
+      {
+        id: '0192f000-7a00-7000-8000-000000000001', title: 'Örnek kamu duyurusu: hazırlık haftası',
+        body: 'Bu bir örnek duyurudur. Acil durum çantanızı gözden geçirmeyi unutmayın.', state: 'PUBLISHED', version: 1,
+        createdAt: iso(-3000), updatedAt: iso(-3000), publishedAt: iso(-3000),
+      },
+      {
+        id: '0192f000-7a00-7000-8000-000000000002', title: 'Örnek kamu duyurusu: toplanma alanları',
+        body: 'Bu bir örnek duyurudur. Size en yakın toplanma alanını öğrenin.', state: 'PUBLISHED', version: 1,
+        createdAt: iso(-1500), updatedAt: iso(-1500), publishedAt: iso(-1500),
+      },
+      {
+        id: '0192f000-7a00-7000-8000-000000000003', title: 'Taslak kamu duyurusu', body: 'Yayımlanmadı.', state: 'DRAFT',
+        version: 1, createdAt: iso(-100), updatedAt: iso(-100),
+      },
+    ],
     seq: 100,
   };
 }

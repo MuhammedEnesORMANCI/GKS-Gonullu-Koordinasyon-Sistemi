@@ -139,7 +139,7 @@ export function OperationDetailPage() {
                 <Typography>
                   <strong>Koordinatörler:</strong> {op!.coordinators.map((c) => c.displayName).join(', ') || '—'}
                   {perms.can('role.assign') && !closed && (
-                    <Button size="small" component={RouterLink} to={`/roller?rol=KOR&operasyon=${opId}`} sx={{ ml: 1 }}>
+                    <Button size="small" component={RouterLink} to={`/panel/roller?rol=KOR&operasyon=${opId}`} sx={{ ml: 1 }}>
                       Koordinatörleri yönet
                     </Button>
                   )}
@@ -174,19 +174,19 @@ export function OperationDetailPage() {
             )}
 
             <Stack direction="row" spacing={1}>
-              <Button component={RouterLink} to={`/operasyonlar/${opId}/gruplar`}>
+              <Button component={RouterLink} to={`/panel/operasyonlar/${opId}/gruplar`}>
                 Gruplar
               </Button>
-              <Button component={RouterLink} to={`/operasyonlar/${opId}/gorevler`}>
+              <Button component={RouterLink} to={`/panel/operasyonlar/${opId}/gorevler`}>
                 Görevler
               </Button>
               {perms.can('alert.view', opId) && (
-                <Button component={RouterLink} to={`/operasyonlar/${opId}/alarmlar`} color="error">
+                <Button component={RouterLink} to={`/panel/operasyonlar/${opId}/alarmlar`} color="error">
                   Acil alarmlar
                 </Button>
               )}
               {perms.can('location.view', opId) && (
-                <Button component={RouterLink} to={`/operasyonlar/${opId}/konum`}>
+                <Button component={RouterLink} to={`/panel/operasyonlar/${opId}/konum`}>
                   Son konumlar
                 </Button>
               )}

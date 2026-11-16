@@ -82,7 +82,7 @@ export function AlertCreateDialog({
       intent.reset();
       queryClient.setQueryData(Q.alert(alert.id), alert);
       void queryClient.invalidateQueries({ queryKey: Q.alertsRoot() });
-      navigate(`/alarmlar/${alert.id}`);
+      navigate(`/panel/alarmlar/${alert.id}`);
     },
     onError: (error) => {
       // AC-20.8: yeni önizleme; kullanıcı yeniden onaylar (aynı anahtar kullanılabilir, önceki deneme kaydedilmedi).

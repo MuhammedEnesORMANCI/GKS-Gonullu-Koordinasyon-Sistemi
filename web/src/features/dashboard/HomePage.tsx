@@ -19,7 +19,7 @@ export function HomePage() {
       <Alert severity="info">Yönetim paneli özeti (WEB-02) bu sürümde yok.</Alert>
       {(perms.isAdm || perms.isKor) && (
         <div>
-          <Button component={RouterLink} to="/operasyonlar" variant="contained">
+          <Button component={RouterLink} to="/panel/operasyonlar" variant="contained">
             Operasyonlara git
           </Button>
         </div>
