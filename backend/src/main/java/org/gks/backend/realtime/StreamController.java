@@ -35,7 +35,7 @@ class StreamController {
 	static final int MAX_TOPICS = 10;
 
 	private static final Pattern TOPIC = Pattern.compile(
-			"organization|(operation|user):[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+			"organization|(operation|location|user):[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
 	private final StreamHub hub;
 

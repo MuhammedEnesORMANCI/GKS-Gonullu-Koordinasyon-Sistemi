@@ -504,4 +504,18 @@
 	<string name="alert_not_open">Bu alarm kapatıldı veya iptal edildi; yanıt kabul edilmedi.</string>
 	<string name="alert_cancelled">Bu alarm iptal edildi.</string>
 	<string name="alert_closed">Bu alarm kapatıldı.</string>
+	<!-- Konum paylaşımı (AND-06, ADR-019) -->
+	<string name="location_title">Konum paylaşımı</string>
+	<string name="location_explanation">Konumunuzu yalnızca bu operasyonun koordinatörü görür. Paylaşımı siz başlatırsınız ve istediğiniz an durdurabilirsiniz. Yalnızca son konum tutulur; operasyon kapandıktan sonra 30 gün içinde silinir.</string>
+	<string name="location_start">Paylaşımı başlat</string>
+	<string name="location_stop">Paylaşımı durdur</string>
+	<string name="location_state_active">Konumunuz paylaşılıyor.</string>
+	<string name="location_state_unavailable">Paylaşım açık ama konum alınamıyor (izin veya GPS).</string>
+	<string name="location_last_sent">Son gönderim: %1$s</string>
+	<string name="location_permission_denied">Konum izni verilmedi; paylaşım başlatılmadı.</string>
+	<string name="location_operation_not_active">Konum yalnızca aktif operasyonda paylaşılabilir.</string>
+	<string name="location_not_participant">Bu operasyonun katılımcısı değilsiniz.</string>
+	<string name="location_notification_title">Konum paylaşılıyor</string>
+	<string name="location_notification_body">Koordinatör son konumunuzu görüyor. Durdurmak için dokunun.</string>
+	<string name="location_channel">Konum paylaşımı</string>
 </resources>

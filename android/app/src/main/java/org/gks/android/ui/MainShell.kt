@@ -94,6 +94,8 @@ import org.gks.android.ui.management.TaskFormViewModel
 import org.gks.android.ui.management.VolunteersScreen
 import org.gks.android.ui.management.VolunteersViewModel
 import org.gks.android.ui.alerts.AlertDetailScreen
+import org.gks.android.ui.location.LocationSharingCard
+import org.gks.android.ui.location.LocationSharingViewModel
 import org.gks.android.ui.alerts.AlertDetailViewModel
 import org.gks.android.ui.alerts.OpenAlertsBand
 import org.gks.android.ui.alerts.OpenAlertsViewModel
@@ -498,11 +500,13 @@ fun MainShell(app: AppViewModel, main: Screen.Main) {
 			}
 			composable(Routes.OPERATION) { backStack ->
 				val id = backStack.arguments?.getString("id").orEmpty()
+				val locationVm = containerViewModel(key = "location-$id") { LocationSharingViewModel(it.locationRepository, id) }
 				OperationDetailScreen(
 					containerViewModel(key = "operation-$id") { OperationDetailViewModel(it.volunteerRepository, id) },
 					context = main.context,
 					onOpenTask = { nav.navigate(Routes.task(it)) },
 					onOpenGroup = { nav.navigate(Routes.group(it)) },
+					locationCard = { LocationSharingCard(locationVm, id) },
 				)
 			}
 			composable(Routes.ALERT) { backStack ->

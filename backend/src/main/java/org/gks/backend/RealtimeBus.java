@@ -36,6 +36,11 @@ public class RealtimeBus {
 		return "operation:" + operationId;
 	}
 
+	/** Konum olayları ayrı konudadır: yalnızca {@code location.view} (KOR) abone olur (K-15). */
+	public static String locationTopic(UUID operationId) {
+		return "location:" + operationId;
+	}
+
 	/** {@code operationId} kullanıcı konusundaki olaylarda {@code null}. */
 	public void publish(String topic, String type, UUID operationId, Map<String, Object> data) {
 		events.publishEvent(new TopicEvent(topic, type, operationId, data, clock.instant()));

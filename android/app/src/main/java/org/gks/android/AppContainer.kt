@@ -11,6 +11,7 @@ import org.gks.android.data.AnnouncementRepository
 import org.gks.android.data.ApiCaller
 import org.gks.android.data.AuthRepository
 import org.gks.android.data.InvitationRepository
+import org.gks.android.data.LocationRepository
 import org.gks.android.data.ManagementRepository
 import org.gks.android.data.TaskManagementRepository
 import org.gks.android.data.NotificationRepository
@@ -42,6 +43,7 @@ class AppContainer(context: Context, val apiBaseUrl: String = BuildConfig.API_BA
 	val volunteerRepository by lazy { VolunteerRepository(api, caller) }
 	val notificationRepository by lazy { NotificationRepository(api, caller) }
 	val alertRepository by lazy { AlertRepository(api, caller) }
+	val locationRepository by lazy { LocationRepository(api, caller) }
 	val managementRepository by lazy { ManagementRepository(api, caller) }
 	val taskManagementRepository by lazy { TaskManagementRepository(api, caller) }
 	val announcementRepository by lazy { AnnouncementRepository(api, caller) }

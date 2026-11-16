@@ -20,6 +20,7 @@
  *   - users         ID-19 – ID-25 (kullanıcı ve hesap yönetimi)
  *   - audit         AU-01 (denetim kayıtları, salt-okur)
  *   - alerts        AL-01 – AL-16 (acil alarm yönetimi; KOR ve ADM)
+ *   - locations     LC-05 (son konumlar; yalnızca KOR)
  *   - realtime      RT-01 (SSE: gelen kutusu ve duyuruların canlı yenilenmesi)
  *
  * `npm run dev:mock` (Vite `--mode mock`) veya `VITE_SERVICE_PRESET=mock` ile tüm kaynaklar örnek veriye geçer
@@ -43,6 +44,7 @@ export type ServiceResource =
   | 'users'
   | 'audit'
   | 'alerts'
+  | 'locations'
   | 'realtime';
 
 export type ServiceConfig = Record<ServiceResource, ServiceMode>;
@@ -62,6 +64,7 @@ export const CONTRACT_PRESET: ServiceConfig = {
   users: 'http',
   audit: 'http',
   alerts: 'http',
+  locations: 'http',
   realtime: 'http',
 };
 
@@ -80,6 +83,7 @@ export const MOCK_PRESET: ServiceConfig = {
   users: 'mock',
   audit: 'mock',
   alerts: 'mock',
+  locations: 'mock',
   realtime: 'mock',
 };
 

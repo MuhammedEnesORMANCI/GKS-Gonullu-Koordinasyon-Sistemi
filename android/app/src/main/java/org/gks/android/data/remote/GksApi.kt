@@ -307,6 +307,24 @@ interface GksApi {
 	@GET("api/v1/announcements/{id}")
 	suspend fun announcement(@Path("id") id: String): Response<AnnouncementView>
 
+	// ------------------------------------------------------------ konum (LC-01 – LC-04)
+
+	/** LC-01: açık başlatma; gövde isteğe bağlı (`UNAVAILABLE` + neden). Zaten paylaşılıyorsa aynı yanıt. */
+	@POST("api/v1/operations/{id}/location-sharing")
+	suspend fun startLocationSharing(@Path("id") operationId: String, @Body request: LocationSharingStartRequest): Response<LocationSharingView>
+
+	/** LC-02: paylaşım yoksa da `204`. */
+	@DELETE("api/v1/operations/{id}/location-sharing")
+	suspend fun stopLocationSharing(@Path("id") operationId: String): Response<Unit>
+
+	/** LC-03: tek ölçüm; `409 LOCATION_SHARING_STOPPED` / `OPERATION_NOT_ACTIVE` → servis durur (TD-18). */
+	@POST("api/v1/operations/{id}/locations")
+	suspend fun sendLocation(@Path("id") operationId: String, @Body request: LocationMeasurementRequest): Response<Unit>
+
+	/** LC-04. */
+	@GET("api/v1/me/location-sharing")
+	suspend fun myLocationSharings(): Response<List<LocationSharingView>>
+
 	// ------------------------------------------------------------ acil alarm (alıcı)
 
 	/** AL-08: alıcısı olunan alarmlar (varsayılan `OPEN`); `state` virgüllü. */

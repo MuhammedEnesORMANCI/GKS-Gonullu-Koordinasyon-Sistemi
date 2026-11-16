@@ -185,6 +185,11 @@ export function OperationDetailPage() {
                   Acil alarmlar
                 </Button>
               )}
+              {perms.can('location.view', opId) && (
+                <Button component={RouterLink} to={`/operasyonlar/${opId}/konum`}>
+                  Son konumlar
+                </Button>
+              )}
             </Stack>
 
             {(canManage || perms.isAdm) && (

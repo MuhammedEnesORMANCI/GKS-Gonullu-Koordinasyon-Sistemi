@@ -7,6 +7,8 @@ import type {
   AlertState,
   AlertSummary,
   AlertView,
+  Freshness,
+  LocationListView,
   AuditEntryView,
   AnnouncementCreateRequest,
   AnnouncementPreview,
@@ -184,6 +186,16 @@ export interface AlertService {
   recipients(alertId: Uuid): Promise<Page<AlertRecipientView>>;
 }
 
+export interface LocationFilter {
+  groupId?: Uuid;
+  freshness?: Freshness;
+}
+
+/** LC-05: yalnızca operasyonun KOR'u (K-15); her görüntüleme denetime yazılır (5 dk pencerede tek kayıt). */
+export interface LocationService {
+  list(operationId: Uuid, filter?: LocationFilter): Promise<LocationListView>;
+}
+
 /** AU-01 `GET /audit-entries` (salt-okur; `audit.view`: ADM, UYM). Güncelleme/silme yoktur (K-26). */
 export interface AuditService {
   list(filter?: AuditFilter): Promise<Page<AuditEntryView>>;
@@ -286,6 +298,8 @@ export type LiveEventType =
   | 'alert.recipient.changed'
   | 'alert.cancelled'
   | 'alert.closed'
+  | 'location.updated'
+  | 'location.sharing.changed'
   | 'subscription.revoked'
   | 'session.revoked'
   | 'resync';
@@ -320,5 +334,6 @@ export interface Services {
   users: UserAdminService;
   audit: AuditService;
   alerts: AlertService;
+  locations: LocationService;
   realtime: RealtimeService;
 }

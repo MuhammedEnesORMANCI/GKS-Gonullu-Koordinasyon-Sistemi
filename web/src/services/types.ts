@@ -545,3 +545,28 @@ export interface AlertResendResult {
   requeuedCount: number;
   skippedCount: number;
 }
+
+// ---- Konum (§10.2, K-15, ADR-019) ----
+export type Freshness = 'LIVE' | 'STALE' | 'LAST_KNOWN';
+export type SharingState = 'OFF' | 'ACTIVE' | 'UNAVAILABLE' | 'STOPPED';
+
+export interface LocationView {
+  user: UserRef;
+  sharingState: SharingState;
+  lat: number;
+  lon: number;
+  accuracy?: number;
+  measuredAt: string;
+  receivedAt: string;
+  freshness: Freshness;
+  clockSkew: boolean;
+  groups?: GroupRef[];
+}
+
+export interface LocationListView {
+  operationId: Uuid;
+  generatedAt: string;
+  items: LocationView[];
+  /** `WAITING`: paylaşım açık, henüz ölçüm yok (Ek). */
+  notSharing: { user: UserRef; state: SharingState | 'WAITING' }[];
+}

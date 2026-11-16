@@ -35,6 +35,8 @@ fun OperationDetailScreen(
 	context: MeContext,
 	onOpenTask: (String) -> Unit,
 	onOpenGroup: (String) -> Unit,
+	/** AND-06: katılımcı ve aktif operasyonda konum paylaşımı kartı. */
+	locationCard: (@Composable () -> Unit)? = null,
 ) {
 	val state by viewModel.state.collectAsStateWithLifecycle()
 	LoadContent(state, onRetry = viewModel::load) { detail ->
@@ -54,6 +56,7 @@ fun OperationDetailScreen(
 			}
 		}
 		if ("KOR" in myRoles && !context.session.mfaVerified) item { MessageCard(stringResource(R.string.home_coordinator_note), error = false) }
+		if (locationCard != null && "GON" in myRoles && operation.state == "ACTIVE") item { locationCard() }
 		item {
 			ElevatedCard(Modifier.fillMaxWidth()) {
 				Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

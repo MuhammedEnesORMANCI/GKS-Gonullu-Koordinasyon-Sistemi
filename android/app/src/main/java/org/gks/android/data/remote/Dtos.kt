@@ -537,3 +537,23 @@ data class AlertSignalRequest(val at: String? = null)
 /** Serbest metin yok (AC-22.5). */
 @Serializable
 data class AlertResponseRequest(val option: String, val respondedAtDevice: String)
+
+// ---------------------------------------------------------------- konum (§10.2)
+
+@Serializable
+data class LocationSharingStartRequest(val availability: String? = null, val reason: String? = null)
+
+@Serializable
+data class LocationSharingView(
+	val operationId: String,
+	val operationName: String? = null,
+	val state: String,
+	val startedAt: String? = null,
+	val stoppedAt: String? = null,
+	val lastSentAt: String? = null,
+	val stopReason: String? = null,
+	val availabilityReason: String? = null,
+)
+
+@Serializable
+data class LocationMeasurementRequest(val lat: Double, val lon: Double, val accuracy: Double, val measuredAt: String)

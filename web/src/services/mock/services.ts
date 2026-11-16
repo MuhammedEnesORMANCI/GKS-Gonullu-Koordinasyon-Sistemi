@@ -7,6 +7,7 @@ import type {
   GroupService,
   InvitationService,
   LiveEvent,
+  LocationService,
   MeContextService,
   NotificationService,
   OperationListService,
@@ -1285,6 +1286,43 @@ export function mockAlertService(): AlertService {
           x.user.displayName.localeCompare(y.user.displayName, 'tr'),
       );
       return respond({ items });
+    },
+  };
+}
+
+// ------------------------------------------------------------- locations (LC-05)
+
+/** Örnek son konumlar (yalnızca KOR, K-15). Gerçek konum değildir. */
+export function mockLocationService(): LocationService {
+  return {
+    list: async (operationId, filter = {}) => {
+      if (mockStore.persona !== 'KOR') return fail(403, 'FORBIDDEN');
+      const now = Date.now();
+      const at = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
+      const name = (n: number) => mockStore.users.get(MOCK_IDS.volunteer(n))?.displayName ?? `Gönüllü ${n}`;
+      const items = [
+        { n: 1, minutes: 0.5, freshness: 'LIVE' as const },
+        { n: 2, minutes: 6, freshness: 'STALE' as const },
+        { n: 3, minutes: 40, freshness: 'LAST_KNOWN' as const },
+      ]
+        .filter((x) => !filter.freshness || filter.freshness === x.freshness)
+        .map((x) => ({
+          user: { id: MOCK_IDS.volunteer(x.n), displayName: name(x.n) },
+          sharingState: 'ACTIVE' as const,
+          lat: 41.0 + x.n / 100,
+          lon: 28.97 + x.n / 100,
+          accuracy: 10 * x.n,
+          measuredAt: at(x.minutes),
+          receivedAt: at(x.minutes),
+          freshness: x.freshness,
+          clockSkew: x.n === 2,
+        }));
+      return respond({
+        operationId,
+        generatedAt: new Date(now).toISOString(),
+        items,
+        notSharing: [{ user: { id: MOCK_IDS.volunteer(4), displayName: name(4) }, state: 'STOPPED' as const }],
+      });
     },
   };
 }

@@ -25,6 +25,7 @@ import { RoleAssignmentsPage } from '../features/roles/RoleAssignmentsPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { AlertDetailPage, AlertListPage, OpenAlertsPage } from '../features/alerts/AlertPages';
 import { AuditPage } from '../features/audit/AuditPage';
+import { LocationPage } from '../features/location/LocationPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { TaskDetailPage } from '../features/tasks/TaskDetailPage';
 import { TaskListPage } from '../features/tasks/TaskListPage';
@@ -99,6 +100,7 @@ export function AppRoutes() {
         <Route path="alarmlar" element={<OpenAlertsPage />} />
         <Route path="alarmlar/:alertId" element={<AlertDetailPage />} />
         <Route path="operasyonlar/:opId/alarmlar" element={<AlertListPage />} />
+        <Route path="operasyonlar/:opId/konum" element={<LocationPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

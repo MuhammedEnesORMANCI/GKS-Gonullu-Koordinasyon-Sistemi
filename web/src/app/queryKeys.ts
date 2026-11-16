@@ -37,6 +37,7 @@ export const Q = {
   users: (f: UserFilter = {}) => ['users', 'list', f] as const,
   user: (id: string) => ['users', id] as const,
   audit: (f: AuditFilter = {}) => ['audit', f] as const,
+  locations: (opId: string) => ['operations', opId, 'locations'] as const,
   alertsRoot: () => ['alerts'] as const,
   alerts: (f: AlertFilter = {}) => ['alerts', 'list', f] as const,
   alert: (id: string) => ['alerts', id] as const,

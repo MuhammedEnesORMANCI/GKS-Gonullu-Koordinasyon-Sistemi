@@ -11,6 +11,8 @@ import { useSession } from './session';
 export const MAX_LIVE_TOPICS = 10;
 /** Akış kalıcı kapanınca (ör. erişim belirtecinin süresi) yeniden deneme aralığı. */
 export const LIVE_RECONNECT_MS = 5_000;
+/** Konum listesinin canlı yeniden çekim alt sınırı. */
+export const LOCATION_REFETCH_MS = 15_000;
 
 /**
  * Abone olunacak konular, sunucunun etkin izinlerinden (yetki kaynağı değildir; sunucu her bağlantıda denetler):
@@ -29,6 +31,11 @@ export function liveTopics(context: MeContext | undefined): string[] {
   for (const id of operations) {
     if (topics.length >= MAX_LIVE_TOPICS) break;
     topics.push(`operation:${id}`);
+  }
+  // K-15: konum olayları yalnızca KOR'un kendi operasyonlarında (`location.view`).
+  for (const [id, list] of Object.entries(context.permissions.operations)) {
+    if (topics.length >= MAX_LIVE_TOPICS) break;
+    if (list.includes('location.view')) topics.push(`location:${id}`);
   }
   return topics;
 }
@@ -49,6 +56,7 @@ export function useLiveUpdates(): void {
   useEffect(() => {
     if (!userId) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const lastLocationFetch = new Map<string, number>();
     const handle = (event: LiveEvent) => {
       switch (event.type) {
         case 'inbox.changed':
@@ -74,6 +82,17 @@ export function useLiveUpdates(): void {
         case 'session.revoked':
           sessionEvents.endSession('AUTH_SESSION_REVOKED');
           break;
+        case 'location.updated':
+        case 'location.sharing.changed': {
+          // Olay koordinat taşımaz; liste en fazla 15 sn'de bir yeniden çekilir (§12.2).
+          const opId = typeof event.data.operationId === 'string' ? event.data.operationId : undefined;
+          const now = Date.now();
+          if (opId && now - (lastLocationFetch.get(opId) ?? 0) >= LOCATION_REFETCH_MS) {
+            lastLocationFetch.set(opId, now);
+            void queryClient.invalidateQueries({ queryKey: Q.locations(opId) });
+          }
+          break;
+        }
         case 'resync':
           void queryClient.invalidateQueries({ queryKey: Q.alertsRoot() });
           void queryClient.invalidateQueries({ queryKey: Q.inboxRoot() });

@@ -22,6 +22,7 @@
 | ADR-016 | Denetim kaydı aynı işlemde eşzamanlı yazılır; yalnızca ekleme; `actor_basis` | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
 | ADR-017 | Gerçek zamanlı akış: tek örnek içi SSE, işlem sonrası yayın, bağlantı başına yetki | Kabul edildi (16.11.2026; proje sahibinin SSE isteği ve bağımlılık kuralı) | MVP |
 | ADR-018 | Acil alarm: ADM tam yetki, FCM'siz iletim (gelen kutusu + SSE), alıcı durumunun anlamı | Kabul edildi (proje sahibi kararı, 16.11.2026) | MVP |
+| ADR-019 | Konum: açık başlatma, yalnızca KOR görür, kapanış sonrası 30 gün saklama, harita sağlayıcısı sonra | Kabul edildi (proje sahibi kararı, 16.11.2026; ADM'nin konum görmemesi Claude'un güvenli seçimi, onay bekliyor) | MVP |
 
 ---
 
@@ -205,3 +206,15 @@
   4. Hatırlatma zamanlayıcısı (30 sn, 2 dk × 5) çalışır ama yalnızca sayacı ve `UNANSWERED` geçişini yürütür; yeniden iletim FCM ile gelecek. Yeniden gönderim (AL-10) aynı bildirimin gelen kutusu kaydını yeniden okunmamış yapar.
   5. Operasyon kapanışı aynı işlemde `OperationClosed` olayıyla açık alarmları `CLOSED` (`OPERATION_CLOSED`) yapar (TD-06).
 - **Sonuçlar:** (+) alarm uçtan uca kullanılabilir ve denetlenir; (−) telefon kilitliyken/uygulama kapalıyken alarm **ulaşmaz** — FCM olmadan acil alarm saha kullanımı için yeterli değildir; (−) AL-02 (taslak düzenleme) yok, taslak silinip yeniden oluşturulur.
+
+## ADR-019 Konum: açık başlatma, yalnızca KOR görür, kapanış sonrası 30 gün saklama, harita sağlayıcısı sonra
+
+- **Bağlam:** K-15 (konumu yalnızca KOR görür), K-16 (geçmiş yok), LD-25 (kapanışta son konumu sil). Proje sahibi 16.11.2026'da: gönüllü yalnızca `ACTIVE` operasyonda ve açıkça "paylaşımı başlat" diyerek paylaşır, istediği an durdurur; saklama yapılandırılabilir, varsayılan operasyon kapandıktan sonra 30 gün; harita yok, liste/tablo ve harita sağlayıcısı için arayüz.
+- **Karar:**
+  1. LC-01 – LC-05 (`/operations/{id}/location-sharing`, `/operations/{id}/locations`, `/me/location-sharing`). Paylaşım uçları Android'den; ölçüm yalnızca paylaşım `ACTIVE`/`UNAVAILABLE` ve operasyon `ACTIVE` iken kabul edilir, aksi `409 LOCATION_SHARING_STOPPED` / `OPERATION_NOT_ACTIVE` (cihaz servisi durur).
+  2. **Görüntüleme yalnızca operasyonun KOR'u** (`LocationAccess`, `Grants.corporate` + `has(KOR, op)`). ADR-015/018'in ADM genişlemesi konumu **kapsamaz**: belirsiz durumda gizlilik lehine K-15 korundu. `location.view` `ADM_OPERATION`'da yok; SSE'de konum olayları ayrı `location:{id}` konusundadır ve ADM abone olamaz.
+  3. Her LC-05 çağrısı aynı işlemde `audit.location_view_windows` penceresine yazılır (LD-05, LD-44); pencere 5 dk sonra tek `LOCATION_VIEWED` kaydı olur (koordinat yok). Ara tablo audit modülünün açık arayüzü (`LocationViews`) üzerinden güncellenir.
+  4. **Saklama (LD-25'in yerine):** kapanışta paylaşımlar `STOPPED` (`OPERATION_CLOSED`) olur ve son konumlara `retain_until = kapanış + gks.location.retention-after-close` (varsayılan `P30D`) yazılır; saatlik iş süresi dolanları siler. Katılımı kaldırılan kişinin paylaşımı durur ve son konumu hemen silinir.
+  5. Harita yok: web `LOCATION_MAP_PROVIDER` arayüzü (varsayılan `null`, tablo gösterilir); Android'de yalnızca kendi paylaşım durumu gösterilir.
+  6. Android: ön plan servisi (`foregroundServiceType=location`), yalnızca çerçevenin `LocationManager`'ı (yeni bağımlılık yok), dakikada bir ölçüm; arka plan konum izni istenmez; izin verilmezse paylaşım başlatılmaz.
+- **Sonuçlar:** (+) kullanıcı denetiminde, en az veri; (+) bağımlılık eklenmedi. (−) `LocationManager` Play Services'in birleşik konumundan daha çok pil harcar ve iç mekânda zayıftır; (−) oturum kapanınca / hesap devre dışı kalınca paylaşım sunucuda kendiliğinden durmaz (`SESSION_ENDED`, `ACCOUNT_DISABLED` nedenleri henüz üretilmiyor; ölçümler yetkisiz kalır ve cihaz servisi oturum hatasında durur).

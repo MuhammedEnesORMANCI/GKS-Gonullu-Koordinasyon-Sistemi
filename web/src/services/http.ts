@@ -11,6 +11,7 @@ import type {
   NotificationService,
   OperationListService,
   OperationService,
+  LocationService,
   ParticipantService,
   RealtimeService,
   RoleAssignmentService,
@@ -24,6 +25,7 @@ import type {
   AlertSummary,
   AlertView,
   AnnouncementPreview,
+  LocationListView,
   AnnouncementView,
   AuditEntryView,
   AssignmentView,
@@ -200,6 +202,15 @@ export function httpAlertService(api: ApiClient): AlertService {
   };
 }
 
+export function httpLocationService(api: ApiClient): LocationService {
+  return {
+    list: (operationId, filter = {}) =>
+      api.get<LocationListView>(`/operations/${p(operationId)}/locations`, {
+        query: { groupId: filter.groupId, freshness: filter.freshness },
+      }),
+  };
+}
+
 export function httpMeContextService(api: ApiClient): MeContextService {
   return { getContext: () => api.get<MeContext>('/me/context') };
 }
@@ -325,6 +336,8 @@ const LIVE_EVENTS = [
   'alert.recipient.changed',
   'alert.cancelled',
   'alert.closed',
+  'location.updated',
+  'location.sharing.changed',
   'subscription.revoked',
   'session.revoked',
   'resync',

@@ -128,6 +128,7 @@ export function AppShell() {
         { label: 'Gruplar', to: `/operasyonlar/${opId}/gruplar`, show: perms.isKorOf(opId) || perms.isAdm },
         { label: 'Görevler', to: `/operasyonlar/${opId}/gorevler`, show: perms.isKorOf(opId) || perms.isAdm },
         { label: 'Acil alarmlar', to: `/operasyonlar/${opId}/alarmlar`, show: perms.can('alert.view', opId) },
+        { label: 'Son konumlar', to: `/operasyonlar/${opId}/konum`, show: perms.can('location.view', opId) },
         { label: 'Operasyon davetleri', to: `/davetler?kapsam=${opId}`, show: perms.can('invitation.create', opId) },
       ]
     : [];

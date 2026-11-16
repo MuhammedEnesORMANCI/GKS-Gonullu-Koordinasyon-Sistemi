@@ -11,6 +11,9 @@ public interface RealtimeAccess {
 	/** {@code operation:{id}}: operasyonu koordine eden (KOR veya ADR-015 ile ADM), kurumsal oturum kapısıyla. */
 	Decision canFollowOperation(Subject subject, UUID operationId);
 
+	/** {@code location:{id}}: konum olayları yalnızca operasyonun KOR'una (K-15, ADR-019; ADM almaz). */
+	Decision canFollowLocation(Subject subject, UUID operationId);
+
 	/** {@code organization}: kurum geneli duyurular (ADM). */
 	Decision canFollowOrganization(Subject subject);
 

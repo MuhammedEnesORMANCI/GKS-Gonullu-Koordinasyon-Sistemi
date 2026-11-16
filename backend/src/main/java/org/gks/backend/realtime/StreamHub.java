@@ -83,6 +83,9 @@ class StreamHub {
 		if (topic.equals(RealtimeBus.ORGANIZATION_TOPIC)) {
 			return access.canFollowOrganization(subject);
 		}
+		if (topic.startsWith("location:")) {
+			return access.canFollowLocation(subject, UUID.fromString(topic.substring("location:".length())));
+		}
 		if (topic.startsWith("operation:")) {
 			return access.canFollowOperation(subject, UUID.fromString(topic.substring("operation:".length())));
 		}
@@ -156,8 +159,8 @@ class StreamHub {
 
 	/** Yetki düşmesi: konu akıştan çıkarılır ve {@code subscription.revoked} gönderilir (T-SSE-02). */
 	void accessChanged(AccessChanged event) {
-		String closedTopic = "OPERATION_CLOSED".equals(event.reason()) && event.operationId() != null
-				? RealtimeBus.operationTopic(event.operationId()) : null;
+		Set<String> closedTopics = "OPERATION_CLOSED".equals(event.reason()) && event.operationId() != null
+				? Set.of(RealtimeBus.operationTopic(event.operationId()), RealtimeBus.locationTopic(event.operationId())) : Set.of();
 		for (Connection c : List.copyOf(connections.values())) {
 			if (event.userId() != null && !event.userId().equals(c.subject.userId())) {
 				continue;
@@ -166,10 +169,10 @@ class StreamHub {
 				if (topic.equals(RealtimeBus.userTopic(c.subject.userId()))) {
 					continue;
 				}
-				boolean revoke = topic.equals(closedTopic) || !authorize(c.subject, topic).allowed();
+				boolean revoke = closedTopics.contains(topic) || !authorize(c.subject, topic).allowed();
 				if (revoke && c.topics.remove(topic)) {
 					c.send(SseEmitter.event().name("subscription.revoked").data(json(Map.of("topic", topic,
-							"reason", closedTopic != null ? "OPERATION_CLOSED" : event.reason(), "at", clock.instant().toString()))));
+							"reason", closedTopics.contains(topic) ? "OPERATION_CLOSED" : event.reason(), "at", clock.instant().toString()))));
 				}
 			}
 		}
