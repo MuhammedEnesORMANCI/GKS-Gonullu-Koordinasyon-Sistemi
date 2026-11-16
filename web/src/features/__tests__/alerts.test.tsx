@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { emitMockLiveEvent } from '../../services/mock/services';
 import { MOCK_IDS } from '../../services/mock/store';
 import { renderApp } from '../../test/renderApp';
+import { PushStatusNotice } from '../alerts/AlertPages';
 
 describe('Acil alarm (WEB-09/10, ADR-018)', () => {
   it('KOR operasyon alarmlarını görür; detayda sayılar ve "bilinmiyor" sinyalleri', async () => {
@@ -54,5 +55,21 @@ describe('Acil alarm (WEB-09/10, ADR-018)', () => {
     expect(await screen.findByRole('button', { name: 'Düzeltilmiş alarm gönder' })).toBeInTheDocument();
     act(() => emitMockLiveEvent({ type: 'alert.cancelled', data: { topic: `operation:${MOCK_IDS.op1}` } }));
     await waitFor(() => expect(screen.getAllByText('İptal edildi').length).toBeGreaterThan(0));
+  });
+});
+
+describe('Telefon bildirimi (FCM) uyarısı (ADR-022)', () => {
+  it('push UP iken ve durum yüklenirken uyarı yok; kapalı/çalışmıyor/bilinmiyor iken var', () => {
+    const { container, rerender } = render(<PushStatusNotice status="UP" />);
+    expect(container).toBeEmptyDOMElement();
+    rerender(<PushStatusNotice />);
+    expect(container).toBeEmptyDOMElement();
+    rerender(<PushStatusNotice status="DEGRADED" />);
+    expect(screen.getByText(/şu an çalışmıyor/)).toBeInTheDocument();
+    rerender(<PushStatusNotice status="DISABLED" />);
+    expect(screen.getByText(/Telefon bildirimi \(FCM\) kapalı/)).toBeInTheDocument();
+    rerender(<PushStatusNotice status="UNKNOWN" />);
+    expect(screen.getByText(/durumu okunamadı/)).toBeInTheDocument();
+    expect(screen.queryByText(/henüz bağlı değil/)).toBeNull();
   });
 });

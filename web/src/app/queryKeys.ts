@@ -42,4 +42,5 @@ export const Q = {
   alerts: (f: AlertFilter = {}) => ['alerts', 'list', f] as const,
   alert: (id: string) => ['alerts', id] as const,
   alertRecipients: (id: string) => ['alerts', id, 'recipients'] as const,
+  pushStatus: () => ['push-status'] as const,
 };

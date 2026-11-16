@@ -24,6 +24,7 @@ import { ClosedOperationBanner, PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/QueryState';
 import { OPERATION_STATE_LABEL, formatDateTime } from '../../components/format';
 import { useIsMock, useServices } from '../../services/registry';
+import type { PushStatus } from '../../services/contracts';
 import type { AlertCounts, AlertSummary, AlertView } from '../../services/types';
 import { NoParticipantsHint } from '../operations/NoParticipantsHint';
 import { useOperationScope } from '../operations/useOperation';
@@ -161,6 +162,25 @@ function CountChips({ counts }: { counts: AlertCounts }) {
   );
 }
 
+/**
+ * Telefon bildirimi (FCM) durumu (ADR-022): `UP` iken uyarı yok; yüklenirken de gösterilmez. Diğer durumlarda iletimin
+ * uygulama içi bildirim ve canlı akışla sürdüğü söylenir.
+ */
+export function PushStatusNotice({ status }: { status?: PushStatus }) {
+  if (!status || status === 'UP') return null;
+  const text =
+    status === 'DEGRADED'
+      ? 'Telefon bildirimi (FCM) şu an çalışmıyor; iletim uygulama içi bildirim ve canlı akışla sürüyor. Sistem yöneticisine bildirin.'
+      : status === 'DISABLED'
+        ? 'Telefon bildirimi (FCM) kapalı; iletim uygulama içi bildirim ve canlı akışla yapılıyor.'
+        : 'Telefon bildirimi (FCM) durumu okunamadı; iletim en azından uygulama içi bildirim ve canlı akışla yapılıyor.';
+  return (
+    <Alert severity="warning" variant="outlined">
+      {text}
+    </Alert>
+  );
+}
+
 /** WEB-10: alarm detayı, alıcı tablosu (AL-09), iptal/kapatma/yeniden gönderim. Canlı: `alert.*` olayları. */
 export function AlertDetailPage() {
   const { alertId = '' } = useParams();
@@ -173,6 +193,7 @@ export function AlertDetailPage() {
   const [reason, setReason] = useState('');
   const [correcting, setCorrecting] = useState<AlertDraftInitial | null>(null);
   const alert = useQuery({ queryKey: Q.alert(alertId), queryFn: () => services.alerts.get(alertId), enabled: !!alertId });
+  const push = useQuery({ queryKey: Q.pushStatus(), queryFn: () => services.alerts.pushStatus(), staleTime: 60_000 });
   const recipients = useQuery({
     queryKey: Q.alertRecipients(alertId),
     queryFn: () => services.alerts.recipients(alertId),
@@ -231,9 +252,7 @@ export function AlertDetailPage() {
                 Bu alarm düzeltildi: <RouterLink to={`/alarmlar/${a!.correctedByAlertId}`}>düzeltilmiş alarm</RouterLink>
               </Alert>
             )}
-            <Alert severity="warning" variant="outlined">
-              İletim şimdilik uygulama içi bildirim ve canlı akışla yapılıyor; telefon bildirimi (FCM) henüz bağlı değil.
-            </Alert>
+            <PushStatusNotice status={push.data} />
             {a!.state !== 'DRAFT' && <CountChips counts={a!.counts} />}
             {canManage && (
               <Stack direction="row" spacing={1}>

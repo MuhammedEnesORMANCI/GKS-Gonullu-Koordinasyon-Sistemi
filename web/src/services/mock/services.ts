@@ -1275,6 +1275,7 @@ export function mockAlertService(): AlertService {
       }
       return respond({ alert: refresh(a), requeuedCount: requeued, skippedCount: Math.max(0, recipientIds.length - requeued) });
     },
+    pushStatus: async () => 'DISABLED',
     recipients: async (id) => {
       const a = find(id);
       if (!a) return fail(404, 'NOT_FOUND');

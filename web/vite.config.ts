@@ -13,6 +13,12 @@ export default defineConfig({
         changeOrigin: false,
         secure: false,
       },
+      // Telefon bildirimi (FCM) durumu için yalnızca sağlık ucu (ADR-022); diğer actuator uçları iletilmez.
+      '^/actuator/health$': {
+        target: 'http://localhost:8080',
+        changeOrigin: false,
+        secure: false,
+      },
     },
   },
   build: {

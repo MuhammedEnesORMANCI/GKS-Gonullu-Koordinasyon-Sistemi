@@ -13,6 +13,7 @@ import type {
   OperationService,
   LocationService,
   ParticipantService,
+  PushStatus,
   RealtimeService,
   RoleAssignmentService,
   TaskService,
@@ -181,7 +182,16 @@ export function httpAuditService(api: ApiClient): AuditService {
   };
 }
 
-export function httpAlertService(api: ApiClient): AlertService {
+/** Sağlık ucu yanıtından push durumu; beklenmeyen biçimde `UNKNOWN`. */
+export function pushStatusFromHealth(body: unknown): PushStatus {
+  const status = (body as { components?: { push?: { status?: unknown } } } | null)?.components?.push?.status;
+  return status === 'UP' || status === 'DISABLED' || status === 'DEGRADED' ? status : 'UNKNOWN';
+}
+
+export function httpAlertService(
+  api: ApiClient,
+  fetchFn: (input: string, init?: RequestInit) => Promise<Response> = (input, init) => fetch(input, init),
+): AlertService {
   return {
     list: (filter = {}) =>
       api.get<Page<AlertSummary>>(filter.operationId ? `/operations/${p(filter.operationId)}/alerts` : '/alerts', {
@@ -199,6 +209,15 @@ export function httpAlertService(api: ApiClient): AlertService {
     resend: (id, recipientIds, idempotencyKey) =>
       api.post<AlertResendResult>(`/alerts/${p(id)}/resend`, { recipientIds }, { idempotencyKey }),
     recipients: (id) => api.get<Page<AlertRecipientView>>(`/alerts/${p(id)}/recipients`),
+    pushStatus: async () => {
+      try {
+        // Sağlık ucu genel durum UP iken 200, değilse 503 döner; ikisinde de gövde bileşenleri taşır.
+        const response = await fetchFn('/actuator/health', { credentials: 'omit', headers: { Accept: 'application/json' } });
+        return pushStatusFromHealth(await response.json());
+      } catch {
+        return 'UNKNOWN';
+      }
+    },
   };
 }
 

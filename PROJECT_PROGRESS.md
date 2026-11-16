@@ -70,7 +70,7 @@
 |---|---|
 | Backend access | 37/37 |
 | Backend identity | 131/131 |
-| Backend notifications | 34/34 |
+| Backend notifications | 45/45 |
 | Backend organization | 54/54 |
 | Backend tasks | 115/115 |
 | Backend groups | 62/62 |
@@ -79,8 +79,8 @@
 | Backend alerts | 6/6 |
 | Backend location | 4/4 |
 | Backend kök (Modularity, Security, Idempotency, Application) | 46/46 |
-| **Backend toplam** | **500/500** (FCM düzeltmeleri dahil, s36) |
-| Web | tsc + eslint temiz, vitest **133/133** |
+| **Backend toplam** | **511/511** (FCM düzeltmeleri dahil, s39) |
+| Web | tsc + eslint temiz, vitest **135/135** |
 | Android | **88/88**, `assembleDebug` başarılı (Firebase ile) |
 
 Denenmeyenler (FCM): telefon bu oturumun sonunda bağlı değildi; FCM ile kilitli/kapalı telefona alarm, bildirimden yanıt ve izin ekranları gerçek cihazda denenmedi (MANUEL_TEST §11). Proje sahibi 16.11'de doğruladı: web girişi, alarm (aktif operasyonda), duyurular; telefonda uygulama açıkken SSE ve yerel bildirim. Harita ve gerçek GPS ölçümü denenmedi.

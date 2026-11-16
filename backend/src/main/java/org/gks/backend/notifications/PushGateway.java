@@ -35,32 +35,40 @@ public interface PushGateway {
 	 * @param messageId  sağlayıcının ileti kimliği ({@code SENT})
 	 * @param errorCode  sağlayıcı hata kodu (ör. {@code UNREGISTERED}, {@code UNAVAILABLE}, {@code FCM_UNAUTHENTICATED})
 	 * @param httpStatus sağlayıcının HTTP durum kodu (yanıt alınamadıysa {@code null})
+	 * @param detail     temizlenmiş ayrıntı (alan adları ve açıklama; belirteç, anahtar ve ileti metni içermez)
 	 */
-	record Result(Outcome outcome, String messageId, String errorCode, Integer httpStatus) {
+	record Result(Outcome outcome, String messageId, String errorCode, Integer httpStatus, String detail) {
+		static final int MAX_DESCRIPTION = 500;
+
 		public static Result sent(String messageId) {
-			return new Result(Outcome.SENT, messageId, null, null);
+			return new Result(Outcome.SENT, messageId, null, null, null);
 		}
 
 		public static Result transientFailure(String errorCode) {
-			return new Result(Outcome.TRANSIENT_FAILURE, null, errorCode, null);
+			return new Result(Outcome.TRANSIENT_FAILURE, null, errorCode, null, null);
 		}
 
-		/** {@code errorCode}: {@code UNREGISTERED} (uygulama kaldırıldı / belirteç düştü) veya {@code INVALID_ARGUMENT}. */
+		/** {@code errorCode}: {@code UNREGISTERED}, {@code SENDER_ID_MISMATCH} ya da belirteci açıkça hedefleyen {@code INVALID_ARGUMENT}. */
 		public static Result invalidToken(String errorCode) {
-			return new Result(Outcome.INVALID_TOKEN, null, errorCode, null);
+			return new Result(Outcome.INVALID_TOKEN, null, errorCode, null, null);
 		}
 
 		public static Result rejected(String errorCode) {
-			return new Result(Outcome.REJECTED, null, errorCode, null);
+			return new Result(Outcome.REJECTED, null, errorCode, null, null);
 		}
 
 		Result withHttpStatus(Integer status) {
-			return new Result(outcome, messageId, errorCode, status);
+			return new Result(outcome, messageId, errorCode, status, detail);
 		}
 
-		/** Teslim satırına ve günlüğe yazılan özet, ör. {@code UNREGISTERED (HTTP 404)}; belirteç/anahtar içermez. */
+		Result withDetail(String text) {
+			return new Result(outcome, messageId, errorCode, httpStatus, text == null || text.isBlank() ? null : text);
+		}
+
+		/** Teslim satırına ve günlüğe yazılan özet, ör. {@code INVALID_ARGUMENT (HTTP 400): message.android.priority: …}. */
 		String describe() {
-			return httpStatus == null ? errorCode : errorCode + " (HTTP " + httpStatus + ")";
+			String text = errorCode + (httpStatus == null ? "" : " (HTTP " + httpStatus + ")") + (detail == null ? "" : ": " + detail);
+			return text.length() > MAX_DESCRIPTION ? text.substring(0, MAX_DESCRIPTION - 1) + "…" : text;
 		}
 	}
 

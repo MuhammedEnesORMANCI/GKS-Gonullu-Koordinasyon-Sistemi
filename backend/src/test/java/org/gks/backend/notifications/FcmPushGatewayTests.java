@@ -12,7 +12,11 @@ class FcmPushGatewayTests {
 	@Test
 	void errorCodesMapToInvalidTokenTransientOrRejected() {
 		assertThat(FcmPushGateway.classify("UNREGISTERED").outcome()).isEqualTo(PushGateway.Outcome.INVALID_TOKEN);
-		assertThat(FcmPushGateway.classify("INVALID_ARGUMENT").outcome()).isEqualTo(PushGateway.Outcome.INVALID_TOKEN);
+		// INVALID_ARGUMENT yalnızca Google belirteci açıkça hedeflediğinde cihazı kapatır; aksi hâlde yük hatasıdır.
+		assertThat(FcmPushGateway.classify("INVALID_ARGUMENT").outcome()).isEqualTo(PushGateway.Outcome.REJECTED);
+		assertThat(FcmPushGateway.classify("INVALID_ARGUMENT", true).outcome()).isEqualTo(PushGateway.Outcome.INVALID_TOKEN);
+		assertThat(FcmPushGateway.classify("FCM_INVALID_ARGUMENT").outcome()).isEqualTo(PushGateway.Outcome.REJECTED);
+		assertThat(FcmPushGateway.classify("SENDER_ID_MISMATCH").outcome()).isEqualTo(PushGateway.Outcome.INVALID_TOKEN);
 		assertThat(FcmPushGateway.classify("UNAVAILABLE").outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
 		assertThat(FcmPushGateway.classify("QUOTA_EXCEEDED").outcome()).isEqualTo(PushGateway.Outcome.TRANSIENT_FAILURE);
 		assertThat(FcmPushGateway.classify("THIRD_PARTY_AUTH_ERROR").outcome()).isEqualTo(PushGateway.Outcome.REJECTED);

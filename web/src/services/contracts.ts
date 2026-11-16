@@ -184,7 +184,12 @@ export interface AlertService {
   close(alertId: Uuid): Promise<AlertView>;
   resend(alertId: Uuid, recipientIds: Uuid[], idempotencyKey: string): Promise<AlertResendResult>;
   recipients(alertId: Uuid): Promise<Page<AlertRecipientView>>;
+  /** Telefon bildirimi (FCM) durumu: backend `/actuator/health` → `components.push.status` (ADR-022). */
+  pushStatus(): Promise<PushStatus>;
 }
+
+/** `UP`: FCM etkin; `DISABLED`: yapılandırmada kapalı; `DEGRADED`: istendi ama başlatılamadı; `UNKNOWN`: okunamadı. */
+export type PushStatus = 'UP' | 'DISABLED' | 'DEGRADED' | 'UNKNOWN';
 
 export interface LocationFilter {
   groupId?: Uuid;

@@ -59,7 +59,7 @@ class PushConfiguration {
 	}
 
 	static PushSetup setup(String provider, String credentialsFile, Function<String, PushGateway> fcmFactory) {
-		String p = provider == null ? "" : provider.trim().toLowerCase();
+		String p = provider == null ? "" : provider.trim().toLowerCase(java.util.Locale.ROOT);
 		if (p.isEmpty() || p.equals("none")) {
 			return new PushSetup(DisabledPushGateway.INSTANCE, "none", DISABLED, null);
 		}

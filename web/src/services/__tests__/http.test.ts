@@ -10,6 +10,8 @@ import {
   httpOperationService,
   httpParticipantService,
   httpTaskService,
+  httpAlertService,
+  pushStatusFromHealth,
 } from '../http';
 
 function api(status = 200, body: unknown = {}) {
@@ -203,5 +205,29 @@ describe('http TaskService (TK-01 … TK-09)', () => {
     const { client, calls } = api(200, {});
     await httpTaskService(client).get('a/b');
     expect(calls[0]!.url).toBe('/api/v1/tasks/a%2Fb');
+  });
+});
+
+describe('http AlertService.pushStatus (ADR-022)', () => {
+  it('sağlık ucundaki push bileşenini okur; beklenmeyen biçim ve hata UNKNOWN', async () => {
+    expect(pushStatusFromHealth({ status: 'UP', components: { push: { status: 'UP' } } })).toBe('UP');
+    expect(pushStatusFromHealth({ components: { push: { status: 'DEGRADED' } } })).toBe('DEGRADED');
+    expect(pushStatusFromHealth({ components: { push: { status: 'DISABLED' } } })).toBe('DISABLED');
+    expect(pushStatusFromHealth({ status: 'UP' })).toBe('UNKNOWN');
+    expect(pushStatusFromHealth(null)).toBe('UNKNOWN');
+
+    const { client } = api();
+    const urls: string[] = [];
+    const ok = httpAlertService(client, async (input) => {
+      urls.push(input);
+      return new Response(JSON.stringify({ status: 'UP', components: { push: { status: 'UP' } } }), { status: 200 });
+    });
+    expect(await ok.pushStatus()).toBe('UP');
+    expect(urls).toEqual(['/actuator/health']);
+
+    const down = httpAlertService(client, async () => {
+      throw new TypeError('ağ yok');
+    });
+    expect(await down.pushStatus()).toBe('UNKNOWN');
   });
 });
