@@ -302,6 +302,27 @@ Operasyonlar: **Operasyon A = Aktif** (alarm ve konum yalnızca aktif operasyond
 | D2 | Halka açık site → Duyurular | İki demo kamu duyurusu | [ ] |
 | D3 | `.\scripts\dev\demo-seed.ps1` yeniden | "0 yeni satır"; veri değişmez | [ ] |
 
+## 20. RAPOR_7 düzeltmeleri (W + A, Cloudflare tüneli dahil)
+
+Ön koşul: backend yeniden başlatılmış (V20 migration ve yeni uçlar), web sayfası yenilenmiş, telefonlarda yeni APK.
+
+| # | Adımlar | Beklenen | ✓ |
+|---|---|---|---|
+| R1 | Yeni operasyon oluştur (katılımcısız) → Gruplar → Grup oluştur | Lider listesi boş, "Uygun katılımcı yok — önce operasyona katılımcı ekleyin"; üstte "Katılımcı ekle"/davet yönlendirmesi | [ ] |
+| R2 | Operasyon sayfası → "Katılımcı ekle" → demo gönüllü ara (ör. "Ayşe") → seç → "1 kişiyi ekle" | Yeşil bildirim "1 kişi katılımcı olarak eklendi…"; tabloda görünür; telefonunda "X operasyonuna eklendiniz" (gelen kutusu + bildirim) | [ ] |
+| R3 | Aynı kişiyi ikinci sekmeden tekrar eklemeyi dene | "Zaten operasyon katılımcısı: Ayşe Y." | [ ] |
+| R4 | Devre dışı bir hesabı (Kullanıcılar ekranından devre dışı bırak) eklemeyi dene | Aday listesinde çıkmaz; API'yle denenirse "…: hesap devre dışı, katılımcı eklenemez" | [ ] |
+| R5 | KOR olarak başka KOR'un operasyonunu aç | "Katılımcı ekle" düğmesi yok; doğrudan istek 403 | [ ] |
+| R6 | Grup oluştur: lider ve üyeler | Eklenen kişiler seçilebilir; 100'den fazla katılımcıda da hepsi listelenir; devre dışı hesap listede yok | [ ] |
+| R7 | Android KOR/ADM: Yönetim → operasyon → Gönüllüler → "Katılımcı ekle" kartı | Arama, seçim, "Seçilen N kişiyi ekle"; listeye düşer | [ ] |
+| R8 | Web'de sohbet açıkken telefondan mesaj gönder (tünel üzerinden) | Mesaj kanaldan çıkmadan 1–2 sn içinde görünür | [ ] |
+| R9 | Telefonda sohbet açıkken web'den mesaj gönder | Mesaj kanaldan çıkmadan görünür | [ ] |
+| R10 | Tarayıcı geliştirici araçları → Ağ → `stream` isteği | Yanıt başlıkları: `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`; olaylar tek tek akar | [ ] |
+| R11 | Akışı kes (ör. backend'i kısa süre durdur, sonra başlat) ve sohbet açıkken mesaj gönder | Akış kopukken de yeni mesaj en geç ~5 sn'de görünür (yoklama yedeği) | [ ] |
+| R12 | ADM: Genel Acil Alarm → Kişiler alanına hiçbir operasyonda olmayan birinin adını yaz | Sunucudan bulunur ve seçilebilir; liste kaydırınca devam eder | [ ] |
+| R13 | KOR: Genel Acil Alarm → Kişiler | Yalnızca koordine ettiği (planlı dahil) operasyonların katılımcı/koordinatörleri; başkası "Eşleşen kişi yok" | [ ] |
+| R14 | Android ADM/KOR: Genel Acil Alarm → Kişi ara | Aynı kapsam; "Daha fazla kişi" ile sonraki sayfa | [ ] |
+
 ---
 
-**Bilinen sınırlar (hata değil):** OSM karoları yalnızca geliştirme içindir; Android'de genel alarmda grup/kişi seçimi yok (web'de); Android'de operasyon alarmı oluşturma yok (web'de). `android/app/google-services.json` git dışıdır (`.gitignore`); FCM yükünde alarm başlığı/metni Google üzerinden geçer.
+**Bilinen sınırlar (hata değil):** OSM karoları yalnızca geliştirme içindir; Android'de genel alarmda grup seçimi yok (web'de); Android'de operasyon alarmı oluşturma yok (web'de). `android/app/google-services.json` git dışıdır (`.gitignore`); FCM yükünde alarm başlığı/metni Google üzerinden geçer.
