@@ -332,6 +332,14 @@
 	<string name="action_confirm">Onayla</string>
 	<!-- Yönetim: gönüllüler ve davetler -->
 	<string name="volunteers_title">Gönüllüler ve davetler</string>
+	<string name="participants_add_title">Katılımcı ekle</string>
+	<string name="participants_add_help">Kayıtlı ve etkin hesapları ada veya e-postaya göre arayın; eklenenler davet beklemeden katılımcı olur ve bildirim alır. Kayıtlı olmayanları aşağıdan davet edin.</string>
+	<string name="participants_add_search">Kişi ara</string>
+	<string name="participants_add_none">Eklenebilecek kişi bulunamadı.</string>
+	<string name="participants_add_button">Seçilen %1$d kişiyi ekle</string>
+	<string name="participants_added">%1$d kişi katılımcı olarak eklendi: %2$s. Bildirim gönderildi.</string>
+	<string name="participants_already">Zaten operasyon katılımcısı: %1$s.</string>
+	<string name="participants_operation_closed">Operasyon kapalı; katılımcı eklenemez.</string>
 	<string name="volunteers_invite_title">Operasyona davet et</string>
 	<string name="volunteers_invite_help">Kayıtlı kişi uygulamada davet bildirimi alır; kayıtlı değilse davet koduyla e-posta gider.</string>
 	<string name="volunteers_email">E-posta</string>

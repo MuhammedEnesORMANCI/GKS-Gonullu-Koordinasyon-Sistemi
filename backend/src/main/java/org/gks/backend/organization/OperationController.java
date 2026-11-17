@@ -118,6 +118,92 @@ class OperationController {
 		return new PageView<>(page.items(), cursorOf(page.lastId()));
 	}
 
+	/** RAPOR_7 madde 4: doğrudan eklenebilecek kayıtlı aktif hesaplar (henüz katılımcı olmayanlar), sunucuda arama. */
+	@GetMapping("/{id}/participant-candidates")
+	PageView<OperationService.ParticipantCandidate> participantCandidates(@PathVariable UUID id,
+			@RequestParam(required = false) String q, @RequestParam(required = false) String limit,
+			@RequestParam(required = false) String cursor, Authentication authentication) {
+		Subject subject = Subject.from(authentication).requireManagementSession();
+		List<FieldError> errors = new ArrayList<>();
+		if (q != null && q.strip().length() > 100) {
+			errors.add(new FieldError("q", "TOO_LONG", "Arama en fazla 100 karakter olabilir"));
+		}
+		int size = limit(limit, errors);
+		UUID after = cursor(cursor, errors);
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		OperationService.Page<OperationService.ParticipantCandidate> page = service.participantCandidates(subject, id, q,
+				after, size);
+		return new PageView<>(page.items(), cursorOf(page.lastId()));
+	}
+
+	/**
+	 * RAPOR_7 madde 4: kayıtlı aktif kullanıcıları davetsiz katılımcı (GON) olarak ekler; ADM her operasyonda, KOR
+	 * kendi operasyonunda. Davet sistemi kayıtsız kişiler için sürer. Idempotency anahtarı isteğe bağlı.
+	 */
+	@PostMapping("/{id}/participants")
+	ResponseEntity<String> addParticipants(@PathVariable UUID id, @RequestBody JsonNode body,
+			@RequestHeader(name = Idempotency.HEADER, required = false) String key, Authentication authentication) {
+		Subject subject = Subject.from(authentication).requireManagementSession();
+		String idemKey = Idempotency.optionalKey(key);
+		List<UUID> userIds = AddParticipants.parse(body);
+		var request = idempotency.request(idemKey, subject.userId(), "POST", "/operations/{id}/participants",
+				Map.of("id", id), body);
+		return service.addParticipants(subject, id, userIds, request).toResponseEntity();
+	}
+
+	/** {@code {"userIds": [..]}}: 1–50 farklı kimlik. */
+	static final class AddParticipants {
+
+		static final int MAX = 50;
+
+		static List<UUID> parse(JsonNode body) {
+			List<FieldError> errors = new ArrayList<>();
+			List<UUID> ids = new ArrayList<>();
+			JsonNode list = body == null ? null : body.get("userIds");
+			if (body != null) {
+				for (String name : body.propertyNames()) {
+					if (!name.equals("userIds")) {
+						errors.add(new FieldError(name, "UNKNOWN_FIELD", "Bu alan tanınmıyor"));
+					}
+				}
+			}
+			if (list == null || list.isNull()) {
+				errors.add(new FieldError("userIds", "REQUIRED", "En az bir kişi seçin"));
+			}
+			else if (!list.isArray()) {
+				errors.add(new FieldError("userIds", "INVALID_FORMAT", "Kimlik listesi olmalıdır"));
+			}
+			else {
+				for (int i = 0; i < list.size(); i++) {
+					JsonNode item = list.get(i);
+					try {
+						UUID id = UUID.fromString(item.isString() ? item.stringValue() : "");
+						if (ids.contains(id)) {
+							errors.add(new FieldError("userIds[" + i + "]", "DUPLICATE", "Aynı kişi iki kez seçilmiş"));
+						}
+						ids.add(id);
+					}
+					catch (IllegalArgumentException ex) {
+						errors.add(new FieldError("userIds[" + i + "]", "INVALID_FORMAT", "Geçersiz kullanıcı kimliği"));
+					}
+				}
+				if (list.isEmpty()) {
+					errors.add(new FieldError("userIds", "REQUIRED", "En az bir kişi seçin"));
+				}
+				if (list.size() > MAX) {
+					errors.add(new FieldError("userIds", "TOO_MANY", "Tek seferde en fazla " + MAX + " kişi eklenebilir"));
+				}
+			}
+			if (!errors.isEmpty()) {
+				throw ApiException.validation(errors);
+			}
+			return ids;
+		}
+
+	}
+
 	/** OR-02 ({@code x-client: [WEB]}). */
 	@PatchMapping("/{id}")
 	OperationView update(@PathVariable UUID id, @RequestBody JsonNode body, Authentication authentication) {

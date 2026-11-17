@@ -3,6 +3,8 @@ package org.gks.android.data
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.gks.android.data.remote.AddParticipantsRequest
+import org.gks.android.data.remote.AddedParticipants
 import org.gks.android.data.remote.GksApi
 import org.gks.android.data.remote.GroupCreateRequest
 import org.gks.android.data.remote.GroupMember
@@ -16,8 +18,10 @@ import org.gks.android.data.remote.OperationArea
 import org.gks.android.data.remote.OperationCreateRequest
 import org.gks.android.data.remote.OperationStateRequest
 import org.gks.android.data.remote.OperationView
+import org.gks.android.data.remote.Page
 import org.gks.android.data.remote.Participant
 import org.gks.android.data.remote.PendingInvitation
+import org.gks.android.data.remote.PersonCandidate
 import org.gks.android.data.remote.RoleAssignment
 import org.gks.android.data.remote.RoleAssignmentCreateRequest
 
@@ -165,6 +169,16 @@ class ManagementRepository(
 	}
 
 	/** ID-12: kayıtlı kişiye operasyon daveti (uygulama içi bildirim + e-posta), yeni kişiye kodlu davet e-postası. */
+	/** RAPOR_7 madde 4: doğrudan ekleme adayları (sunucuda arama + sayfalama; boş arama gönderilmez). */
+	suspend fun directCandidates(operationId: String, query: String, cursor: String? = null): ApiResult<Page<PersonCandidate>> =
+		caller.call { api.participantCandidates(operationId, query.trim().ifEmpty { null }, cursor) }
+
+	/** RAPOR_7 madde 4: aynı seçim tekrarında aynı Idempotency-Key. */
+	suspend fun addParticipants(operationId: String, userIds: List<String>): ApiResult<AddedParticipants> {
+		val request = AddParticipantsRequest(userIds)
+		return keys.run("participants:add:$operationId:${userIds.sorted()}") { key -> caller.call { api.addParticipants(key, operationId, request) } }
+	}
+
 	suspend fun invite(operationId: String, email: String): ApiResult<PendingInvitation> {
 		val request = InvitationCreateRequest(email.trim().lowercase(), "OPERATION", operationId)
 		return keys.run("invite:$operationId:${request.email}") { key -> caller.call { api.createInvitation(key, request) } }

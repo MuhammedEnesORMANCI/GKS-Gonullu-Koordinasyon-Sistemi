@@ -268,6 +268,130 @@ class OperationLifecycleApiTests {
 
 	}
 
+	/** RAPOR_7 madde 4: kayıtlı aktif kullanıcıların davetsiz katılımcı olarak eklenmesi. */
+	@Nested
+	class DirectParticipants {
+
+		@Test
+		void coordinatorSearchesAndAddsRegisteredUsersWithNotificationAndAudit() throws Exception {
+			UUID operationId = operation("ACTIVE");
+			UUID coordinator = user("Koordinatör");
+			grant(coordinator, "KOR", "OPERATION", operationId);
+			String tag = "Dogrudan" + UUID.randomUUID().toString().substring(0, 8);
+			UUID ayse = user(tag + " Ayşe");
+			UUID burak = user(tag + " Burak");
+			UUID already = user(tag + " Katılımcı");
+			grant(already, "GON", "OPERATION", operationId);
+			UUID disabled = user(tag + " Pasif");
+			jdbc.sql("update identity.users set status = 'DISABLED' where id = ?").param(disabled).update();
+			String token = sessions().web(coordinator, true);
+
+			// Aday araması: aktif ve henüz katılımcı olmayanlar; sunucuda süzülür.
+			String found = mvc.perform(get("/api/v1/operations/{id}/participant-candidates", operationId).param("q", tag)
+				.with(auth(token))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+			assertThat(JsonPath.<List<String>>read(found, "$.items[*].id"))
+				.containsExactly(ayse.toString(), burak.toString());
+
+			String body = add(token, operationId, null, ayse, burak).andExpect(status().isCreated())
+				.andExpect(jsonPath("$.added.length()").value(2))
+				.andReturn().getResponse().getContentAsString();
+			assertThat(JsonPath.<List<String>>read(body, "$.added[*].user.id")).containsExactly(ayse.toString(), burak.toString());
+			assertThat(participantCount(operationId)).isEqualTo(3);
+			assertThat(jdbc.sql("select granted_by from access.role_assignments where user_id = ? and role = 'GON' and scope_id = ?")
+				.params(ayse, operationId).query(UUID.class).single()).isEqualTo(coordinator);
+
+			// Bildirim: "X operasyonuna eklendiniz", NORMAL (FCM normal öncelik; push satırları sağlayıcı açıkken ortak
+			// Notifier'da oluşur, MessagingApiTests/FcmPayloadRulesTests); uygulama içi her eklenene.
+			String notification = jdbc.sql("""
+					select id::text || '|' || title || '|' || priority from notifications.notifications
+					 where kind = 'OPERATION_PARTICIPANT_ADDED' and source_id = ?""").param(operationId).query(String.class).single();
+			String[] parts = notification.split("\\|");
+			assertThat(parts[1]).isEqualTo("Sel müdahalesi operasyonuna eklendiniz");
+			assertThat(parts[2]).isEqualTo("NORMAL");
+			assertThat(jdbc.sql("select user_id from notifications.deliveries where notification_id = ?::uuid and channel = 'IN_APP'")
+				.param(parts[0]).query(UUID.class).list()).containsExactlyInAnyOrder(ayse, burak);
+			assertThat(jdbc.sql("select category || '|' || source_type from notifications.notifications where id = ?::uuid")
+				.param(parts[0]).query(String.class).single()).isEqualTo("SYSTEM|OPERATION");
+
+			// Denetim: kişi başına bir kayıt, KOR temelinde.
+			assertThat(jdbc.sql("""
+					select resource_id from audit.audit_entries
+					 where action = 'OPERATION_PARTICIPANT_ADDED' and operation_id = ? and actor_id = ? and actor_basis = 'KOR'""")
+				.params(operationId, coordinator).query(UUID.class).list()).containsExactlyInAnyOrder(ayse, burak);
+
+			// Eklenenler artık aday değil.
+			mvc.perform(get("/api/v1/operations/{id}/participant-candidates", operationId).param("q", tag).with(auth(token)))
+				.andExpect(jsonPath("$.items.length()").value(0));
+		}
+
+		@Test
+		void existingParticipantDisabledAccountAndClosedOperationAreRejectedAtomically() throws Exception {
+			UUID operationId = operation("ACTIVE");
+			UUID already = user("Zaten Katılımcı");
+			grant(already, "GON", "OPERATION", operationId);
+			UUID fresh = user("Yeni");
+			UUID disabled = user("Pasif Hesap");
+			jdbc.sql("update identity.users set status = 'DISABLED' where id = ?").param(disabled).update();
+
+			expectProblem(add(adminToken, operationId, null, fresh, already), 409, "ALREADY_EXISTS")
+				.andExpect(jsonPath("$.conflict").value("ALREADY_PARTICIPANT"))
+				.andExpect(jsonPath("$.userIds[0]").value(already.toString()))
+				.andExpect(jsonPath("$.displayNames[0]").value("Zaten Katılımcı"));
+			expectFieldError(add(adminToken, operationId, null, fresh, disabled), "userIds[1]", "NOT_ALLOWED_VALUE")
+				.andExpect(jsonPath("$.errors[0].message").value("Pasif Hesap: hesap devre dışı, katılımcı eklenemez"));
+			expectFieldError(add(adminToken, operationId, null, UUID.randomUUID()), "userIds[0]", "NOT_FOUND");
+			expectFieldError(add(adminToken, operationId, null), "userIds", "REQUIRED");
+			expectFieldError(add(adminToken, operationId, null, fresh, fresh), "userIds[1]", "DUPLICATE");
+			assertThat(participantCount(operationId)).isEqualTo(1);   // hiçbiri eklenmedi
+
+			UUID closed = operation("ACTIVE");
+			jdbc.sql("update organization.operations set state = 'COMPLETED', closed_at = now() where id = ?").param(closed).update();
+			expectProblem(add(adminToken, closed, null, fresh), 409, "OPERATION_CLOSED");
+			assertThat(jdbc.sql("select count(*) from notifications.notifications where kind = 'OPERATION_PARTICIPANT_ADDED' and source_id in (?, ?)")
+				.params(operationId, closed).query(Integer.class).single()).isZero();
+		}
+
+		@Test
+		void coordinatorCannotAddToAnotherOperationAndAdminCanAnywhereWithIdempotentRetry() throws Exception {
+			UUID own = operation("ACTIVE");
+			UUID other = operation("PLANNED");
+			UUID coordinator = user("Koordinatör");
+			grant(coordinator, "KOR", "OPERATION", own);
+			UUID volunteer = user("Gönüllü");
+			String korToken = sessions().web(coordinator, true);
+
+			expectProblem(add(korToken, other, null, volunteer), 403, "FORBIDDEN");
+			expectProblem(mvc.perform(get("/api/v1/operations/{id}/participant-candidates", other).with(auth(korToken))), 403,
+					"FORBIDDEN");
+			expectProblem(add(sessions().android(volunteer), own, null, volunteer), 403, "CLIENT_NOT_ALLOWED");
+			assertThat(participantCount(other)).isZero();
+
+			String key = UUID.randomUUID().toString();
+			add(adminToken, other, key, volunteer).andExpect(status().isCreated());
+			add(adminToken, other, key, volunteer).andExpect(status().isCreated());   // aynı anahtar: yeniden oynatma
+			assertThat(participantCount(other)).isEqualTo(1);
+			expectProblem(add(adminToken, other, null, volunteer), 409, "ALREADY_EXISTS");   // yeni istek: zaten katılımcı
+			assertThat(jdbc.sql("select actor_basis from audit.audit_entries where action = 'OPERATION_PARTICIPANT_ADDED' and operation_id = ?")
+				.param(other).query(String.class).list()).containsExactly("ADM");
+		}
+
+	}
+
+	private ResultActions add(String token, UUID operationId, String key, UUID... userIds) throws Exception {
+		String ids = java.util.Arrays.stream(userIds).map(u -> "\"" + u + "\"").collect(Collectors.joining(", "));
+		var request = post("/api/v1/operations/{id}/participants", operationId).with(auth(token))
+			.contentType(MediaType.APPLICATION_JSON).content("{\"userIds\": [" + ids + "]}");
+		if (key != null) {
+			request.header("Idempotency-Key", key);
+		}
+		return mvc.perform(request);
+	}
+
+	private int participantCount(UUID operationId) {
+		return jdbc.sql("select count(*) from access.role_assignments where role = 'GON' and scope_id = ? and revoked_at is null")
+			.param(operationId).query(Integer.class).single();
+	}
+
 	// --- yardımcılar ---
 
 	private TestSessions sessions() {

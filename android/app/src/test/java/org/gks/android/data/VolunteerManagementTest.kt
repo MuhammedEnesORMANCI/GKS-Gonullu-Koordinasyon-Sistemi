@@ -40,6 +40,32 @@ class VolunteerManagementTest {
 		assertEquals("Ağ hatasından sonra ikinci davet oluşmaz", first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"))
 	}
 
+	/** RAPOR_7 madde 4: aday araması ve doğrudan ekleme; ağ tekrarında aynı anahtar; zaten katılımcı hatası adlı. */
+	@Test
+	fun directAddSearchesCandidatesAndAddsWithIdempotencyKey() = runBlocking {
+		backend.handler = { MockResponse().json(200, """{"items":[{"id":"u1","displayName":"Ayşe"}],"nextCursor":"c2"}""") }
+		val page = (repository.directCandidates("o1", " ayşe ", cursor = "c1") as ApiResult.Success).value
+		assertEquals("u1", page.items.single().id)
+		assertEquals("/api/v1/operations/o1/participant-candidates?q=ay%C5%9Fe&cursor=c1&limit=100", backend.requests.last().path)
+
+		backend.handler = { MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST) }
+		assertEquals(ApiError.Network, (repository.addParticipants("o1", listOf("u2", "u1")) as ApiResult.Failure).error)
+		backend.handler = { MockResponse().json(201, """{"added":[{"user":{"id":"u1","displayName":"Ayşe"}},{"user":{"id":"u2","displayName":"Burak"}}]}""") }
+		val added = (repository.addParticipants("o1", listOf("u2", "u1")) as ApiResult.Success).value
+		assertEquals(listOf("Ayşe", "Burak"), added.added.map { it.user.displayName })
+		val (first, retry) = backend.requests.takeLast(2)
+		assertEquals("/api/v1/operations/o1/participants", first.path)
+		assertEquals("""{"userIds":["u2","u1"]}""", first.body.readUtf8())
+		assertNotNull(first.getHeader("Idempotency-Key"))
+		assertEquals(first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"))
+
+		backend.handler = { MockResponse().setResponseCode(409).setHeader("Content-Type", "application/problem+json")
+			.setBody("""{"status":409,"code":"ALREADY_EXISTS","conflict":"ALREADY_PARTICIPANT","userIds":["u3"],"displayNames":["Cem"]}""") }
+		val problem = ((repository.addParticipants("o1", listOf("u3")) as ApiResult.Failure).error as ApiError.Http).problem
+		assertEquals("ALREADY_PARTICIPANT", problem.conflict)
+		assertEquals(listOf("Cem"), problem.displayNames)
+	}
+
 	@Test
 	fun pendingInvitationsRevokeAndParticipants() = runBlocking {
 		backend.handler = { request ->

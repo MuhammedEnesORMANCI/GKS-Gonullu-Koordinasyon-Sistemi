@@ -63,6 +63,7 @@ import type {
   Uuid,
   MapOperationView,
   GeneralAlertCandidate,
+  ParticipantCandidate,
   GeneralAlertDraftRequest,
 } from './types';
 
@@ -247,6 +248,10 @@ export interface ParticipantFilter extends PageRequest {
 /** OR-06 `GET /operations/{id}/participants`. */
 export interface ParticipantService {
   list(operationId: Uuid, filter?: ParticipantFilter): Promise<Page<ParticipantView>>;
+  /** RAPOR_7 madde 4: doğrudan eklenebilecek kayıtlı aktif hesaplar (sunucuda arama + sayfalama). */
+  candidates(operationId: Uuid, query: string, page?: PageRequest): Promise<Page<ParticipantCandidate>>;
+  /** RAPOR_7 madde 4: kayıtlı kullanıcıları davetsiz katılımcı yapar (ADM her operasyon, KOR kendi operasyonu). */
+  add(operationId: Uuid, userIds: Uuid[], idempotencyKey?: string): Promise<{ added: ParticipantView[] }>;
 }
 
 export interface GroupListFilter extends PageRequest {

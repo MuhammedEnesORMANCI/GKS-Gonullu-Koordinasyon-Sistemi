@@ -516,6 +516,13 @@ export interface GeneralAlertTargets {
   userCount: number;
 }
 
+/** RAPOR_7 madde 4: `GET /operations/{id}/participant-candidates` (kayıtlı, aktif, henüz katılımcı değil). */
+export interface ParticipantCandidate {
+  id: Uuid;
+  displayName: string;
+  fullName?: string;
+}
+
 /** RAPOR_7 madde 3: `GET /general-alerts/candidates` kişi adayı (sunucu tarafı arama + sayfalama). */
 export interface GeneralAlertCandidate {
   id: Uuid;

@@ -467,7 +467,53 @@ export function mockParticipantService(): ParticipantService {
         }));
       return respond({ items });
     },
+    candidates: async (operationId, query, page = {}) => {
+      await loadOperation(operationId);
+      if (!canManageParticipants(operationId)) return fail(403, 'FORBIDDEN');
+      const q = query.trim().toLocaleLowerCase('tr');
+      const all = [...mockStore.users.values()]
+        .filter((u) => (!u.status || u.status === 'ACTIVE') && !isParticipant(operationId, u.id))
+        .filter((u) => !q || `${u.displayName} ${u.fullName ?? ''} ${u.email ?? ''}`.toLocaleLowerCase('tr').includes(q))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, 'tr'))
+        .map((u) => ({ id: u.id, displayName: u.displayName, fullName: u.fullName }));
+      const start = page.cursor ? Number(page.cursor) : 0;
+      const end = start + (page.limit ?? 50);
+      return respond({ items: all.slice(start, end), nextCursor: end < all.length ? String(end) : undefined });
+    },
+    add: async (operationId, userIds) => {
+      const op = await loadOperation(operationId);
+      if (!canManageParticipants(operationId)) return fail(403, 'FORBIDDEN');
+      if (op.state === 'COMPLETED' || op.state === 'CANCELLED') return fail(409, 'OPERATION_CLOSED');
+      const errors = userIds.flatMap((id, i) => {
+        const u = mockStore.users.get(id);
+        if (!u) return [{ field: `userIds[${i}]`, code: 'NOT_FOUND', message: 'Kullanıcı bulunamadı' }];
+        if (u.status && u.status !== 'ACTIVE') {
+          return [{ field: `userIds[${i}]`, code: 'NOT_ALLOWED_VALUE', message: `${u.displayName}: hesap devre dışı, katılımcı eklenemez` }];
+        }
+        return [];
+      });
+      if (errors.length > 0) return fail(400, 'VALIDATION_FAILED', {}, errors);
+      const existing = userIds.filter((id) => isParticipant(operationId, id));
+      if (existing.length > 0) {
+        return fail(409, 'ALREADY_EXISTS', {
+          conflict: 'ALREADY_PARTICIPANT',
+          userIds: existing,
+          displayNames: existing.map((id) => mockStore.users.get(id)?.displayName ?? id),
+        });
+      }
+      const list = mockStore.participants.get(operationId) ?? [];
+      const joinedAt = nowIso();
+      userIds.forEach((userId) => list.push({ userId, joinedAt }));
+      mockStore.participants.set(operationId, list);
+      const added: ParticipantView[] = userIds.map((id) => ({ user: mockStore.users.get(id)!, joinedAt, groups: [], openAssignmentCount: 0 }));
+      return respond({ added });
+    },
   };
+}
+
+/** RAPOR_7 madde 4: ADM her operasyonda, KOR yalnızca kendi operasyonunda katılımcı ekler. */
+function canManageParticipants(operationId: Uuid): boolean {
+  return mockStore.persona === 'ADM' || (mockStore.persona === 'KOR' && isCoordinatorOf(operationId));
 }
 
 // ----------------------------------------------------------------- groups

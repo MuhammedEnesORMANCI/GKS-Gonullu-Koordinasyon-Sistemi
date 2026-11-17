@@ -418,7 +418,7 @@ export async function fail(
   status: number,
   code: string,
   extensions: Record<string, unknown> = {},
-  errors?: { field: string; code: string }[],
+  errors?: { field: string; code: string; message?: string }[],
   retryAfterSeconds?: number,
 ): Promise<never> {
   if (mockDelayMs > 0) await new Promise((r) => setTimeout(r, mockDelayMs));

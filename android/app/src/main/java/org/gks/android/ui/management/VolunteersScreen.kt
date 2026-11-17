@@ -11,9 +11,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,8 +29,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +45,7 @@ import org.gks.android.data.ManagementRepository
 import org.gks.android.data.problem
 import org.gks.android.data.remote.Participant
 import org.gks.android.data.remote.PendingInvitation
+import org.gks.android.data.remote.PersonCandidate
 import org.gks.android.ui.common.ActionState
 import org.gks.android.ui.common.EmptyView
 import org.gks.android.ui.common.FormField
@@ -55,6 +60,16 @@ import org.gks.android.ui.common.text
 import org.gks.android.ui.common.toUiText
 
 data class VolunteersData(val participants: List<Participant>, val invitations: List<PendingInvitation>)
+
+/** RAPOR_7 madde 4: doğrudan ekleme formu durumu. */
+data class AddParticipantsState(
+	val query: String = "",
+	val results: List<PersonCandidate> = emptyList(),
+	val cursor: String? = null,
+	val loading: Boolean = false,
+	val searched: Boolean = false,
+	val selected: Map<String, PersonCandidate> = emptyMap(),
+)
 
 /**
  * Gönüllü yönetimi (KOR kendi operasyonu, ADM): OR-06 katılımcılar, ID-12 davet, ID-13 bekleyenler, ID-14 iptal.
@@ -72,7 +87,79 @@ class VolunteersViewModel(private val repository: ManagementRepository, private 
 	private val _action = MutableStateFlow(ActionState())
 	val action: StateFlow<ActionState> = _action.asStateFlow()
 
+	/** RAPOR_7 madde 4: doğrudan katılımcı ekleme (kayıtlı aktif hesaplar; sunucuda arama + sayfalama). */
+	private val _add = MutableStateFlow(AddParticipantsState())
+	val add: StateFlow<AddParticipantsState> = _add.asStateFlow()
+	private var search: Job? = null
+
 	init { load() }
+
+	fun searchCandidates(query: String) {
+		_add.update { it.copy(query = query) }
+		search?.cancel()
+		search = viewModelScope.launch {
+			if (query.isNotBlank()) delay(SEARCH_DEBOUNCE_MILLIS)
+			_add.update { it.copy(loading = true) }
+			val r = repository.directCandidates(operationId, query)
+			_add.update {
+				when (r) {
+					is ApiResult.Success -> it.copy(loading = false, searched = true, results = r.value.items, cursor = r.value.nextCursor)
+					is ApiResult.Failure -> it.copy(loading = false, searched = true, results = emptyList(), cursor = null)
+				}
+			}
+			if (r is ApiResult.Failure) _action.value = ActionState(error = participantMessage(r.error))
+		}
+	}
+
+	fun moreCandidates() {
+		val s = _add.value
+		val cursor = s.cursor ?: return
+		if (s.loading) return
+		_add.update { it.copy(loading = true) }
+		viewModelScope.launch {
+			val r = repository.directCandidates(operationId, s.query, cursor)
+			_add.update {
+				when (r) {
+					is ApiResult.Success -> it.copy(loading = false, results = it.results + r.value.items, cursor = r.value.nextCursor)
+					is ApiResult.Failure -> it.copy(loading = false)
+				}
+			}
+		}
+	}
+
+	fun toggleCandidate(person: PersonCandidate) = _add.update {
+		it.copy(selected = if (person.id in it.selected) it.selected - person.id else it.selected + (person.id to person))
+	}
+
+	fun addSelected() {
+		val selected = _add.value.selected
+		if (selected.isEmpty() || _action.value.busy) return
+		_action.value = ActionState(busy = true)
+		viewModelScope.launch {
+			_action.value = when (val r = repository.addParticipants(operationId, selected.keys.toList())) {
+				is ApiResult.Success -> {
+					_add.value = AddParticipantsState()
+					ActionState(notice = UiText.Fmt(R.string.participants_added, listOf(r.value.added.size,
+						r.value.added.joinToString { it.user.displayName })))
+				}
+				is ApiResult.Failure -> ActionState(error = participantMessage(r.error))
+			}
+			load()
+		}
+	}
+
+	private fun participantMessage(error: ApiError): UiText {
+		val problem = error.problem
+		return when {
+			problem?.code == "ALREADY_EXISTS" && problem.conflict == "ALREADY_PARTICIPANT" && problem.displayNames.isNotEmpty() ->
+				UiText.Fmt(R.string.participants_already, listOf(problem.displayNames.joinToString()))
+			problem?.code == "ALREADY_EXISTS" && problem.conflict == "ALREADY_PARTICIPANT" -> text(R.string.invite_already_participant)
+			problem?.code == "VALIDATION_FAILED" && problem.errors.any { it.field.orEmpty().startsWith("userIds[") && it.message != null } ->
+				UiText.Raw(problem.errors.filter { it.field.orEmpty().startsWith("userIds[") }.mapNotNull { it.message }.joinToString(" "))
+			else -> error.toUiText(mapOf("FORBIDDEN" to R.string.management_forbidden, "CLIENT_NOT_ALLOWED" to R.string.management_session_required,
+				"OPERATION_CLOSED" to R.string.participants_operation_closed))
+		}
+	}
 
 	override suspend fun fetch(): ApiResult<VolunteersData> {
 		val participants = when (val result = repository.participants(operationId)) {
@@ -137,6 +224,7 @@ class VolunteersViewModel(private val repository: ManagementRepository, private 
 
 	private companion object {
 		val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+		const val SEARCH_DEBOUNCE_MILLIS = 300L
 	}
 }
 
@@ -146,11 +234,41 @@ fun VolunteersScreen(viewModel: VolunteersViewModel) {
 	val email by viewModel.email.collectAsStateWithLifecycle()
 	val emailError by viewModel.emailError.collectAsStateWithLifecycle()
 	val action by viewModel.action.collectAsStateWithLifecycle()
+	val add by viewModel.add.collectAsStateWithLifecycle()
 	var confirmRevoke by remember { mutableStateOf<PendingInvitation?>(null) }
 
 	LoadContent(state, onRetry = viewModel::load) { data ->
 		action.notice?.let { item { MessageCard(it.resolve(), error = false) } }
 		action.error?.let { item { MessageCard(it.resolve(), error = true) } }
+
+		item {
+			// RAPOR_7 madde 4: kayıtlı kullanıcıyı davetsiz ekleme.
+			ElevatedCard(Modifier.fillMaxWidth()) {
+				Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+					Text(stringResource(R.string.participants_add_title), style = MaterialTheme.typography.titleMedium)
+					Text(stringResource(R.string.participants_add_help), style = MaterialTheme.typography.bodySmall,
+						color = MaterialTheme.colorScheme.onSurfaceVariant)
+					OutlinedTextField(add.query, viewModel::searchCandidates, label = { Text(stringResource(R.string.participants_add_search)) },
+						singleLine = true, modifier = Modifier.fillMaxWidth(), enabled = !action.busy)
+					(add.selected.values.filter { p -> add.results.none { it.id == p.id } } + add.results).forEach { p ->
+						Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+							Checkbox(p.id in add.selected, { viewModel.toggleCandidate(p) }, enabled = !action.busy)
+							Text(if (p.fullName != null && p.fullName != p.displayName) "${p.displayName} — ${p.fullName}" else p.displayName)
+						}
+					}
+					if (add.searched && !add.loading && add.results.isEmpty()) {
+						Text(stringResource(R.string.participants_add_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+					}
+					if (add.cursor != null) {
+						TextButton(onClick = viewModel::moreCandidates, enabled = !add.loading) { Text(stringResource(R.string.load_more_people)) }
+					}
+					Button(onClick = viewModel::addSelected, enabled = !action.busy && add.selected.isNotEmpty(),
+						modifier = Modifier.fillMaxWidth().height(48.dp)) {
+						Text(stringResource(R.string.participants_add_button, add.selected.size))
+					}
+				}
+			}
+		}
 
 		item {
 			ElevatedCard(Modifier.fillMaxWidth()) {

@@ -92,6 +92,18 @@ public class ApiException extends RuntimeException {
 		return new ApiException(ApiProblems.Code.AUDIENCE_TOO_LARGE, List.of(), extensions, Map.of());
 	}
 
+	/**
+	 * RAPOR_7 madde 4: {@code 409 ALREADY_EXISTS}, {@code conflict=ALREADY_PARTICIPANT}; zaten katılımcı olanların
+	 * kimlikleri ve görünen adları uzantıda (istemci net mesaj gösterir).
+	 */
+	public static ApiException alreadyParticipant(List<java.util.UUID> userIds, List<String> displayNames) {
+		Map<String, Object> extensions = new LinkedHashMap<>();
+		extensions.put("conflict", "ALREADY_PARTICIPANT");
+		extensions.put("userIds", userIds);
+		extensions.put("displayNames", displayNames);
+		return new ApiException(ApiProblems.Code.ALREADY_EXISTS, List.of(), extensions, Map.of());
+	}
+
 	public static ApiException alreadyExists(String conflict) {
 		return new ApiException(ApiProblems.Code.ALREADY_EXISTS, List.of(), Map.of("conflict", conflict), Map.of());
 	}

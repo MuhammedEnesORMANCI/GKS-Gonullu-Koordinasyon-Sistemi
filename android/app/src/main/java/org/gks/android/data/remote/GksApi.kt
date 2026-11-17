@@ -169,6 +169,23 @@ interface GksApi {
 		@Query("notInGroup") notInGroup: String? = null,
 	): Response<Page<Participant>>
 
+	/** RAPOR_7 madde 4: doğrudan eklenebilecek kayıtlı aktif hesaplar (henüz katılımcı olmayanlar). */
+	@GET("api/v1/operations/{id}/participant-candidates")
+	suspend fun participantCandidates(
+		@Path("id") operationId: String,
+		@Query("q") query: String?,
+		@Query("cursor") cursor: String?,
+		@Query("limit") limit: Int = PAGE_LIMIT,
+	): Response<Page<PersonCandidate>>
+
+	/** RAPOR_7 madde 4: kayıtlı kullanıcıları davetsiz katılımcı yapar (ADM her operasyon, KOR kendi). */
+	@POST("api/v1/operations/{id}/participants")
+	suspend fun addParticipants(
+		@Header(IDEMPOTENCY_HEADER) key: String,
+		@Path("id") operationId: String,
+		@Body request: AddParticipantsRequest,
+	): Response<AddedParticipants>
+
 	/** ID-12 (ADM kurum/her operasyon, KOR kendi operasyonu; Z). */
 	@POST("api/v1/invitations")
 	suspend fun createInvitation(@Header(IDEMPOTENCY_HEADER) key: String, @Body request: InvitationCreateRequest): Response<PendingInvitation>

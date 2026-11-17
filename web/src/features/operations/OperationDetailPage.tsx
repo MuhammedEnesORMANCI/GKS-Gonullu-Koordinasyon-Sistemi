@@ -198,7 +198,11 @@ export function OperationDetailPage() {
             {(canManage || perms.isAdm) && <OperationAreaMap operation={op!} />}
 
             {(canManage || perms.isAdm) && (
-              <OperationParticipants operationId={opId} canInvite={!closed && perms.can('invitation.create', opId)} />
+              <OperationParticipants
+                operationId={opId}
+                canInvite={!closed && perms.can('invitation.create', opId)}
+                canAdd={!closed && (perms.isAdm || perms.isKorOf(opId))}
+              />
             )}
 
             <ConfirmDialog

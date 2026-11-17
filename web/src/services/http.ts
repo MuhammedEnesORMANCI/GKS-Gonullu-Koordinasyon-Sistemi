@@ -25,6 +25,7 @@ import type {
 import type {
   AlertPreview,
   GeneralAlertCandidate,
+  ParticipantCandidate,
   AlertRecipientView,
   AlertResendResult,
   AlertSummary,
@@ -284,6 +285,12 @@ export function httpParticipantService(api: ApiClient): ParticipantService {
       api.get<Page<ParticipantView>>(`/operations/${p(operationId)}/participants`, {
         query: { notInGroup: filter.notInGroup, limit: filter.limit, cursor: filter.cursor },
       }),
+    candidates: (operationId, query, page = {}) =>
+      api.get<Page<ParticipantCandidate>>(`/operations/${p(operationId)}/participant-candidates`, {
+        query: { q: query.trim() || undefined, limit: page.limit, cursor: page.cursor },
+      }),
+    add: (operationId, userIds, idempotencyKey) =>
+      api.post<{ added: ParticipantView[] }>(`/operations/${p(operationId)}/participants`, { userIds }, { idempotencyKey }),
   };
 }
 

@@ -156,6 +156,8 @@ data class Problem(
 	val invitationStatus: String? = null,
 	/** `409 ALREADY_EXISTS` uzantısı (ör. `EMAIL_REGISTERED`). */
 	val conflict: String? = null,
+	/** `409 ALREADY_PARTICIPANT` uzantısı (RAPOR_7 madde 4): zaten katılımcı olanların adları. */
+	val displayNames: List<String> = emptyList(),
 )
 
 // ---------------------------------------------------------------- ortak
@@ -653,6 +655,13 @@ data class GeneralAlertTargets(
 /** RAPOR_7 madde 3–4: sunucu tarafı aranan kişi adayı (genel alarm / operasyona katılımcı ekleme). */
 @Serializable
 data class PersonCandidate(val id: String, val displayName: String, val fullName: String? = null)
+
+/** RAPOR_7 madde 4: `POST /operations/{id}/participants`. */
+@Serializable
+data class AddParticipantsRequest(val userIds: List<String>)
+
+@Serializable
+data class AddedParticipants(val added: List<Participant> = emptyList())
 
 /** ADR-026 `POST /general-alerts`. */
 @Serializable

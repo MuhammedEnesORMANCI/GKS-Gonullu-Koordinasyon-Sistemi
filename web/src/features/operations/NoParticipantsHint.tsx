@@ -32,7 +32,8 @@ export function NoParticipantsHint({ operationId, purpose }: { operationId: Uuid
         ) : undefined
       }
     >
-      Bu operasyonda henüz katılımcı yok. {purpose} için önce gönüllüleri operasyona davet edin; davet kabul
+      Bu operasyonda henüz katılımcı yok. {purpose} için önce operasyon sayfasında "Katılımcı ekle" ile kayıtlı
+      kullanıcıları ekleyin ya da gönüllüleri davet edin; davet kabul
       edildiğinde kişiler burada seçilebilir.
     </Alert>
   );

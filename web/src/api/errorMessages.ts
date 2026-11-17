@@ -106,6 +106,10 @@ export function messageFor(error: unknown, context: ErrorContext = 'default'): s
 
   if (code === 'ALREADY_EXISTS') {
     const conflict = error.extension<string>('conflict');
+    const names = error.extension<string[]>('displayNames');
+    if (conflict === 'ALREADY_PARTICIPANT' && Array.isArray(names) && names.length > 0) {
+      return `Zaten operasyon katılımcısı: ${names.join(', ')}.`;   // RAPOR_7 madde 4
+    }
     return (conflict && CONFLICT_MESSAGES[conflict]) || 'Bu kayıt zaten var.';
   }
   if (code === 'RATE_LIMITED') {
@@ -123,6 +127,9 @@ export function messageFor(error: unknown, context: ErrorContext = 'default'): s
     if (invalidCode) return 'Doğrulama kodu hatalı veya süresi geçmiş.';
     const emptyAudience = error.errors.find((e) => e.code === 'EMPTY_AUDIENCE');
     if (emptyAudience) return 'Seçilen hedefte alıcı yok.';
+    // RAPOR_7 madde 4: katılımcı eklemede kişi bazlı sunucu mesajı (ör. "Ali: hesap devre dışı …").
+    const people = error.errors.filter((e) => e.field.startsWith('userIds[') && e.message);
+    if (people.length > 0) return people.map((e) => e.message).join(' ');
   }
 
   if (Object.prototype.hasOwnProperty.call(CATALOG, code)) {

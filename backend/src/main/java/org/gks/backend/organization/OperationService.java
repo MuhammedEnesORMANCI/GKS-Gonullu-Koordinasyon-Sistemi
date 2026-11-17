@@ -25,6 +25,8 @@ import org.gks.backend.Ids;
 import org.gks.backend.Idempotency;
 import org.gks.backend.IdempotencyResponse;
 import org.gks.backend.access.OperationAccess;
+import org.gks.backend.access.Participation;
+import org.gks.backend.notifications.Notifier;
 import org.gks.backend.access.OperationAccess.ViewScope;
 import org.gks.backend.access.RoleAssignments;
 import org.gks.backend.access.Subject;
@@ -56,11 +58,15 @@ class OperationService {
 	private final RealtimeBus realtime;
 	private final ApplicationEventPublisher events;
 	private final ActingBasis acting;
+	private final Participation participation;
+	private final Notifier notifier;
 
 	OperationService(OperationRepository operations, OperationAccess access, RoleAssignments roles, UserDirectory users,
 			ParticipantDetails.Groups groups, ParticipantDetails.Assignments assignments, Idempotency idempotency,
 			JdbcClient jdbc, Clock clock, AuditTrail audit, ActingBasis acting, RealtimeBus realtime,
-			ApplicationEventPublisher events) {
+			ApplicationEventPublisher events, Participation participation, Notifier notifier) {
+		this.participation = participation;
+		this.notifier = notifier;
 		this.events = events;
 		this.realtime = realtime;
 		this.audit = audit;
@@ -162,6 +168,84 @@ class OperationService {
 					memberships.getOrDefault(p.userId(), List.of()), openCounts.getOrDefault(p.userId(), 0)))
 			.toList();
 		return new Page<>(items, more ? current.getLast().assignmentId() : null);
+	}
+
+	/** RAPOR_7 madde 4: kayıtlı aktif hesaplarda arama; operasyonun mevcut katılımcıları listelenmez. */
+	@Transactional(readOnly = true)
+	Page<ParticipantCandidate> participantCandidates(Subject subject, UUID operationId, String query, UUID after, int limit) {
+		load(operationId);
+		access.canManage(subject, operationId).require();
+		List<UserDirectory.UserSummary> rows = users.searchActive(null, query, participation.participants(operationId), after,
+				limit + 1);
+		boolean more = rows.size() > limit;
+		List<UserDirectory.UserSummary> current = more ? rows.subList(0, limit) : rows;
+		return new Page<>(current.stream().map(u -> new ParticipantCandidate(u.id(), u.displayName(), u.fullName())).toList(),
+				more ? current.getLast().id() : null);
+	}
+
+	/**
+	 * RAPOR_7 madde 4: doğrudan katılımcı ekleme (davetsiz). Sıra §3.3: kaynak (404) → yetki (403) → idempotency →
+	 * kurallar: kapalı operasyon {@code 409 OPERATION_CLOSED}; bulunamayan / devre dışı hesap {@code 400}; zaten
+	 * katılımcı {@code 409 ALREADY_EXISTS (ALREADY_PARTICIPANT)}. Hepsi ya da hiçbiri eklenir. Eklenen her kişiye
+	 * "X operasyonuna eklendiniz" (uygulama içi + normal öncelikli telefon) ve kişi başına denetim kaydı.
+	 */
+	@Transactional
+	IdempotencyResponse addParticipants(Subject subject, UUID operationId, List<UUID> userIds, Idempotency.Request idem) {
+		Operation operation = load(operationId);
+		access.canManage(subject, operationId).require();
+		Optional<IdempotencyResponse> replay = idempotency.begin(idem);
+		if (replay.isPresent()) {
+			return replay.get();
+		}
+		if (operation.state().isClosed()) {
+			throw ApiException.of(Code.OPERATION_CLOSED);
+		}
+		Map<UUID, UserDirectory.UserSummary> found = users.summaries(userIds);
+		List<FieldError> errors = new ArrayList<>();
+		for (int i = 0; i < userIds.size(); i++) {
+			UserDirectory.UserSummary user = found.get(userIds.get(i));
+			if (user == null) {
+				errors.add(new FieldError("userIds[" + i + "]", "NOT_FOUND", "Kullanıcı bulunamadı"));
+			}
+			else if (!"ACTIVE".equals(user.status())) {
+				errors.add(new FieldError("userIds[" + i + "]", "NOT_ALLOWED_VALUE",
+						user.displayName() + ": hesap devre dışı, katılımcı eklenemez"));
+			}
+		}
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		List<UUID> existing = userIds.stream().filter(u -> participation.isParticipant(operationId, u)).toList();
+		if (!existing.isEmpty()) {
+			throw ApiException.alreadyParticipant(existing, existing.stream().map(u -> found.get(u).displayName()).toList());
+		}
+		for (UUID user : userIds) {
+			if (!roles.joinOperation(operationId, user, subject.userId())) {
+				throw ApiException.of(Code.OPERATION_CLOSED);   // eşzamanlı kapanış
+			}
+		}
+		notifier.notify(Notifier.NotificationRequest.toUsers("operation:" + operationId + ":PARTICIPANTS_ADDED:" + Ids.newId(),
+				Notifier.Category.SYSTEM, Notifier.Kind.OPERATION_PARTICIPANT_ADDED, Notifier.Priority.NORMAL,
+				operation.name() + " operasyonuna eklendiniz",
+				"\"" + operation.name() + "\" operasyonuna katılımcı olarak eklendiniz. Görev ve duyurular uygulamada görünecek.",
+				Notifier.SourceType.OPERATION, operationId, operationId, userIds, subject.userId()));
+		String basis = acting.operation(subject, operationId);
+		for (UUID user : userIds) {
+			audit.record(subject.userId(), basis, subject.client(), "OPERATION_PARTICIPANT_ADDED", "USER", user, operationId,
+					Map.of("method", "DIRECT"));
+		}
+		Map<UUID, List<ParticipantDetails.GroupRef>> memberships = groups.activeGroups(operationId, userIds);
+		Instant now = clock.instant();
+		List<ParticipantView> added = userIds.stream()
+			.map(u -> new ParticipantView(found.get(u), now, memberships.getOrDefault(u, List.of()), 0))
+			.toList();
+		return idempotency.complete(idem, 201, new AddedParticipants(added), RESOURCE_OPERATION, operationId);
+	}
+
+	record ParticipantCandidate(UUID id, String displayName, String fullName) {
+	}
+
+	record AddedParticipants(List<ParticipantView> added) {
 	}
 
 	@Transactional

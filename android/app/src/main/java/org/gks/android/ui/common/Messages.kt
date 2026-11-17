@@ -11,12 +11,15 @@ import org.gks.android.data.remote.ErrorCodes
 sealed interface UiText {
 	data class Res(@StringRes val id: Int) : UiText
 	data class Raw(val text: String) : UiText
+	/** Biçimli kaynak metni (ör. "%1$d kişi eklendi: %2$s"). */
+	data class Fmt(@StringRes val id: Int, val args: List<Any>) : UiText
 }
 
 @Composable
 fun UiText.resolve(): String = when (this) {
 	is UiText.Res -> stringResource(id)
 	is UiText.Raw -> text
+	is UiText.Fmt -> stringResource(id, *args.toTypedArray())
 }
 
 fun text(@StringRes id: Int): UiText = UiText.Res(id)
